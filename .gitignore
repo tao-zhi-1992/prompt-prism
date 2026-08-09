@@ -3,6 +3,7 @@ node_modules/
 data/
 coverage/
 packages/prompt-prism/public/dashboard/
+packages/prompt-prism/dist/
 packages/prompt-prism/README.md
 packages/prompt-prism/LICENSE
 packages/prompt-prism/docs/

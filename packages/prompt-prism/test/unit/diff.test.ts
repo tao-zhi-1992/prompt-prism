@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { diffCharacters, divergencePoint } from '../../src/diff.js';
+import type { DiffPart } from '../../src/types.js';
 
-function apply(parts) {
+function apply(parts: DiffPart[]): { old: string; next: string } {
   return {
     old: parts.filter((part) => part.type !== 'insert').map((part) => part.value).join(''),
     next: parts.filter((part) => part.type !== 'delete').map((part) => part.value).join('')

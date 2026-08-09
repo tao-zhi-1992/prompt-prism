@@ -1,12 +1,14 @@
 import { readFile } from 'node:fs/promises';
+import type http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Analysis, Capture, CaptureIndexEntry } from './types.js';
 
 const dashboardDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/dashboard');
 const brandDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets');
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png', 'favicon.ico']);
 
-function json(response, status, value) {
+function json(response: http.ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
   response.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -16,7 +18,7 @@ function json(response, status, value) {
   response.end(body);
 }
 
-function contentType(filename) {
+function contentType(filename: string): string {
   if (filename.endsWith('.html')) return 'text/html; charset=utf-8';
   if (filename.endsWith('.js')) return 'text/javascript; charset=utf-8';
   if (filename.endsWith('.css')) return 'text/css; charset=utf-8';
@@ -25,7 +27,7 @@ function contentType(filename) {
   return 'application/octet-stream';
 }
 
-async function brandFile(response, filename) {
+async function brandFile(response: http.ServerResponse, filename: string): Promise<void> {
   if (!brandFiles.has(filename)) return json(response, 404, { error: 'Not found' });
   try {
     const body = await readFile(path.join(brandDir, filename));
@@ -38,7 +40,7 @@ async function brandFile(response, filename) {
   } catch { json(response, 404, { error: 'Not found' }); }
 }
 
-async function staticFile(response, filename) {
+async function staticFile(response: http.ServerResponse, filename: string): Promise<void> {
   try {
     const absolute = path.resolve(dashboardDir, filename);
     if (!absolute.startsWith(`${dashboardDir}${path.sep}`)) return json(response, 404, { error: 'Not found' });
@@ -52,7 +54,7 @@ async function staticFile(response, filename) {
   } catch { json(response, 404, { error: 'Not found' }); }
 }
 
-function logSummary(capture, analyzer) {
+function logSummary(capture: CaptureIndexEntry, analyzer: { analyses: Map<string, Analysis> }): Omit<CaptureIndexEntry, 'messages'> & { analysis: Omit<Analysis, 'diff'> | null } {
   const { messages: _messages, ...summary } = capture;
   const analysis = analyzer.analyses.get(capture.id);
   if (!analysis) return { ...summary, analysis: null };
@@ -60,14 +62,20 @@ function logSummary(capture, analyzer) {
   return { ...summary, analysis: analysisSummary };
 }
 
-export function createAdminHandler({ store, analyzer }) {
-  return async function handleAdmin(request, response) {
-    const url = new URL(request.url, 'http://localhost');
+export function createAdminHandler({
+  store,
+  analyzer
+}: {
+  store: { captures: CaptureIndexEntry[]; readCapture(id: string): Promise<Capture | null> };
+  analyzer: { analyses: Map<string, Analysis> };
+}): (request: http.IncomingMessage, response: http.ServerResponse) => Promise<void> {
+  return async function handleAdmin(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+    const url = new URL(request.url ?? '/', 'http://localhost');
     if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
 
     if (url.pathname === '/_pp/api/logs') {
       const logs = store.captures.map((capture) => logSummary(capture, analyzer))
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       return json(response, 200, logs);
     }
     if (url.pathname.startsWith('/_pp/api/diff/')) {

@@ -1,19 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createPromptPrism, parseUpstreamUrl } from '../../src/proxy.js';
 
-const listen = (server) => new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
-const close = (server) => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+const listen = (server: http.Server): Promise<number> => new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve((server.address() as AddressInfo).port)));
+const close = (server: http.Server): Promise<void> => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 
-function request({ port, pathname = '/v1/messages', headers = {}, body }) {
-  return new Promise((resolve, reject) => {
+interface HttpResult {
+  status: number | undefined;
+  headers: http.IncomingHttpHeaders;
+  body: string;
+  times: number[];
+}
+
+function request({ port, pathname = '/v1/messages', headers = {}, body }: { port: number; pathname?: string; headers?: http.OutgoingHttpHeaders; body?: string }): Promise<HttpResult> {
+  return new Promise<HttpResult>((resolve, reject) => {
     const started = Date.now();
-    const chunks = [];
-    const times = [];
+    const chunks: Buffer[] = [];
+    const times: number[] = [];
     const req = http.request({ host: '127.0.0.1', port, path: pathname, method: body ? 'POST' : 'GET', headers }, (res) => {
       res.on('data', (chunk) => { chunks.push(chunk); times.push(Date.now() - started); });
       res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString(), times }));
@@ -24,9 +32,9 @@ function request({ port, pathname = '/v1/messages', headers = {}, body }) {
 }
 
 test('proxy uses the configured endpoint, preserves auth, streams SSE, captures asynchronously, and serves APIs', async (t) => {
-  let seen;
+  let seen: { url: string | undefined; key: string | string[] | undefined; body: string } | undefined;
   const upstream = http.createServer((req, res) => {
-    const chunks = [];
+    const chunks: Buffer[] = [];
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
       seen = { url: req.url, key: req.headers['x-api-key'], body: Buffer.concat(chunks).toString() };
@@ -46,14 +54,17 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   const result = await request({ port: proxyPort, pathname: '/v1/messages?beta=1', headers: { 'content-type': 'application/json', 'x-api-key': 'top-secret', 'content-length': Buffer.byteLength(body) }, body });
   assert.equal(result.status, 200);
   assert.equal(result.headers['x-upstream'], 'yes');
-  assert.equal(seen.url, '/api/v1/messages?configured=1');
-  assert.equal(seen.key, 'top-secret');
-  assert.ok(result.times[0] < 70, `first streamed chunk arrived after ${result.times[0]}ms`);
-  assert.ok(result.times.at(-1) >= 80);
+  assert.equal(seen?.url, '/api/v1/messages?configured=1');
+  assert.equal(seen?.key, 'top-secret');
+  assert.ok((result.times[0] ?? Number.POSITIVE_INFINITY) < 70, `first streamed chunk arrived after ${result.times[0]}ms`);
+  assert.ok((result.times.at(-1) ?? 0) >= 80);
 
   await prism.store.pending;
   assert.equal(prism.store.captures.length, 1);
-  const stored = await prism.store.readCapture(prism.store.captures[0].id);
+  const firstCapture = prism.store.captures[0];
+  assert.ok(firstCapture);
+  const stored = await prism.store.readCapture(firstCapture.id);
+  assert.ok(stored?.request);
   assert.equal(stored.request.headers['x-api-key'], '[REDACTED]');
   assert.ok(!JSON.stringify(stored.request.headers).includes('top-secret'));
   assert.equal(stored.usage.cache_read_input_tokens, 4);
@@ -88,20 +99,20 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
 
   const dashboard = await request({ port: proxyPort, pathname: '/_pp/' });
   assert.equal(dashboard.status, 200);
-  assert.match(dashboard.headers['content-type'], /text\/html/);
+  assert.match(String(dashboard.headers['content-type']), /text\/html/);
   assert.match(dashboard.body, /\/_pp\/brand\/favicon-32\.png/);
   assert.match(dashboard.body, /\/_pp\/brand\/favicon\.ico\?v=2/);
   const assetPath = dashboard.body.match(/src="([^"]+\/assets\/[^"]+\.js)"/)?.[1];
   assert.ok(assetPath, 'dashboard HTML should reference its compiled React asset');
   const asset = await request({ port: proxyPort, pathname: assetPath });
   assert.equal(asset.status, 200);
-  assert.match(asset.headers['content-type'], /javascript/);
+  assert.match(String(asset.headers['content-type']), /javascript/);
   const logo = await request({ port: proxyPort, pathname: '/_pp/brand/logo-mark.png' });
   assert.equal(logo.status, 200);
-  assert.match(logo.headers['content-type'], /image\/png/);
+  assert.match(String(logo.headers['content-type']), /image\/png/);
   const rootFavicon = await request({ port: proxyPort, pathname: '/favicon.ico' });
   assert.equal(rootFavicon.status, 200);
-  assert.match(rootFavicon.headers['content-type'], /image\/x-icon/);
+  assert.match(String(rootFavicon.headers['content-type']), /image\/x-icon/);
   const unsafeBrandPath = await request({ port: proxyPort, pathname: '/_pp/brand/%2e%2e%2f.env' });
   assert.equal(unsafeBrandPath.status, 404);
   assert.match(await readFile(path.join(dir, 'captures.jsonl'), 'utf8'), /claude-test/);

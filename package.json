@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.28.0",
   "scripts": {
-    "build": "pnpm --filter @prompt-prism/dashboard build",
+    "build": "pnpm --filter @prompt-prism/dashboard build && pnpm --filter prompt-prism build",
     "start": "pnpm --filter prompt-prism start",
     "demo": "pnpm --filter @prompt-prism/example start",
     "test": "pnpm --filter prompt-prism test && pnpm --filter @prompt-prism/dashboard test && pnpm --filter @prompt-prism/example test",

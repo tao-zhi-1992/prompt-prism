@@ -16,6 +16,6 @@ test('CLI documents upstream-url and removes the old routing options', async () 
 test('CLI reads and validates --upstream-url', async () => {
   await assert.rejects(
     run(process.execPath, [cli, 'start', '--upstream-url', 'file:///tmp/messages', '--no-open']),
-    (error) => error.code === 1 && /Upstream URL must use http or https/.test(error.stderr)
+    (error: unknown) => error instanceof Error && 'code' in error && error.code === 1 && 'stderr' in error && /Upstream URL must use http or https/.test(String(error.stderr))
   );
 });

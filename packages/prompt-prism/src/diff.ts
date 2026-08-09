@@ -1,7 +1,9 @@
-function get(map, key) { return map.get(key) ?? -Infinity; }
+import type { DiffPart } from './types.js';
 
-function coalesce(ops) {
-  const result = [];
+function get(map: Map<number, number>, key: number): number { return map.get(key) ?? -Infinity; }
+
+function coalesce(ops: DiffPart[]): DiffPart[] {
+  const result: DiffPart[] = [];
   for (const op of ops) {
     const last = result.at(-1);
     if (last?.type === op.type) last.value += op.value;
@@ -11,11 +13,11 @@ function coalesce(ops) {
 }
 
 // Myers' O((N+M)D) shortest-edit-script algorithm.
-export function diffCharacters(oldText, newText) {
+export function diffCharacters(oldText: string, newText: string): DiffPart[] {
   const a = Array.from(String(oldText));
   const b = Array.from(String(newText));
   const max = a.length + b.length;
-  let frontier = new Map([[1, 0]]);
+  let frontier = new Map<number, number>([[1, 0]]);
 
   for (let distance = 0; distance <= max; distance++) {
     const trace = new Map(frontier);
@@ -35,11 +37,11 @@ export function diffCharacters(oldText, newText) {
   return [];
 }
 
-function backtrack(firstTrace, finalFrontier, distance, a, b) {
+function backtrack(_firstTrace: Map<number, number>, _finalFrontier: Map<number, number>, distance: number, a: string[], b: string[]): DiffPart[] {
   // Rebuild traces; retaining every frontier is bounded by the edit distance and
   // avoids quadratic LCS memory for long, mostly-equal prompts.
-  const traces = [];
-  let frontier = new Map([[1, 0]]);
+  const traces: Map<number, number>[] = [];
+  let frontier = new Map<number, number>([[1, 0]]);
   for (let d = 0; d <= distance; d++) {
     traces.push(new Map(frontier));
     for (let k = -d; k <= d; k += 2) {
@@ -53,24 +55,25 @@ function backtrack(firstTrace, finalFrontier, distance, a, b) {
 
   let x = a.length;
   let y = b.length;
-  const reversed = [];
+  const reversed: DiffPart[] = [];
   for (let d = distance; d >= 0; d--) {
     const previous = traces[d];
+    if (!previous) throw new Error('Missing diff trace');
     const k = x - y;
     const previousK = k === -d || (k !== d && get(previous, k - 1) < get(previous, k + 1)) ? k + 1 : k - 1;
     const previousX = get(previous, previousK);
     const previousY = previousX - previousK;
     while (x > previousX && y > previousY) {
-      reversed.push({ type: 'equal', value: a[x - 1] }); x--; y--;
+      reversed.push({ type: 'equal', value: a[x - 1] ?? '' }); x--; y--;
     }
     if (d === 0) break;
-    if (x === previousX) { reversed.push({ type: 'insert', value: b[y - 1] }); y--; }
-    else { reversed.push({ type: 'delete', value: a[x - 1] }); x--; }
+    if (x === previousX) { reversed.push({ type: 'insert', value: b[y - 1] ?? '' }); y--; }
+    else { reversed.push({ type: 'delete', value: a[x - 1] ?? '' }); x--; }
   }
   return coalesce(reversed.reverse());
 }
 
-export function divergencePoint(oldText, newText) {
+export function divergencePoint(oldText: string, newText: string): number {
   const oldChars = Array.from(String(oldText));
   const newChars = Array.from(String(newText));
   let index = 0;
