@@ -71,6 +71,7 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(dashboard.status, 200);
   assert.match(dashboard.headers['content-type'], /text\/html/);
   assert.match(dashboard.body, /\/_pp\/brand\/favicon-32\.png/);
+  assert.match(dashboard.body, /\/_pp\/brand\/favicon\.ico\?v=2/);
   const assetPath = dashboard.body.match(/src="([^"]+\/assets\/[^"]+\.js)"/)?.[1];
   assert.ok(assetPath, 'dashboard HTML should reference its compiled React asset');
   const asset = await request({ port: proxyPort, pathname: assetPath });
