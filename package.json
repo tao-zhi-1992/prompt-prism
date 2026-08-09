@@ -10,10 +10,15 @@
   "scripts": {
     "start": "node bin/pp.js start --no-open --upstream-url https://api.stepfun.com/step_plan/v1/messages",
     "demo": "node --env-file-if-exists=.env demo/server.js",
-    "test": "node --test",
+    "web:dev": "vite --config vite.config.ts",
+    "web:build": "tsc --noEmit && vite build --config vite.config.ts",
+    "test": "npm run test:node && npm run test:web",
+    "test:node": "node --test test/unit/*.test.js test/integration/*.test.js test/live/*.test.js",
+    "test:web": "vitest run --config vite.config.ts",
     "test:unit": "node --test test/unit/*.test.js",
     "test:integration": "node --test test/integration/*.test.js",
-    "test:live": "node --env-file-if-exists=.env --test test/live/*.test.js"
+    "test:live": "node --env-file-if-exists=.env --test test/live/*.test.js",
+    "prepack": "npm run web:build"
   },
   "engines": {
     "node": ">=20"
@@ -30,9 +35,25 @@
     "bin",
     "src",
     "public",
+    "assets",
     "demo",
     ".env.example",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "devDependencies": {
+    "@base-ui/react": "^1.7.0",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  }
 }

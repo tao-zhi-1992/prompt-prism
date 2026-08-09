@@ -62,8 +62,25 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   const parsedLogs = JSON.parse(logs.body);
   assert.equal(parsedLogs[0].model, 'claude-test');
   assert.equal(parsedLogs[0].analysis.actual_cache_read_tokens, 4);
+  assert.equal('messages' in parsedLogs[0], false, 'list responses should not repeat complete prompts');
+  assert.equal('diff' in parsedLogs[0].analysis, false, 'list responses should not include detail diff data');
   const detail = await request({ port: proxyPort, pathname: `/_pp/api/diff/${parsedLogs[0].id}` });
   assert.equal(JSON.parse(detail.body).id, parsedLogs[0].id);
+
+  const dashboard = await request({ port: proxyPort, pathname: '/_pp/' });
+  assert.equal(dashboard.status, 200);
+  assert.match(dashboard.headers['content-type'], /text\/html/);
+  assert.match(dashboard.body, /\/_pp\/brand\/favicon-32\.png/);
+  const assetPath = dashboard.body.match(/src="([^"]+\/assets\/[^"]+\.js)"/)?.[1];
+  assert.ok(assetPath, 'dashboard HTML should reference its compiled React asset');
+  const asset = await request({ port: proxyPort, pathname: assetPath });
+  assert.equal(asset.status, 200);
+  assert.match(asset.headers['content-type'], /javascript/);
+  const logo = await request({ port: proxyPort, pathname: '/_pp/brand/logo-mark.png' });
+  assert.equal(logo.status, 200);
+  assert.match(logo.headers['content-type'], /image\/png/);
+  const unsafeBrandPath = await request({ port: proxyPort, pathname: '/_pp/brand/%2e%2e%2f.env' });
+  assert.equal(unsafeBrandPath.status, 404);
   assert.match(await readFile(path.join(dir, 'captures.jsonl'), 'utf8'), /claude-test/);
 });
 

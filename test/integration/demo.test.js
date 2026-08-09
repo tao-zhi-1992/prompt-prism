@@ -69,7 +69,15 @@ test('Demo Agent streams through Prism to the exact upstream URL and is captured
   assert.equal(page.status, 200);
   assert.match(page.body, /Prompt Prism Agent Demo/);
   assert.match(page.body, /Message the agent/);
+  assert.match(page.body, /\/brand\/logo-mark\.png/);
+  assert.match(page.body, /\/brand\/favicon-32\.png/);
   assert.doesNotMatch(page.body, /dashboard/i);
+
+  const logo = await request({ port: demo.demoPort, pathname: '/brand/logo-mark.png' });
+  assert.equal(logo.status, 200);
+  assert.match(logo.headers['content-type'], /image\/png/);
+  const unsafeBrandPath = await request({ port: demo.demoPort, pathname: '/brand/%2e%2e%2f.env' });
+  assert.equal(unsafeBrandPath.status, 404);
 
   const body = JSON.stringify({
     model: 'browser-model-must-be-ignored',

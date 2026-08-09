@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const demoDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(demoDir, 'public');
+const brandDir = path.resolve(demoDir, '../assets');
+const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png']);
 export const DEFAULT_DEMO_BASE_URL = 'http://127.0.0.1:8787';
 
 export function parseBaseUrl(value) {
@@ -41,6 +43,19 @@ async function serveFile(response, filename, contentType) {
   try {
     const body = await readFile(path.join(publicDir, filename));
     response.writeHead(200, { 'content-type': contentType, 'content-length': body.length });
+    response.end(body);
+  } catch { json(response, 404, { error: 'Not found' }); }
+}
+
+async function serveBrand(response, filename) {
+  if (!brandFiles.has(filename)) return json(response, 404, { error: 'Not found' });
+  try {
+    const body = await readFile(path.join(brandDir, filename));
+    response.writeHead(200, {
+      'content-type': 'image/png',
+      'content-length': body.length,
+      'cache-control': 'public, max-age=31536000, immutable'
+    });
     response.end(body);
   } catch { json(response, 404, { error: 'Not found' }); }
 }
@@ -104,6 +119,7 @@ export async function startDemo(options = {}) {
     const url = new URL(request.url, 'http://localhost');
     if (request.method === 'GET' && url.pathname === '/') return void serveFile(response, 'index.html', 'text/html; charset=utf-8');
     if (request.method === 'GET' && url.pathname === '/app.js') return void serveFile(response, 'app.js', 'text/javascript; charset=utf-8');
+    if (request.method === 'GET' && url.pathname.startsWith('/brand/')) return void serveBrand(response, decodeURIComponent(url.pathname.slice('/brand/'.length)));
     if (request.method === 'GET' && url.pathname === '/api/config') return void json(response, 200, { model });
     if (request.method === 'POST' && url.pathname === '/api/chat') {
       readJson(request).then((body) => {

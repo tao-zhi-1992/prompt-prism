@@ -1,10 +1,14 @@
+<p align="center">
+  <img src="assets/logo-mark.png" alt="Prompt Prism logo" width="260">
+</p>
+
 # Prompt Prism
 
 **See exactly where your prompt cache breaks.**
 
 Prompt Prism is a zero-runtime-dependency local proxy for Anthropic's Messages API. It forwards responses immediately—including SSE streams—while capturing a redacted copy in the background and showing exactly where a conversation diverged from its best historical prefix.
 
-![Prompt Prism dashboard showing cache results and a character-level diff](public/dashboard.svg)
+![Prompt Prism dashboard showing cache results and a character-level diff](public/dashboard.png)
 
 ```text
 your app  ──►  http://127.0.0.1:8787  ──►  api.anthropic.com
@@ -92,6 +96,13 @@ For local development:
 npm link
 pp start --upstream-url https://provider.example.com/v1/messages --no-open
 npm test
+```
+
+The Dashboard is built with React, TypeScript, Vite, and Base UI. Its source lives in `web/`; the production bundle is written to `public/dashboard/` and served under `/_pp/`.
+
+```bash
+npm run web:dev    # Vite development server
+npm run web:build  # type-check and create the production bundle
 ```
 
 ## How matching works
