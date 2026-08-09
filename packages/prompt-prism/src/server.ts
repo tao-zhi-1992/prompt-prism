@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import type http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Analysis, Capture, CaptureIndexEntry } from './types.js';
+import type { Analysis, ApiFormatResolution, Capture, CaptureIndexEntry } from './types.js';
 import type { BuiltinPluginRuntime } from './plugin-runtime.js';
 
 const dashboardDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/dashboard');
@@ -67,10 +67,12 @@ export function createAdminHandler({
   store,
   analyzer,
   plugins,
+  apiFormat,
 }: {
   store: { captures: CaptureIndexEntry[]; readCapture(id: string): Promise<Capture | null> };
   analyzer: { analyses: Map<string, Analysis> };
   plugins: Pick<BuiltinPluginRuntime, 'handleApi'>;
+  apiFormat: () => ApiFormatResolution;
 }): (request: http.IncomingMessage, response: http.ServerResponse) => Promise<void> {
   return async function handleAdmin(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
     const url = new URL(request.url ?? '/', 'http://localhost');
@@ -80,6 +82,10 @@ export function createAdminHandler({
       const logs = store.captures.map((capture) => logSummary(capture, analyzer))
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       return json(response, 200, logs);
+    }
+    if (url.pathname === '/_pp/api/config') {
+      if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
+      return json(response, 200, { api_format: apiFormat() });
     }
     if (url.pathname.startsWith('/_pp/api/')) {
       const pluginPath = url.pathname.slice('/_pp/api/'.length);

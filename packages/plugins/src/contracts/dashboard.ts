@@ -7,6 +7,14 @@ export interface Usage {
   cache_read_input_tokens?: number;
 }
 
+export interface CaptureTiming {
+  started_at: string;
+  completed_at: string;
+  duration_ms: number;
+  time_to_headers_ms: number;
+  time_to_first_byte_ms: number | null;
+}
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | { [key: string]: JsonValue } | JsonValue[];
 export interface TextOutputBlock { type: 'text'; text: string; }
@@ -28,7 +36,7 @@ export interface ModelOutputSnapshot {
 
 export interface ConversationTextBlock { type: 'text'; text: string; }
 export interface ConversationReasoningBlock { type: 'reasoning'; text: string; }
-export interface ConversationToolCallBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; }
+export interface ConversationToolCallBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; input_raw?: string; }
 export interface ConversationToolResultBlock { type: 'tool_result'; tool_call_id: string | null; content: JsonValue; is_error: boolean | null; }
 export interface ConversationUnknownBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
 export type ConversationContentBlock = ConversationTextBlock | ConversationReasoningBlock | ConversationToolCallBlock | ConversationToolResultBlock | ConversationUnknownBlock;
@@ -43,6 +51,7 @@ export interface CaptureSummary {
   response_status?: number | null;
   upstream_host?: string;
   trace_id?: string;
+  timing?: CaptureTiming;
   file_ref: string;
   analysis?: unknown;
 }

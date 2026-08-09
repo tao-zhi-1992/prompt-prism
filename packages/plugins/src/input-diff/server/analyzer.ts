@@ -81,6 +81,8 @@ function indexEntry(capture: Capture): CaptureIndexEntry {
     usage: capture.usage,
     response_status: capture.response?.status,
     upstream_host: capture.upstream_host,
+    trace_id: capture.trace_id,
+    timing: capture.timing,
     file_ref: '',
     messages: capture.messages,
     adapter_id: capture.adapter_id,

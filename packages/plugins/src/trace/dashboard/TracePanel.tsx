@@ -74,7 +74,9 @@ type Translate = (key: TranslationKey, values?: Record<string, string | number>)
 function conversationEvent(block: ConversationContentBlock, role: string, index: number, t: Translate) {
   if (block.type === 'text') return <Event key={index} label={role === 'user' ? t('trace.user') : t('trace.roleText', { role })} text={block.text} defaultOpen />;
   if (block.type === 'reasoning') return <Event key={index} label={t('trace.thinking')} text={block.text} />;
-  if (block.type === 'tool_call') return <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''}`} value={block.input} />;
+  if (block.type === 'tool_call') return block.input_raw !== undefined
+    ? <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''} · ${t('trace.invalidJson')}`} text={block.input_raw} />
+    : <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''}`} value={block.input} />;
   if (block.type === 'tool_result') return <Event key={index} label={t('trace.toolResult')} detail={block.tool_call_id} value={block.content} tone={block.is_error ? 'error' : undefined} />;
   return <Event key={index} label={t('trace.unknownInput')} detail={block.provider_type} value={block.value} />;
 }
@@ -82,7 +84,7 @@ function conversationEvent(block: ConversationContentBlock, role: string, index:
 function outputEvent(block: ModelOutputBlock, index: number, t: Translate) {
   if (block.type === 'text') return <Event key={index} label={t('trace.assistantText')} text={block.text} defaultOpen />;
   if (block.type === 'reasoning') return <Event key={index} label={t('trace.thinking')} text={block.text} />;
-  if (block.type === 'tool_call') return block.input_raw
+  if (block.type === 'tool_call') return block.input_raw !== undefined
     ? <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''} · ${t('trace.invalidJson')}`} text={block.input_raw} />
     : <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''}`} value={block.input} />;
   return <Event key={index} label={t('trace.unknownOutput')} detail={block.provider_type} value={block.value} />;

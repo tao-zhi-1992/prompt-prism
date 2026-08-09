@@ -1,16 +1,18 @@
 import { parseArgs } from 'node:util';
 import { startPromptPrism } from './proxy.js';
+import { runInsightsCli } from './insights-cli.js';
 
 function usage(): void {
   console.log(`Prompt Prism
 
 Usage:
-  pp start [--upstream-url URL] [--api-format FORMAT] [--port NUMBER] [--data-dir PATH]
-           [--max-storage SIZE] [--open | --no-open]
+  pp start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
+           [--port NUMBER] [--data-dir PATH] [--max-storage SIZE] [--open | --no-open]
+  pp insights <list|report|compare|evidence> [OPTIONS]
 
 Defaults:
-  upstream-url https://api.anthropic.com/v1/messages
-  api-format   anthropic
+  upstream-base-url https://api.anthropic.com
+  api-format        auto (available: auto, anthropic-messages, openai-chat-completions)
   port         8787
   data-dir     ./data
   max-storage  1GB`);
@@ -31,6 +33,10 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
     usage();
     return;
   }
+  if (command === 'insights') {
+    await runInsightsCli(args.slice(1));
+    return;
+  }
   if (command !== 'start') {
     console.error(`Unknown command: ${command}`);
     usage();
@@ -41,8 +47,9 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   const { values } = parseArgs({
     args: args.slice(1),
     options: {
-      'upstream-url': { type: 'string', default: 'https://api.anthropic.com/v1/messages' },
-      'api-format': { type: 'string', default: 'anthropic' },
+      'upstream-base-url': { type: 'string' },
+      'upstream-url': { type: 'string' },
+      'api-format': { type: 'string', default: 'auto' },
       port: { type: 'string', default: '8787' },
       'data-dir': { type: 'string', default: './data' },
       'max-storage': { type: 'string', default: '1GB' },
@@ -57,9 +64,11 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   }
   const port = Number(values.port);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid port: ${values.port}`);
+  if (values['upstream-base-url'] && values['upstream-url']) throw new Error('--upstream-base-url and --upstream-url are mutually exclusive');
   await startPromptPrism({
+    upstreamBaseUrl: values['upstream-base-url'] ?? (values['upstream-url'] ? undefined : 'https://api.anthropic.com'),
     upstreamUrl: values['upstream-url'],
-    apiFormat: values['api-format'],
+    apiFormat: values['api-format'] as import('./types.js').ApiFormatOption,
     port,
     dataDir: values['data-dir'],
     maxBytes: parseBytes(values['max-storage']),

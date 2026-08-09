@@ -133,7 +133,7 @@ async function newSession() {
   for (const message of session.messages) bubble(message);
   connectEvents();
   setComposer(false);
-  setStatus(`Workspace ready · ${config.model} via Prompt Prism.`);
+  setStatus(`Workspace ready · ${config.model} · ${config.apiFormat} via Prompt Prism.`);
 }
 
 async function restoreSession() {
@@ -151,7 +151,7 @@ async function restoreSession() {
   }
   connectEvents();
   setComposer(session.active);
-  setStatus(session.active ? 'Agent is working. Pending approvals remain available.' : `Workspace restored · ${config.model} via Prompt Prism.`);
+  setStatus(session.active ? 'Agent is working. Pending approvals remain available.' : `Workspace restored · ${config.model} · ${config.apiFormat} via Prompt Prism.`);
   return true;
 }
 

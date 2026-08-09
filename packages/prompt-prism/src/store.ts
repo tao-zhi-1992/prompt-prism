@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile, appendFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Capture, CaptureIndexEntry } from './types.js';
+import { normalizeProviderProtocol } from './adapter/registry.js';
 
 async function existsSize(file: string): Promise<number> {
   try { return (await stat(file)).size; }
@@ -27,7 +28,12 @@ export class CaptureStore {
     await mkdir(this.dataDir, { recursive: true });
     try {
       const lines = (await readFile(this.capturesPath, 'utf8')).trim().split('\n').filter(Boolean);
-      this.captures = lines.map((line) => JSON.parse(line) as CaptureIndexEntry);
+      this.captures = lines.map((line) => {
+        const entry = JSON.parse(line) as CaptureIndexEntry;
+        if (entry.adapter_id) entry.adapter_id = normalizeProviderProtocol(entry.adapter_id);
+        if (entry.prompt_input?.adapter_id) entry.prompt_input.adapter_id = normalizeProviderProtocol(entry.prompt_input.adapter_id);
+        return entry;
+      });
     } catch (error: unknown) { if (!isMissingFile(error)) throw error; }
     return this;
   }
@@ -64,6 +70,7 @@ export class CaptureStore {
       response_status: capture.response?.status,
       upstream_host: capture.upstream_host,
       trace_id: capture.trace_id,
+      timing: capture.timing,
       file_ref: fileRef,
       messages: capture.messages,
       adapter_id: capture.adapter_id,

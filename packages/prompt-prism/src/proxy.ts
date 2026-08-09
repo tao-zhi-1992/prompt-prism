@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CaptureStore } from './store.js';
 import { getProviderAdapter } from './adapter/registry.js';
+import { ApiFormatResolver, detectProtocolFromBody, detectProtocolFromHeaders, detectProtocolFromPath, detectProtocolFromResponse, endpointPath, type DetectedProtocol } from './adapter/detection.js';
 import { createAdminHandler, json } from './server.js';
 import { loadBuiltinPluginRuntime } from './plugin-runtime.js';
 import type { Capture, PromptPrismInstance, PromptPrismOptions, RawHeaders, StartedPromptPrism } from './types.js';
@@ -76,6 +77,30 @@ export function parseUpstreamUrl(value: string | URL): URL {
   return upstreamUrl;
 }
 
+export function parseUpstreamBaseUrl(value: string | URL): URL {
+  const upstreamUrl = parseUpstreamUrl(value);
+  if (upstreamUrl.search) throw new Error('Upstream Base URL must not contain a query; use --upstream-url for an exact endpoint');
+  if (detectProtocolFromPath(upstreamUrl.pathname)) throw new Error('Upstream Base URL must not include an API endpoint; use --upstream-url for a complete endpoint');
+  upstreamUrl.pathname = upstreamUrl.pathname.replace(/\/+$/, '');
+  return upstreamUrl;
+}
+
+function joinedTarget(baseUrl: URL, requestUrl: string | undefined, protocol: DetectedProtocol | null): URL {
+  const incoming = new URL(requestUrl ?? '/', 'http://prompt-prism.local');
+  const target = new URL(baseUrl);
+  const suffix = protocol ? endpointPath(protocol) : incoming.pathname;
+  target.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/${suffix.replace(/^\/+/, '')}`;
+  target.search = incoming.search;
+  return target;
+}
+
+function shallowModel(body: Buffer): string | null {
+  try {
+    const value = JSON.parse(body.toString('utf8')) as { model?: unknown };
+    return typeof value?.model === 'string' ? value.model : null;
+  } catch { return null; }
+}
+
 function openBrowser(url: string): void {
   const [command, args] = process.platform === 'darwin' ? ['open', [url]]
     : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] : ['xdg-open', [url]];
@@ -85,8 +110,16 @@ function openBrowser(url: string): void {
 }
 
 export async function createPromptPrism(options: PromptPrismOptions = {}): Promise<PromptPrismInstance> {
-  const upstreamUrl = parseUpstreamUrl(options.upstreamUrl ?? 'https://api.anthropic.com/v1/messages');
-  const adapter = getProviderAdapter(options.apiFormat);
+  if (options.upstreamBaseUrl !== undefined && options.upstreamUrl !== undefined) throw new Error('upstreamBaseUrl and upstreamUrl are mutually exclusive');
+  const upstreamMode = options.upstreamUrl === undefined ? 'base' : 'exact';
+  const upstreamUrl = upstreamMode === 'exact'
+    ? parseUpstreamUrl(options.upstreamUrl!)
+    : parseUpstreamBaseUrl(options.upstreamBaseUrl ?? 'https://api.anthropic.com');
+  const resolver = new ApiFormatResolver(options.apiFormat ?? 'auto', upstreamUrl, upstreamMode === 'exact');
+  const pathProtocol = upstreamMode === 'exact' ? detectProtocolFromPath(upstreamUrl.pathname) : null;
+  if (resolver.resolution.mode === 'explicit' && pathProtocol && pathProtocol !== resolver.resolution.resolved) {
+    console.warn(`[prompt-prism] API format ${resolver.resolution.resolved} conflicts with upstream endpoint ${pathProtocol}; using the explicit format.`);
+  }
   const store = await new CaptureStore({ dataDir: options.dataDir ?? path.resolve('data'), maxBytes: options.maxBytes }).init();
   const plugins = await loadBuiltinPluginRuntime();
   await plugins.init({
@@ -100,8 +133,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
   });
   const analyzer = plugins.analyzer;
   store.onEvict = (item) => plugins.onEvict(item);
-  const admin = createAdminHandler({ store, analyzer, plugins });
-  const transport = upstreamUrl.protocol === 'https:' ? https : http;
+  const admin = createAdminHandler({ store, analyzer, plugins, apiFormat: () => ({ ...resolver.resolution }) });
 
   const server = http.createServer((request, response) => {
     if (serveRootBrandAsset(request, response)) return;
@@ -110,39 +142,69 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
       return;
     }
 
+    const requestPath = new URL(request.url ?? '/', 'http://prompt-prism.local').pathname;
+    resolver.consider(detectProtocolFromPath(requestPath), 'request-path');
+    resolver.consider(detectProtocolFromHeaders(request.headers), 'request-headers');
+    const routingProtocol = resolver.resolution.resolved ?? resolver.resolution.unsupported_protocol as DetectedProtocol | undefined ?? null;
+    const targetUrl = upstreamMode === 'exact' ? upstreamUrl : joinedTarget(upstreamUrl, request.url, routingProtocol);
+    const transport = targetUrl.protocol === 'https:' ? https : http;
+
+    const startedMs = Date.now();
+    const startedAt = new Date(startedMs).toISOString();
     const requestChunks: Buffer[] = [];
     request.on('data', (chunk) => requestChunks.push(Buffer.from(chunk)));
     const upstream = transport.request({
-      protocol: upstreamUrl.protocol,
-      hostname: upstreamUrl.hostname,
-      port: upstreamUrl.port || undefined,
+      protocol: targetUrl.protocol,
+      hostname: targetUrl.hostname,
+      port: targetUrl.port || undefined,
       method: request.method,
-      path: `${upstreamUrl.pathname}${upstreamUrl.search}`,
-      headers: forwardedHeaders(request.headers, upstreamUrl)
+      path: `${targetUrl.pathname}${targetUrl.search}`,
+      headers: forwardedHeaders(request.headers, targetUrl)
     }, (upstreamResponse) => {
+      const headersMs = Date.now();
+      let firstByteMs: number | null = null;
       const responseChunks: Buffer[] = [];
       response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.statusMessage, responseHeaders(upstreamResponse.headers));
-      upstreamResponse.on('data', (chunk) => responseChunks.push(Buffer.from(chunk)));
+      upstreamResponse.on('data', (chunk) => {
+        if (firstByteMs === null) firstByteMs = Date.now();
+        responseChunks.push(Buffer.from(chunk));
+      });
       upstreamResponse.on('end', () => {
+        const completedMs = Date.now();
+        const completedAt = new Date(completedMs).toISOString();
         const requestBody = Buffer.concat(requestChunks);
         const responseBody = Buffer.concat(responseChunks);
-        let parsedRequest;
-        try { parsedRequest = adapter.parseRequest(requestBody); }
-        catch { return; }
-        const parsedResponse = adapter.parseResponse(responseBody, upstreamResponse.headers['content-type']);
+        resolver.consider(detectProtocolFromBody(requestBody), 'request-shape');
+        resolver.consider(detectProtocolFromResponse(responseBody), 'response-shape');
+        const adapter = resolver.resolution.resolved ? getProviderAdapter(resolver.resolution.resolved) : null;
+        let parsedRequest = null;
+        let parsedResponse = null;
+        if (adapter) {
+          try {
+            parsedRequest = adapter.parseRequest(requestBody);
+            parsedResponse = adapter.parseResponse(responseBody, upstreamResponse.headers['content-type']);
+          } catch { /* Preserve a Raw-only capture when provider extensions cannot be normalized. */ }
+        }
         const traceId = traceIdentity(request.headers);
         const capture: Capture = {
           id: crypto.randomUUID(),
-          timestamp: new Date().toISOString(),
+          timestamp: completedAt,
           token_hash: tokenIdentity(request.headers),
-          model: parsedRequest.model,
-          messages: parsedRequest.messages,
-          adapter_id: adapter.id,
-          prompt_input: parsedRequest.input,
-          usage: parsedResponse.usage,
-          ...(parsedResponse.output ? { model_output: parsedResponse.output } : {}),
+          model: parsedRequest?.model ?? shallowModel(requestBody),
+          messages: parsedRequest?.messages ?? [],
+          adapter_id: adapter?.id ?? 'unresolved',
+          ...(parsedRequest ? { prompt_input: parsedRequest.input } : {}),
+          usage: parsedResponse?.usage ?? {},
+          ...(parsedResponse?.output ? { model_output: parsedResponse.output } : {}),
           ...(traceId ? { trace_id: traceId } : {}),
-          upstream_host: upstreamUrl.host,
+          upstream_host: targetUrl.host,
+          timing: {
+            started_at: startedAt,
+            completed_at: completedAt,
+            duration_ms: completedMs - startedMs,
+            time_to_headers_ms: headersMs - startedMs,
+            time_to_first_byte_ms: firstByteMs === null ? null : firstByteMs - startedMs,
+          },
           request: { method: request.method ?? 'GET', url: request.url ?? '/', headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
           response: { status: upstreamResponse.statusCode ?? null, headers: redactedHeaders(upstreamResponse.headers), body: responseBody.toString('utf8') }
         };
@@ -161,7 +223,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     request.pipe(upstream);
   });
 
-  return { server, store, analyzer, upstreamUrl, apiFormat: adapter.id };
+  return { server, store, analyzer, upstreamUrl, upstreamMode, apiFormat: resolver.resolution };
 }
 
 export async function startPromptPrism(options: PromptPrismOptions = {}): Promise<StartedPromptPrism> {
@@ -174,7 +236,10 @@ export async function startPromptPrism(options: PromptPrismOptions = {}): Promis
   const address = instance.server.address();
   const port = address && typeof address === 'object' ? address.port : requestedPort;
   const dashboard = `http://127.0.0.1:${port}/_pp/`;
-  console.log(`\n  Prompt Prism is running\n\n  Proxy        http://127.0.0.1:${port}\n  Dashboard    ${dashboard}\n  Upstream URL ${instance.upstreamUrl.href}\n  API format   ${instance.apiFormat}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
+  const format = instance.apiFormat.resolved
+    ? `${instance.apiFormat.mode === 'auto' ? 'Auto → ' : ''}${instance.apiFormat.resolved}${instance.apiFormat.source ? ` (${instance.apiFormat.source})` : ''}`
+    : instance.apiFormat.unsupported_protocol ? `Auto → ${instance.apiFormat.unsupported_protocol} (unsupported; Raw only)` : 'Auto · waiting for first request';
+  console.log(`\n  Prompt Prism is running\n\n  Proxy          http://127.0.0.1:${port}\n  Dashboard      ${dashboard}\n  Upstream ${instance.upstreamMode === 'base' ? 'Base' : 'URL '} ${instance.upstreamUrl.href}\n  API format     ${format}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
   if (options.open !== false) openBrowser(dashboard);
   return { ...instance, port, dashboard };
 }

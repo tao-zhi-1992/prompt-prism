@@ -16,6 +16,7 @@ export function createInputDiffServerPlugin(): PromptPrismServerPlugin & { getAn
       await analyzer.init(context.captures);
     },
     async onCapture(capture, entry) {
+      if (!capture.prompt_input) return;
       await getAnalyzer().analyze(capture, entry);
     },
     onEvict(entry) {

@@ -74,4 +74,13 @@ describe('TracePanel', () => {
     expect([...container.querySelectorAll('.trace-usage dd')].map((node) => node.textContent)).toEqual(['—', '—', '—', '—', '—']);
     expect(container.querySelector('.trace-call-usage')).toBeNull();
   });
+
+  it('shows malformed OpenAI conversation tool arguments as raw text', async () => {
+    const call = trace.calls[0]!;
+    const input_delta = [{ role: 'assistant', content: [{ type: 'tool_call' as const, id: 'call-bad', name: 'write', input: null, input_raw: '{bad' }] }];
+    render(<TracePanel trace={{ ...trace, calls: [{ ...call, input_delta, output: null }] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    const toggle = screen.getByRole('button', { name: /Tool call.*write.*Invalid JSON/i });
+    await userEvent.click(toggle);
+    expect(screen.getByText('{bad')).toBeVisible();
+  });
 });

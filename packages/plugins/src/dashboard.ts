@@ -1,5 +1,6 @@
 export type {
   CaptureSummary,
+  CaptureTiming,
   ConversationContentBlock,
   ConversationMessage,
   DetailTabPanelProps,

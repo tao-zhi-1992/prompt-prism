@@ -9,7 +9,7 @@ test('normalizes Anthropic model input into ordered provider-neutral sections', 
   const parsed = parseRequest(JSON.stringify({ model: 'claude-test', max_tokens: 42, stream: true, system, tools, messages }));
   assert.equal(parsed.model, 'claude-test');
   assert.deepEqual(parsed.messages, messages);
-  assert.equal(parsed.input.adapter_id, 'anthropic');
+  assert.equal(parsed.input.adapter_id, 'anthropic-messages');
   assert.equal(parsed.input.primary_section_id, 'messages');
   assert.deepEqual(parsed.input.primary_sequence, [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }]);
   assert.deepEqual(parsed.input.conversation, [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }]);
@@ -55,7 +55,7 @@ test('normalizes Anthropic JSON output blocks and provider errors', () => {
   }), 'application/json');
   assert.deepEqual(parsed.usage, { input_tokens: 4, output_tokens: 3, cache_read_input_tokens: 2 });
   assert.deepEqual(parsed.output, {
-    adapter_id: 'anthropic', id: 'msg_1', model: 'claude-test', role: 'assistant', stop_reason: 'tool_use',
+    adapter_id: 'anthropic-messages', id: 'msg_1', model: 'claude-test', role: 'assistant', stop_reason: 'tool_use',
     content: [
       { type: 'reasoning', text: 'inspect first' },
       { type: 'text', text: '<b>literal</b>' },
@@ -92,7 +92,7 @@ test('assembles Anthropic SSE text, thinking, tool arguments, usage, and stop re
   const parsed = parseResponse(sse, 'text/event-stream');
   assert.deepEqual(parsed.usage, { input_tokens: 8, output_tokens: 9, cache_read_input_tokens: 6 });
   assert.deepEqual(parsed.output, {
-    adapter_id: 'anthropic', id: 'msg_sse', model: 'claude-sse', role: 'assistant', stop_reason: 'tool_use',
+    adapter_id: 'anthropic-messages', id: 'msg_sse', model: 'claude-sse', role: 'assistant', stop_reason: 'tool_use',
     content: [
       { type: 'reasoning', text: 'inspect first' },
       { type: 'text', text: 'hello world' },

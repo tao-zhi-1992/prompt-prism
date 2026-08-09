@@ -2,10 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createPromptPrism, parseUpstreamUrl } from '../../src/proxy.js';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl } from '../../src/proxy.js';
+
+const run = promisify(execFile);
+const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
 
 const listen = (server: http.Server): Promise<number> => new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve((server.address() as AddressInfo).port)));
 const close = (server: http.Server): Promise<void> => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
@@ -85,8 +91,13 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(firstCapture.upstream_host, `127.0.0.1:${upstreamPort}`);
   assert.equal(firstCapture.trace_id, 'agent.session:one');
   assert.equal(stored.upstream_host, `127.0.0.1:${upstreamPort}`);
-  assert.equal(stored.adapter_id, 'anthropic');
+  assert.equal(stored.adapter_id, 'anthropic-messages');
   assert.equal(stored.trace_id, 'agent.session:one');
+  assert.equal(stored.timing?.started_at, firstCapture.timing?.started_at);
+  assert.equal(stored.timing?.completed_at, stored.timestamp);
+  assert.ok((stored.timing?.duration_ms ?? 0) >= 80);
+  assert.ok((stored.timing?.time_to_headers_ms ?? Number.POSITIVE_INFINITY) <= (stored.timing?.time_to_first_byte_ms ?? -1));
+  assert.ok((stored.timing?.time_to_first_byte_ms ?? Number.POSITIVE_INFINITY) < 70);
   assert.deepEqual(stored.prompt_input?.sections.map(({ id }) => id), ['messages', 'system', 'tools', 'options']);
   assert.equal(stored.model_output?.id, 'msg_proxy');
   assert.equal(stored.model_output?.stop_reason, 'end_turn');
@@ -98,6 +109,7 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(parsedLogs[0].response_status, 200);
   assert.equal(parsedLogs[0].upstream_host, `127.0.0.1:${upstreamPort}`);
   assert.equal(parsedLogs[0].trace_id, 'agent.session:one');
+  assert.ok(parsedLogs[0].timing.duration_ms >= 80);
   assert.equal(parsedLogs[0].analysis.actual_cache_read_tokens, 4);
   assert.equal('messages' in parsedLogs[0], false, 'list responses should not repeat complete prompts');
   assert.equal('prompt_input' in parsedLogs[0], false, 'list responses should not repeat normalized input');
@@ -130,6 +142,23 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(parsedTrace.id, 'agent.session:one');
   assert.equal(parsedTrace.calls.length, 1);
   assert.deepEqual(parsedTrace.calls[0].input_delta, [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }]);
+  const insightRuns = await request({ port: proxyPort, pathname: '/_pp/api/insights/runs?limit=1' });
+  assert.equal(insightRuns.status, 200);
+  assert.equal(JSON.parse(insightRuns.body).runs[0].run_id, firstCapture.id);
+  const insightReport = await request({ port: proxyPort, pathname: `/_pp/api/insights/report/${firstCapture.id}` });
+  assert.equal(insightReport.status, 200);
+  assert.equal(JSON.parse(insightReport.body).run.calls, 1);
+  assert.equal(JSON.stringify(JSON.parse(insightReport.body)).includes('hello'), false, 'insight reports should not expose prompt content');
+  const insightEvidence = await request({ port: proxyPort, pathname: `/_pp/api/insights/evidence/${firstCapture.id}?section=messages&max_bytes=1024` });
+  assert.equal(insightEvidence.status, 200);
+  assert.match(JSON.parse(insightEvidence.body).content, /hello/);
+  const insightComparison = await request({ port: proxyPort, pathname: `/_pp/api/insights/compare?baseline=${firstCapture.id}&candidate=${firstCapture.id}` });
+  assert.equal(insightComparison.status, 200);
+  assert.equal(JSON.parse(insightComparison.body).metrics.calls.absolute, 0);
+  const cliReport = await run(process.execPath, [cli, 'insights', 'report', firstCapture.id, '--prism-url', `http://127.0.0.1:${proxyPort}`, '--json']);
+  assert.equal(JSON.parse(cliReport.stdout).run.run_id, firstCapture.id);
+  const cliCompare = await run(process.execPath, [cli, 'insights', 'compare', firstCapture.id, firstCapture.id, '--prism-url', `http://127.0.0.1:${proxyPort}`, '--json']);
+  assert.equal(JSON.parse(cliCompare.stdout).metrics.calls.absolute, 0);
   const missingRaw = await request({ port: proxyPort, pathname: '/_pp/api/raw/missing-capture' });
   assert.equal(missingRaw.status, 404);
 
@@ -166,9 +195,198 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.match(await readFile(path.join(dir, 'captures.jsonl'), 'utf8'), /claude-test/);
 });
 
+test('OpenAI chat SSE flows through every normalized dashboard and insights API', async (t) => {
+  let seen: { url?: string; authorization?: string; traceId?: string; body: string } | undefined;
+  const upstream = http.createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      seen = {
+        url: req.url,
+        authorization: req.headers.authorization,
+        traceId: req.headers['x-prompt-prism-trace-id'] as string | undefined,
+        body: Buffer.concat(chunks).toString('utf8'),
+      };
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write('data: {"id":"chatcmpl_proxy","object":"chat.completion.chunk","model":"openai-test","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"inspect ","content":"hello "},"finish_reason":null}]}\n\n');
+      setTimeout(() => res.end([
+        'data: {"id":"chatcmpl_proxy","object":"chat.completion.chunk","model":"openai-test","choices":[{"index":0,"delta":{"reasoning_content":"first","content":"world","tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"read","arguments":"{\\"path\\":\\"a.ts\\"}"}}]},"finish_reason":"tool_calls"}]}',
+        '',
+        'data: {"id":"chatcmpl_proxy","object":"chat.completion.chunk","model":"openai-test","choices":[],"usage":{"prompt_tokens":30,"completion_tokens":7,"prompt_tokens_details":{"cached_tokens":20}}}',
+        '',
+        'data: [DONE]',
+        '',
+      ].join('\n')), 50);
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-openai-'));
+  const prism = await createPromptPrism({
+    upstreamUrl: `http://127.0.0.1:${upstreamPort}/tenant/openai/v1/chat/completions?region=test`,
+    apiFormat: 'openai',
+    dataDir: dir,
+  });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  const body = JSON.stringify({
+    model: 'openai-test', stream: true, stream_options: { include_usage: true },
+    messages: [{ role: 'system', content: 'Be concise' }, { role: 'user', content: 'Inspect this' }],
+    tools: [{ type: 'function', function: { name: 'read', parameters: { type: 'object' } } }],
+  });
+  const result = await request({
+    port: proxyPort,
+    pathname: '/v1/chat/completions?client=ignored',
+    headers: {
+      'content-type': 'application/json', authorization: 'Bearer openai-secret',
+      'x-prompt-prism-trace-id': 'openai.trace:one', 'content-length': Buffer.byteLength(body),
+    },
+    body,
+  });
+  assert.equal(result.status, 200);
+  assert.equal(seen?.url, '/tenant/openai/v1/chat/completions?region=test');
+  assert.equal(seen?.authorization, 'Bearer openai-secret');
+  assert.equal(seen?.traceId, undefined);
+  assert.equal(seen?.body, body);
+  assert.ok(result.times.length >= 2);
+  assert.ok((result.times.at(-1) ?? 0) - (result.times[0] ?? 0) >= 35, 'SSE chunks should not be buffered until completion');
+
+  await prism.store.pending;
+  const entry = prism.store.captures[0];
+  assert.ok(entry);
+  const capture = await prism.store.readCapture(entry.id);
+  assert.equal(capture?.adapter_id, 'openai-chat-completions');
+  assert.equal(capture?.request?.headers.authorization, '[REDACTED]');
+  assert.deepEqual(capture?.usage, { input_tokens: 10, output_tokens: 7, cache_read_input_tokens: 20 });
+  assert.deepEqual(capture?.prompt_input?.sections.map(({ id }) => id), ['messages', 'system', 'tools', 'options']);
+  assert.deepEqual(capture?.prompt_input?.conversation, [{ role: 'user', content: [{ type: 'text', text: 'Inspect this' }] }]);
+  assert.deepEqual(capture?.model_output?.content, [
+    { type: 'reasoning', text: 'inspect first' },
+    { type: 'text', text: 'hello world' },
+    { type: 'tool_call', id: 'call_1', name: 'read', input: { path: 'a.ts' } },
+  ]);
+
+  const inputDiff = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/input-diff/${entry.id}` })).body);
+  assert.deepEqual(inputDiff.sections.map(({ id }: { id: string }) => id), ['messages', 'system', 'tools', 'options']);
+  const output = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/output/${entry.id}` })).body);
+  assert.equal(output.output.adapter_id, 'openai-chat-completions');
+  assert.equal(output.output.stop_reason, 'tool_calls');
+  const trace = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/trace/${entry.id}` })).body);
+  assert.equal(trace.source, 'explicit');
+  assert.equal(trace.calls[0].input_delta[0].content[0].text, 'Inspect this');
+  assert.equal(trace.calls[0].output.content[2].name, 'read');
+  const raw = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/raw/${entry.id}` })).body);
+  assert.equal(raw.request.url, '/v1/chat/completions?client=ignored');
+  assert.equal(JSON.parse(raw.response.body.split('\n').find((line: string) => line.startsWith('data: {'))!.slice(6)).object, 'chat.completion.chunk');
+  const insights = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/insights/report/${entry.id}` })).body);
+  assert.equal(insights.run.tokens.uncached_input_tokens, 10);
+  assert.equal(insights.run.tokens.cache_read_input_tokens, 20);
+  assert.equal(insights.run.tokens.input_total_tokens, 30);
+  assert.equal(insights.tools.calls, 1);
+
+  assert.ok(capture);
+  const historicalCapture = { ...capture };
+  delete historicalCapture.model_output;
+  await writeFile(path.join(dir, entry.file_ref), JSON.stringify(historicalCapture));
+  const historicalOutput = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/output/${entry.id}` })).body);
+  assert.equal(historicalOutput.output.adapter_id, 'openai-chat-completions');
+  assert.equal(historicalOutput.output.content[2].name, 'read');
+});
+
 test('Prism validates and preserves complete upstream URLs', async () => {
   assert.equal(parseUpstreamUrl('https://provider.example.com/step_plan/v1/messages?region=cn').href, 'https://provider.example.com/step_plan/v1/messages?region=cn');
   assert.throws(() => parseUpstreamUrl('not-a-url'), /valid absolute URL/);
   assert.throws(() => parseUpstreamUrl('ftp://provider.example.com'), /http or https/);
   assert.throws(() => parseUpstreamUrl('https://provider.example.com/v1/messages#fragment'), /fragment/);
+});
+
+test('base URL mode derives provider endpoints and Auto locks the request protocol', async (t) => {
+  const seen: string[] = [];
+  const upstream = http.createServer((req, res) => {
+    seen.push(req.url ?? '');
+    req.resume();
+    req.on('end', () => {
+      const body = JSON.stringify({ id: 'chatcmpl_base', object: 'chat.completion', model: 'deepseek-test', choices: [{ index: 0, message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }], usage: { prompt_tokens: 2, completion_tokens: 1 } });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(body);
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-base-'));
+  const prism = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}/tenant`, dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  assert.equal(prism.upstreamMode, 'base');
+  assert.equal(prism.apiFormat.resolved, null);
+  const before = JSON.parse((await request({ port: proxyPort, pathname: '/_pp/api/config' })).body);
+  assert.deepEqual(before.api_format, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+
+  const body = JSON.stringify({ model: 'deepseek-test', messages: [{ role: 'user', content: 'hello' }] });
+  const result = await request({ port: proxyPort, pathname: '/v1/chat/completions?region=cn', headers: { 'content-type': 'application/json', authorization: 'Bearer token' }, body });
+  assert.equal(result.status, 200);
+  assert.deepEqual(seen, ['/tenant/chat/completions?region=cn']);
+  await prism.store.pending;
+  assert.equal(prism.store.captures[0]?.adapter_id, 'openai-chat-completions');
+  assert.equal(prism.apiFormat.resolved, 'openai-chat-completions');
+  assert.equal(prism.apiFormat.source, 'request-path');
+});
+
+test('unrecognized base routes remain transparent and create Raw-only captures', async (t) => {
+  let seen = '';
+  const upstream = http.createServer((req, res) => {
+    seen = req.url ?? '';
+    req.resume();
+    req.on('end', () => { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('provider extension'); });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-unresolved-'));
+  const prism = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}/gateway`, dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  const body = JSON.stringify({ model: 'ambiguous-model', messages: [{ role: 'user', content: 'hello' }] });
+  assert.equal((await request({ port: proxyPort, pathname: '/custom/generate?x=1', headers: { 'content-type': 'application/json' }, body })).body, 'provider extension');
+  assert.equal(seen, '/gateway/custom/generate?x=1');
+  await prism.store.pending;
+  const entry = prism.store.captures[0];
+  assert.ok(entry);
+  const capture = await prism.store.readCapture(entry.id);
+  assert.equal(capture?.adapter_id, 'unresolved');
+  assert.equal(capture?.model, 'ambiguous-model');
+  assert.equal(capture?.prompt_input, undefined);
+  assert.equal(capture?.request?.body, body);
+  assert.equal((await request({ port: proxyPort, pathname: `/_pp/api/input-diff/${entry.id}` })).status, 404);
+});
+
+test('Prism validates provider-style Base URLs', () => {
+  assert.equal(parseUpstreamBaseUrl('https://api.deepseek.com/').href, 'https://api.deepseek.com/');
+  assert.equal(parseUpstreamBaseUrl('https://api.stepfun.com/step_plan/').href, 'https://api.stepfun.com/step_plan');
+  assert.throws(() => parseUpstreamBaseUrl('https://api.deepseek.com/chat/completions'), /must not include an API endpoint/);
+  assert.throws(() => parseUpstreamBaseUrl('https://api.example.com?tenant=one'), /must not contain a query/);
+});
+
+test('captures timing for non-streaming JSON responses', async (t) => {
+  const upstream = http.createServer((req, res) => {
+    req.resume();
+    req.on('end', () => {
+      setTimeout(() => {
+        const body = JSON.stringify({ id: 'msg_json', type: 'message', role: 'assistant', model: 'claude-test', content: [{ type: 'text', text: 'done' }], stop_reason: 'end_turn', usage: { input_tokens: 2, output_tokens: 1 } });
+        res.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
+        res.end(body);
+      }, 20);
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-timing-'));
+  const prism = await createPromptPrism({ upstreamUrl: `http://127.0.0.1:${upstreamPort}/v1/messages`, dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+  const body = JSON.stringify({ model: 'claude-test', messages: [{ role: 'user', content: 'hello' }] });
+  await request({ port: proxyPort, headers: { 'content-type': 'application/json', 'x-api-key': 'secret', 'content-length': Buffer.byteLength(body) }, body });
+  await prism.store.pending;
+  const stored = await prism.store.readCapture(prism.store.captures[0]!.id);
+  assert.ok((stored?.timing?.duration_ms ?? 0) >= 15);
+  assert.ok((stored?.timing?.time_to_headers_ms ?? 0) >= 15);
+  assert.ok((stored?.timing?.time_to_first_byte_ms ?? 0) >= (stored?.timing?.time_to_headers_ms ?? 0));
 });

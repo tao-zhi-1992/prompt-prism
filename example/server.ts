@@ -5,7 +5,8 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager, type AgentSession, type ExtensionFactory } from '@earendil-works/pi-coding-agent';
-import type { Model } from '@earendil-works/pi-ai';
+import { createProvider, envApiKeyAuth, type Model } from '@earendil-works/pi-ai';
+import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy';
 
 const runtimeDir = path.dirname(fileURLToPath(import.meta.url));
 const demoDir = path.basename(runtimeDir) === 'dist' ? path.dirname(runtimeDir) : runtimeDir;
@@ -15,8 +16,12 @@ const defaultWorkspaceRoot = path.join(demoDir, '.workspaces');
 const require = createRequire(import.meta.url);
 const brandDir = path.dirname(require.resolve('prompt-prism/assets/logo-mark.png'));
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png']);
+const OPENAI_DEMO_PROVIDER = 'prompt-prism-openai';
 
 export const DEFAULT_DEMO_BASE_URL = 'http://127.0.0.1:8787';
+export const DEFAULT_DEMO_API_FORMAT = 'auto';
+export type DemoApiFormat = 'auto' | ResolvedDemoApiFormat | 'anthropic' | 'openai';
+export type ResolvedDemoApiFormat = 'anthropic-messages' | 'openai-chat-completions';
 const SYSTEM_PROMPT = `You are the Prompt Prism demo coding agent. Work only in the provided TypeScript REST-service workspace. Inspect before editing, make focused changes, and run tests before you finish. Every tool call requires a human approval. Explain your conclusion briefly after verification.`;
 
 type Json = Record<string, unknown>;
@@ -44,6 +49,7 @@ type DemoSession = {
 
 export type StartDemoOptions = {
   baseUrl?: string;
+  apiFormat?: string;
   providerToken?: string;
   model?: string;
   demoPort?: number | string;
@@ -57,7 +63,7 @@ export function parseBaseUrl(value: string): URL {
   try { url = new URL(value); }
   catch { throw new Error('DEMO_BASE_URL must be a valid absolute URL'); }
   if (!['http:', 'https:'].includes(url.protocol)) throw new Error('DEMO_BASE_URL must use http or https');
-  if (/\/v1(?:\/messages)?\/?$/.test(url.pathname)) throw new Error('DEMO_BASE_URL must be a base URL without /v1');
+  if (/\/v1(?:\/|$)/.test(url.pathname)) throw new Error('DEMO_BASE_URL must be a base URL without /v1');
   return url;
 }
 
@@ -67,6 +73,37 @@ export function messagesUrl(baseUrl: URL): URL {
   url.search = '';
   url.hash = '';
   return url;
+}
+
+export function openAIBaseUrl(baseUrl: URL): URL {
+  const url = new URL(baseUrl);
+  url.pathname = `${url.pathname.replace(/\/+$/, '')}/v1`;
+  url.search = '';
+  url.hash = '';
+  return url;
+}
+
+export function parseApiFormat(value: string): DemoApiFormat {
+  if (value === 'auto' || value === 'anthropic' || value === 'openai' || value === 'anthropic-messages' || value === 'openai-chat-completions') return value;
+  throw new Error('DEMO_API_FORMAT must be auto, anthropic-messages, or openai-chat-completions');
+}
+
+function canonicalDemoFormat(value: Exclude<DemoApiFormat, 'auto'>): ResolvedDemoApiFormat {
+  return value === 'anthropic' ? 'anthropic-messages' : value === 'openai' ? 'openai-chat-completions' : value;
+}
+
+async function queryPrismFormat(baseUrl: URL): Promise<ResolvedDemoApiFormat> {
+  const configUrl = new URL('/_pp/api/config', baseUrl);
+  let response: Response;
+  try { response = await fetch(configUrl, { signal: AbortSignal.timeout(2_000), headers: { accept: 'application/json' } }); }
+  catch (error) { throw new Error(`Unable to query Prompt Prism API format at ${configUrl.href}. Start Prism first or set DEMO_API_FORMAT explicitly. ${error instanceof Error ? error.message : ''}`.trim()); }
+  if (!response.ok) throw new Error(`Prompt Prism config returned HTTP ${response.status}. Start a compatible Prism or set DEMO_API_FORMAT explicitly.`);
+  const body = await response.json() as { api_format?: { resolved?: unknown; unsupported_protocol?: unknown } };
+  const resolved = body.api_format?.resolved;
+  if (resolved === 'anthropic-messages' || resolved === 'openai-chat-completions') return resolved;
+  const unsupported = body.api_format?.unsupported_protocol;
+  if (typeof unsupported === 'string') throw new Error(`Prompt Prism detected unsupported API format ${unsupported}. Set DEMO_API_FORMAT only when the Demo supports that protocol.`);
+  throw new Error('Prompt Prism has not resolved its API format. Use a recognizable upstream endpoint or set DEMO_API_FORMAT explicitly.');
 }
 
 function numberOption(value: number | string | undefined, fallback: number, name: string): number {
@@ -135,13 +172,14 @@ function publicSession(session: DemoSession): Json {
   };
 }
 
-function modelFor(baseUrl: URL, modelId: string, traceId: string): Model<'anthropic-messages'> {
+function modelFor(baseUrl: URL, modelId: string, traceId: string, apiFormat: ResolvedDemoApiFormat): Model<'anthropic-messages' | 'openai-completions'> {
+  const openai = apiFormat === 'openai-chat-completions';
   return {
     id: modelId,
     name: modelId,
-    provider: 'anthropic',
-    api: 'anthropic-messages',
-    baseUrl: baseUrl.href.replace(/\/$/, ''),
+    provider: openai ? OPENAI_DEMO_PROVIDER : 'anthropic',
+    api: openai ? 'openai-completions' : 'anthropic-messages',
+    baseUrl: (openai ? openAIBaseUrl(baseUrl).href : baseUrl.href).replace(/\/$/, ''),
     headers: { 'x-prompt-prism-trace-id': traceId },
     reasoning: false,
     input: ['text'],
@@ -155,11 +193,13 @@ function isSafeSessionId(value: string): boolean { return /^[a-f0-9-]{36}$/i.tes
 
 export async function startDemo(options: StartDemoOptions = {}) {
   const baseUrlValue = options.baseUrl ?? process.env.DEMO_BASE_URL ?? DEFAULT_DEMO_BASE_URL;
+  const configuredApiFormat = parseApiFormat(options.apiFormat ?? process.env.DEMO_API_FORMAT ?? DEFAULT_DEMO_API_FORMAT);
   const token = options.providerToken ?? process.env.DEMO_MODEL_PROVIDER_TOKEN;
   const model = options.model ?? process.env.DEMO_AGENT_MODEL;
   if (!token) throw new Error('Missing DEMO_MODEL_PROVIDER_TOKEN');
   if (!model) throw new Error('Missing DEMO_AGENT_MODEL');
   const baseUrl = parseBaseUrl(baseUrlValue);
+  const apiFormat = configuredApiFormat === 'auto' ? await queryPrismFormat(baseUrl) : canonicalDemoFormat(configuredApiFormat);
   const requestedDemoPort = numberOption(options.demoPort ?? process.env.DEMO_PORT, 3000, 'DEMO_PORT');
   const workspaceRoot = path.resolve(options.workspaceRoot ?? defaultWorkspaceRoot);
   const sourceFixture = path.resolve(options.fixtureRoot ?? fixtureDir);
@@ -182,7 +222,18 @@ export async function startDemo(options: StartDemoOptions = {}) {
       modelsPath: null,
       refreshOnCreate: false
     });
-    await modelRuntime.setRuntimeApiKey('anthropic', token);
+    if (apiFormat === 'openai-chat-completions') {
+      modelRuntime.registerNativeProvider(createProvider({
+        id: OPENAI_DEMO_PROVIDER,
+        name: 'Prompt Prism OpenAI-compatible',
+        baseUrl: openAIBaseUrl(baseUrl).href.replace(/\/$/, ''),
+        auth: { apiKey: envApiKeyAuth('OpenAI-compatible API key', ['OPENAI_API_KEY']) },
+        models: [],
+        api: openAICompletionsApi(),
+      }));
+    }
+    const providerId = apiFormat === 'openai-chat-completions' ? OPENAI_DEMO_PROVIDER : 'anthropic';
+    await modelRuntime.setRuntimeApiKey(providerId, token);
     let state!: DemoSession;
     const approvalGate: ExtensionFactory = (pi) => {
       pi.on('tool_call', async (event) => {
@@ -213,7 +264,7 @@ export async function startDemo(options: StartDemoOptions = {}) {
     const { session: agent } = await agentSessionFactory({
       cwd: workspace,
       agentDir: path.join(workspace, '.pi-demo'),
-      model: modelFor(baseUrl, model, id),
+      model: modelFor(baseUrl, model, id, apiFormat),
       thinkingLevel: 'off',
       modelRuntime,
       resourceLoader,
@@ -261,7 +312,7 @@ export async function startDemo(options: StartDemoOptions = {}) {
     if (request.method === 'GET' && url.pathname === '/') return void serveFile(response, 'index.html', 'text/html; charset=utf-8');
     if (request.method === 'GET' && url.pathname === '/app.js') return void serveFile(response, 'app.js', 'text/javascript; charset=utf-8');
     if (request.method === 'GET' && url.pathname.startsWith('/brand/')) return void serveBrand(response, decodeURIComponent(url.pathname.slice('/brand/'.length)));
-    if (request.method === 'GET' && url.pathname === '/api/config') return void json(response, 200, { model, fixture: 'inventory-service' });
+    if (request.method === 'GET' && url.pathname === '/api/config') return void json(response, 200, { model, apiFormat, fixture: 'inventory-service' });
     if (request.method === 'POST' && url.pathname === '/api/sessions') {
       createSession().then((session) => json(response, 201, publicSession(session))).catch((error: unknown) => json(response, 500, { error: error instanceof Error ? error.message : 'Unable to create session' }));
       return;
@@ -331,13 +382,13 @@ export async function startDemo(options: StartDemoOptions = {}) {
     for (const session of sessions.values()) await abort(session);
     await new Promise<void>((resolve, reject) => demoServer.close((error) => error ? reject(error) : resolve()));
   };
-  return { demoServer, demoPort, model, workspaceRoot, close };
+  return { demoServer, demoPort, model, apiFormat, workspaceRoot, close };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const instance = await startDemo();
-    console.log(`\n  Prompt Prism Coding Agent Demo is running\n\n  Chat   http://127.0.0.1:${instance.demoPort}/\n  Model  ${instance.model}\n\n  Model traffic is routed through Prompt Prism.\n  Every tool call requires browser approval.\n  Press Ctrl+C to stop.\n`);
+    console.log(`\n  Prompt Prism Coding Agent Demo is running\n\n  Chat       http://127.0.0.1:${instance.demoPort}/\n  Model      ${instance.model}\n  API format ${instance.apiFormat}\n\n  Model traffic is routed through Prompt Prism.\n  Every tool call requires browser approval.\n  Press Ctrl+C to stop.\n`);
   } catch (error) {
     console.error(`prompt-prism demo: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);

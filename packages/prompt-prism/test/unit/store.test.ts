@@ -29,7 +29,7 @@ test('a single capture larger than the cap is not written', async () => {
   assert.equal(store.captures.length, 0);
 });
 
-test('persists HTTP status, upstream host, and trace ID in the capture index across restarts', async () => {
+test('persists HTTP status, upstream host, trace ID, and timing in the capture index across restarts', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-'));
   const store = await new CaptureStore({ dataDir: dir }).init();
   await store.writeCapture({
@@ -41,6 +41,10 @@ test('persists HTTP status, upstream host, and trace ID in the capture index acr
     },
     upstream_host: 'provider.example.com:8443',
     trace_id: 'session:one',
+    timing: {
+      started_at: '2026-01-01T00:00:00.000Z', completed_at: '2026-01-01T00:00:00.100Z',
+      duration_ms: 100, time_to_headers_ms: 20, time_to_first_byte_ms: 30,
+    },
     response: { status: 429, headers: {}, body: '{"error":"rate limited"}' }
   });
 
@@ -48,6 +52,7 @@ test('persists HTTP status, upstream host, and trace ID in the capture index acr
   assert.equal(restarted.captures[0]?.response_status, 429);
   assert.equal(restarted.captures[0]?.upstream_host, 'provider.example.com:8443');
   assert.equal(restarted.captures[0]?.trace_id, 'session:one');
-  assert.equal(restarted.captures[0]?.adapter_id, 'anthropic');
+  assert.equal(restarted.captures[0]?.timing?.time_to_first_byte_ms, 30);
+  assert.equal(restarted.captures[0]?.adapter_id, 'anthropic-messages');
   assert.equal(restarted.captures[0]?.prompt_input?.primary_section_id, 'messages');
 });

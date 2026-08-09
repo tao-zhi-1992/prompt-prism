@@ -54,7 +54,7 @@ function ToolCall({ block }: { block: ToolCallOutputBlock }) {
         <span><b>{block.name}</b>{block.id && <code>{block.id}</code>}</span>
       </header>
       <div className="output-block-body">
-        {block.input_raw
+        {block.input_raw !== undefined
           ? <><span className="output-invalid-label">{t('output.invalidJsonArguments')}</span><pre className="output-code">{block.input_raw}</pre></>
           : <JsonBody value={block.input} label={t('output.toolArguments', { name: block.name })} />}
       </div>

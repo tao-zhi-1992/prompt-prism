@@ -119,7 +119,7 @@ function normalizeConversation(messages: Message[]): ConversationMessage[] {
 function outputFromMessage(message: JsonObject, usage = normalizeUsage(message.usage)): ModelOutputSnapshot {
   const content = Array.isArray(message.content) ? message.content.map(normalizeBlock) : [];
   return {
-    adapter_id: 'anthropic',
+    adapter_id: 'anthropic-messages',
     id: stringValue(message.id),
     model: stringValue(message.model),
     role: stringValue(message.role),
@@ -180,7 +180,7 @@ export function parseRequest(body: Buffer | string): ProviderRequest {
     model,
     messages,
     input: {
-      adapter_id: 'anthropic',
+      adapter_id: 'anthropic-messages',
       primary_section_id: 'messages',
       primary_sequence: messages.map(inputIdentity),
       sections,
@@ -199,7 +199,7 @@ export function parseResponse(body: Buffer | string, contentType = ''): Provider
         return {
           usage,
           output: {
-            adapter_id: 'anthropic', id: null, model: null, role: null, stop_reason: null,
+            adapter_id: 'anthropic-messages', id: null, model: null, role: null, stop_reason: null,
             content: [], usage, error: parseProviderError(parsed.error ?? parsed),
           },
         };
@@ -269,7 +269,7 @@ export function parseResponse(body: Buffer | string, contentType = ''): Provider
   return {
     usage: normalizedUsage,
     output: {
-      adapter_id: 'anthropic', id, model, role, stop_reason: stopReason,
+      adapter_id: 'anthropic-messages', id, model, role, stop_reason: stopReason,
       content: [...blocks.entries()].sort(([left], [right]) => left - right).map(([, block]) => finalizedBlock(block)),
       usage: normalizedUsage,
       ...(error ? { error } : {}),
@@ -277,6 +277,6 @@ export function parseResponse(body: Buffer | string, contentType = ''): Provider
   };
 }
 
-const anthropic: ProviderAdapter = { id: 'anthropic', parseRequest, parseResponse };
+const anthropic: ProviderAdapter = { id: 'anthropic-messages', parseRequest, parseResponse };
 
 export default anthropic;

@@ -5,7 +5,7 @@ import { access, mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createPromptPrism } from 'prompt-prism';
-import { DEFAULT_DEMO_BASE_URL, messagesUrl, parseBaseUrl, startDemo } from '../../server.js';
+import { DEFAULT_DEMO_API_FORMAT, DEFAULT_DEMO_BASE_URL, messagesUrl, openAIBaseUrl, parseApiFormat, parseBaseUrl, startDemo } from '../../server.js';
 
 const listen = (server: http.Server) => new Promise<number>((resolve) => server.listen(0, '127.0.0.1', () => resolve((server.address() as import('node:net').AddressInfo).port)));
 const close = (server: http.Server) => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
@@ -36,6 +36,12 @@ function sse(response: http.ServerResponse, events: unknown[]): void {
   response.writeHead(200, { 'content-type': 'text/event-stream' });
   for (const event of events) response.write(`event: ${(event as { type: string }).type}\ndata: ${JSON.stringify(event)}\n\n`);
   response.end();
+}
+
+function openAISse(response: http.ServerResponse, chunks: unknown[]): void {
+  response.writeHead(200, { 'content-type': 'text/event-stream' });
+  for (const chunk of chunks) response.write(`data: ${JSON.stringify(chunk)}\n\n`);
+  response.end('data: [DONE]\n\n');
 }
 
 test('Pi Coding Agent streams through Prism, pauses for approval, and captures the tool loop', async (t) => {
@@ -121,11 +127,131 @@ test('Pi Coding Agent streams through Prism, pauses for approval, and captures t
   await access(reset.workspace);
 });
 
-test('Demo defaults to local Prompt Prism and validates its base URL and required credentials', async () => {
+test('Pi Coding Agent uses OpenAI Chat Completions through the OpenAI Prism adapter', async (t) => {
+  const modelRequests: Array<{ authorization: string | undefined; body: Record<string, unknown>; url: string | undefined }> = [];
+  const modelService = http.createServer((request, response) => {
+    const chunks: Buffer[] = [];
+    request.on('data', (chunk: Buffer) => chunks.push(chunk));
+    request.on('end', () => {
+      const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>;
+      modelRequests.push({ authorization: request.headers.authorization, body, url: request.url });
+      const secondTurn = modelRequests.length > 1;
+      openAISse(response, secondTurn ? [
+        {
+          id: 'chatcmpl_2', object: 'chat.completion.chunk', created: 1, model: 'openai-demo-model',
+          choices: [{ index: 0, delta: { role: 'assistant', content: 'Fixed and verified the pagination behavior.' }, finish_reason: null }],
+        },
+        {
+          id: 'chatcmpl_2', object: 'chat.completion.chunk', created: 1, model: 'openai-demo-model',
+          choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+        },
+        {
+          id: 'chatcmpl_2', object: 'chat.completion.chunk', created: 1, model: 'openai-demo-model', choices: [],
+          usage: { prompt_tokens: 30, completion_tokens: 8, prompt_tokens_details: { cached_tokens: 20 } },
+        },
+      ] : [
+        {
+          id: 'chatcmpl_1', object: 'chat.completion.chunk', created: 1, model: 'openai-demo-model',
+          choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call_read', type: 'function', function: { name: 'read', arguments: '{"path":"src/http.ts"}' } }] }, finish_reason: null }],
+        },
+        {
+          id: 'chatcmpl_1', object: 'chat.completion.chunk', created: 1, model: 'openai-demo-model',
+          choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }],
+        },
+        {
+          id: 'chatcmpl_1', object: 'chat.completion.chunk', created: 1, model: 'openai-demo-model', choices: [],
+          usage: { prompt_tokens: 10, completion_tokens: 4, prompt_tokens_details: { cached_tokens: 0 } },
+        },
+      ]);
+    });
+  });
+  const modelPort = await listen(modelService);
+  const dataDir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-pi-openai-'));
+  const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'prompt-prism-openai-workspaces-'));
+  const prism = await createPromptPrism({
+    upstreamUrl: `http://127.0.0.1:${modelPort}/tenant/demo/v1/chat/completions`,
+    apiFormat: 'openai',
+    dataDir,
+  });
+  const prismPort = await listen(prism.server);
+  const demo = await startDemo({
+    baseUrl: `http://127.0.0.1:${prismPort}`, apiFormat: 'openai', providerToken: 'openai-demo-secret',
+    model: 'openai-demo-model', demoPort: 0, workspaceRoot,
+  });
+  t.after(async () => { await demo.close(); await close(prism.server); await close(modelService); });
+
+  assert.equal(demo.apiFormat, 'openai-chat-completions');
+  const config = JSON.parse((await request({ port: demo.demoPort, pathname: '/api/config' })).body) as { model: string; apiFormat: string; fixture: string };
+  assert.deepEqual(config, { model: 'openai-demo-model', apiFormat: 'openai-chat-completions', fixture: 'inventory-service' });
+  const created = JSON.parse((await request({ port: demo.demoPort, pathname: '/api/sessions', method: 'POST' })).body) as { id: string };
+  const sent = await request({
+    port: demo.demoPort, pathname: `/api/sessions/${created.id}/messages`, method: 'POST',
+    body: JSON.stringify({ content: 'Inspect the failing test and fix it.', apiFormat: 'anthropic', model: 'attacker-model' }),
+  });
+  assert.equal(sent.status, 202);
+  const pending = await waitFor(async () => {
+    const snapshot = JSON.parse((await request({ port: demo.demoPort, pathname: `/api/sessions/${created.id}` })).body) as { active: boolean; pendingApprovals: Array<{ toolCallId: string; toolName: string }>; events: Array<{ type: string; message?: string }> };
+    const failure = snapshot.events.find((event) => event.type === 'error');
+    if (failure) throw new Error(`OpenAI agent failed before approval: ${failure.message ?? 'unknown error'}`);
+    if (!snapshot.active && snapshot.pendingApprovals.length === 0) throw new Error(`OpenAI agent finished without a tool call: ${JSON.stringify(snapshot.events)}`);
+    return snapshot.pendingApprovals[0];
+  }, 'OpenAI tool approval');
+  assert.equal(pending.toolName, 'read');
+  assert.equal(modelRequests[0]?.url, '/tenant/demo/v1/chat/completions');
+  assert.equal(modelRequests[0]?.authorization, 'Bearer openai-demo-secret');
+  assert.equal(modelRequests[0]?.body.model, 'openai-demo-model');
+  assert.equal(modelRequests[0]?.body.stream, true);
+  assert.ok(Array.isArray(modelRequests[0]?.body.messages));
+  assert.equal('input' in modelRequests[0]!.body, false, 'Pi must use Chat Completions rather than Responses');
+  assert.equal((modelRequests[0]?.body.tools as Array<{ type: string; function?: { name?: string } }>)[0]?.function?.name, 'read');
+
+  const approved = await request({
+    port: demo.demoPort, pathname: `/api/sessions/${created.id}/approvals/${pending.toolCallId}`, method: 'POST',
+    body: JSON.stringify({ approved: true }),
+  });
+  assert.equal(approved.status, 200);
+  await waitFor(async () => {
+    const snapshot = JSON.parse((await request({ port: demo.demoPort, pathname: `/api/sessions/${created.id}` })).body) as { active: boolean; events: Array<{ type: string }> };
+    return !snapshot.active && snapshot.events.some((event) => event.type === 'turn_complete') ? snapshot : undefined;
+  }, 'OpenAI agent completion');
+
+  assert.equal(modelRequests.length, 2);
+  const secondMessages = modelRequests[1]?.body.messages as Array<{ role?: string }>;
+  assert.ok(secondMessages.some((message) => message.role === 'tool'));
+  await prism.store.pending;
+  assert.equal(prism.store.captures.length, 2);
+  assert.ok(prism.store.captures.every((capture) => capture.adapter_id === 'openai-chat-completions' && capture.trace_id === created.id));
+  assert.deepEqual(prism.store.captures[1]?.usage, { input_tokens: 10, output_tokens: 8, cache_read_input_tokens: 20 });
+  const traceResponse = await request({ port: prismPort, pathname: `/_pp/api/trace/${prism.store.captures[1]!.id}` });
+  const trace = JSON.parse(traceResponse.body) as { calls: Array<{ input_delta: Array<{ content: Array<{ type: string }> }>; output: { content: Array<{ type: string }> } }> };
+  assert.equal(trace.calls.length, 2);
+  assert.ok(trace.calls[0]?.output.content.some((block) => block.type === 'tool_call'));
+  assert.ok(trace.calls[1]?.input_delta.some((message) => message.content.some((block) => block.type === 'tool_result')));
+  assert.ok(trace.calls[1]?.output.content.some((block) => block.type === 'text'));
+});
+
+test('Demo defaults to local Prompt Prism and validates its base URL and required credentials', async (t) => {
   assert.equal(DEFAULT_DEMO_BASE_URL, 'http://127.0.0.1:8787');
+  assert.equal(DEFAULT_DEMO_API_FORMAT, 'auto');
   assert.equal(messagesUrl(parseBaseUrl('https://example.com/prism/')).href, 'https://example.com/prism/v1/messages');
+  assert.equal(openAIBaseUrl(parseBaseUrl('https://example.com/prism/')).href, 'https://example.com/prism/v1');
+  assert.equal(parseApiFormat('openai'), 'openai');
+  assert.throws(() => parseApiFormat('responses'), /auto, anthropic-messages, or openai-chat-completions/);
   await assert.rejects(startDemo({ baseUrl: 'ftp://example.com', providerToken: 'token', model: 'model', demoPort: 0 }), /http or https/);
   await assert.rejects(startDemo({ baseUrl: 'https://example.com/v1', providerToken: 'token', model: 'model', demoPort: 0 }), /base URL without \/v1/);
+  await assert.rejects(startDemo({ baseUrl: 'https://example.com/prefix/v1/chat/completions', providerToken: 'token', model: 'model', demoPort: 0 }), /base URL without \/v1/);
   await assert.rejects(startDemo({ baseUrl: 'http://localhost', model: 'model', demoPort: 0 }), /Missing DEMO_MODEL_PROVIDER_TOKEN/);
   await assert.rejects(startDemo({ baseUrl: 'http://localhost', providerToken: 'token', demoPort: 0 }), /Missing DEMO_AGENT_MODEL/);
+
+  const unresolved = http.createServer((_request, response) => {
+    const body = JSON.stringify({ api_format: { mode: 'auto', configured: 'auto', resolved: null, source: null } });
+    response.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
+    response.end(body);
+  });
+  const unresolvedPort = await listen(unresolved);
+  t.after(() => close(unresolved));
+  await assert.rejects(startDemo({ baseUrl: `http://127.0.0.1:${unresolvedPort}`, providerToken: 'token', model: 'model', demoPort: 0 }), /has not resolved its API format/);
+
+  const explicit = await startDemo({ baseUrl: 'http://127.0.0.1:1', apiFormat: 'anthropic', providerToken: 'token', model: 'model', demoPort: 0, workspaceRoot: await mkdtemp(path.join(tmpdir(), 'prompt-prism-explicit-demo-')) });
+  await explicit.close();
 });

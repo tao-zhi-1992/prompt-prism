@@ -3,11 +3,13 @@ import { createOutputServerPlugin } from './output/server/index.js';
 import { createRawServerPlugin } from './raw/server/index.js';
 import { createTraceServerPlugin } from './trace/server/index.js';
 import { ServerPluginRegistry } from './registry/server.js';
+import { createInsightsServerPlugin } from './insights/server/index.js';
 
 export function createBuiltinServerPluginRuntime() {
   const inputDiff = createInputDiffServerPlugin();
   const trace = createTraceServerPlugin({ getParentId: (id) => inputDiff.getAnalyzer().analyses.get(id)?.matched_parent_id });
-  const registry = new ServerPluginRegistry([inputDiff, createOutputServerPlugin(), trace, createRawServerPlugin()]);
+  const insights = createInsightsServerPlugin({ getParentId: (id) => inputDiff.getAnalyzer().analyses.get(id)?.matched_parent_id });
+  const registry = new ServerPluginRegistry([inputDiff, createOutputServerPlugin(), trace, createRawServerPlugin(), insights]);
   return {
     init: registry.init.bind(registry),
     onCapture: registry.onCapture.bind(registry),
