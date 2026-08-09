@@ -103,6 +103,17 @@ test('Pi Coding Agent streams through Prism, pauses for approval, and captures t
   assert.equal(modelRequests.length, 2);
   await prism.store.pending;
   assert.equal(prism.store.captures.length, 2);
+  assert.ok(prism.store.captures.every((capture) => capture.trace_id === created.id));
+  const traceCapture = prism.store.captures[0];
+  assert.ok(traceCapture);
+  const traceResponse = await request({ port: prismPort, pathname: `/_pp/api/trace/${traceCapture.id}` });
+  const trace = JSON.parse(traceResponse.body) as { source: string; id: string; calls: Array<{ input_delta: Array<{ content: Array<{ type: string }> }>; output?: { content: Array<{ type: string }> } }> };
+  assert.equal(trace.source, 'explicit');
+  assert.equal(trace.id, created.id);
+  assert.equal(trace.calls.length, 2);
+  assert.ok(trace.calls[0]?.output?.content.some((block) => block.type === 'tool_call'));
+  assert.ok(trace.calls[1]?.input_delta.some((message) => message.content.some((block) => block.type === 'tool_result')));
+  assert.ok(trace.calls[1]?.output?.content.some((block) => block.type === 'text'));
 
   const reset = JSON.parse((await request({ port: demo.demoPort, pathname: `/api/sessions/${created.id}/reset`, method: 'POST' })).body) as { id: string; workspace: string };
   assert.notEqual(reset.id, created.id);

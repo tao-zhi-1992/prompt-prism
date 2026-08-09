@@ -1,12 +1,14 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type http from 'node:http';
-import type { Capture, CaptureIndexEntry, PromptPrismAnalyzer } from './types.js';
+import type { Capture, CaptureIndexEntry, PromptPrismAnalyzer, ProviderRequest, ProviderResponse } from './types.js';
 
 export interface PluginRuntimeContext {
   analysisPath: string;
   captures: readonly CaptureIndexEntry[];
   readCapture(id: string): Promise<Capture | null>;
+  parseProviderRequest(adapterId: string, body: string): ProviderRequest;
+  parseProviderResponse(adapterId: string, body: string, contentType?: string): ProviderResponse;
   json(response: http.ServerResponse, status: number, value: unknown): void;
   reportError(pluginId: string, error: unknown): void;
 }

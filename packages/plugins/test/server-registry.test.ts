@@ -3,7 +3,7 @@ import { ServerPluginRegistry } from '../src/registry/server.js';
 import type { ServerPluginContext } from '../src/contracts/server.js';
 
 const context = (): ServerPluginContext => ({
-  analysisPath: '/tmp/analysis.jsonl', captures: [], readCapture: vi.fn(), json: vi.fn(), reportError: vi.fn(),
+  analysisPath: '/tmp/analysis.jsonl', captures: [], readCapture: vi.fn(), parseProviderRequest: vi.fn(), parseProviderResponse: vi.fn(), json: vi.fn(), reportError: vi.fn(),
 });
 
 describe('ServerPluginRegistry', () => {

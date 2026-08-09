@@ -85,7 +85,7 @@ export default function App() {
           onRetry={() => { setListLoading(true); void refresh(); }}
         />
       </aside>
-      <DetailPane capture={selected} />
+      <DetailPane capture={selected} onSelectCapture={select} />
     </main>
   );
 }

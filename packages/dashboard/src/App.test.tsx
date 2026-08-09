@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { InputDiffAnalysis, RawCapture } from '@prompt-prism/plugins/dashboard';
+import type { InputDiffAnalysis, OutputCapture, RawCapture } from '@prompt-prism/plugins/dashboard';
 import App from './App';
 import type { CaptureSummary } from './types';
 
@@ -36,6 +36,17 @@ const rawDetails: Record<string, RawCapture> = {
   },
 };
 
+const outputDetails: Record<string, OutputCapture> = {
+  'newest-capture': { output: {
+    adapter_id: 'anthropic', id: 'message-new', model: 'newest-model', role: 'assistant', stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 12 }, content: [{ type: 'text', text: 'newest output' }],
+  } },
+  'older-capture': { output: {
+    adapter_id: 'anthropic', id: null, model: null, role: null, stop_reason: null, usage: {}, content: [],
+    error: { type: 'authentication_error', message: 'unauthorized' },
+  } },
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/_pp/');
@@ -47,7 +58,7 @@ describe('App', () => {
       const url = String(input);
       if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200, headers: { 'content-type': 'application/json' } });
       const id = decodeURIComponent(url.split('/').at(-1)!);
-      const value = url.includes('/raw/') ? rawDetails[id] : details[id];
+      const value = url.includes('/raw/') ? rawDetails[id] : url.includes('/output/') ? outputDetails[id] : details[id];
       return new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } });
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -59,12 +70,19 @@ describe('App', () => {
     expect(screen.getByText('Prompt & response inspector')).toBeVisible();
     expect(screen.queryByText('Prompt cache debugger')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /newest-model/i })).toHaveAttribute('data-selected');
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Trace', 'Raw']);
     expect(screen.getAllByText('HTTP 200')[0]).toHaveClass('status-label--good');
     expect(screen.getAllByText('api.stepfun.com')[0]).toBeVisible();
     expect(await screen.findByText('newest prompt')).toBeVisible();
     expect(screen.queryByText(/cache read/i)).not.toBeInTheDocument();
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('newest-capture');
     expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/newest-capture', expect.anything());
+    expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/output/newest-capture', expect.anything());
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Output' }));
+    expect(screen.getByRole('tab', { name: 'Output' })).toHaveAttribute('data-active');
+    expect(await screen.findByText('newest output')).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/output/newest-capture', expect.anything());
 
     await userEvent.click(screen.getByRole('tab', { name: 'Raw' }));
     expect(screen.getByRole('tab', { name: 'Raw' })).toHaveAttribute('data-active');

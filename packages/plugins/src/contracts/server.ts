@@ -23,7 +23,16 @@ export interface ModelInputSnapshot {
   primary_section_id: string;
   primary_sequence?: JsonValue[];
   sections: ModelInputSection[];
+  conversation?: ConversationMessage[];
 }
+
+export interface ConversationTextBlock { type: 'text'; text: string; }
+export interface ConversationReasoningBlock { type: 'reasoning'; text: string; }
+export interface ConversationToolCallBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; }
+export interface ConversationToolResultBlock { type: 'tool_result'; tool_call_id: string | null; content: JsonValue; is_error: boolean | null; }
+export interface ConversationUnknownBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
+export type ConversationContentBlock = ConversationTextBlock | ConversationReasoningBlock | ConversationToolCallBlock | ConversationToolResultBlock | ConversationUnknownBlock;
+export interface ConversationMessage { role: string; content: ConversationContentBlock[]; }
 
 export interface Usage {
   input_tokens?: number;
@@ -32,16 +41,37 @@ export interface Usage {
   cache_read_input_tokens?: number;
 }
 
+export interface TextOutputBlock { type: 'text'; text: string; }
+export interface ReasoningOutputBlock { type: 'reasoning'; text: string; }
+export interface ToolCallOutputBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; input_raw?: string; }
+export interface UnknownOutputBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
+export type ModelOutputBlock = TextOutputBlock | ReasoningOutputBlock | ToolCallOutputBlock | UnknownOutputBlock;
+export interface ProviderError { type: string | null; message: string; details?: JsonValue; }
+export interface ModelOutputSnapshot {
+  adapter_id: string;
+  id: string | null;
+  model: string | null;
+  role: string | null;
+  stop_reason: string | null;
+  content: ModelOutputBlock[];
+  usage: Usage;
+  error?: ProviderError;
+}
+export interface ProviderRequest { model: string | null; messages: Message[]; input: ModelInputSnapshot; }
+export interface ProviderResponse { usage: Usage; output: ModelOutputSnapshot | null; }
+
+export type RawHeaders = Record<string, string | string[] | undefined>;
+
 export interface RawRequest {
   method: string;
   url: string;
-  headers: Record<string, string | string[] | undefined>;
+  headers: RawHeaders;
   body: string;
 }
 
 export interface RawResponse {
   status: number | null;
-  headers: Record<string, string | string[] | undefined>;
+  headers: RawHeaders;
   body: string;
 }
 
@@ -53,6 +83,8 @@ export interface Capture {
   messages: Message[];
   adapter_id?: string;
   prompt_input?: ModelInputSnapshot;
+  model_output?: ModelOutputSnapshot;
+  trace_id?: string;
   usage: Usage;
   upstream_host?: string;
   request?: RawRequest;
@@ -68,6 +100,7 @@ export interface CaptureIndexEntry {
   usage: Usage;
   response_status?: number | null;
   upstream_host?: string;
+  trace_id?: string;
   file_ref: string;
   messages: Message[];
   adapter_id?: string;
@@ -78,6 +111,8 @@ export interface ServerPluginContext {
   analysisPath: string;
   captures: readonly CaptureIndexEntry[];
   readCapture(id: string): Promise<Capture | null>;
+  parseProviderRequest(adapterId: string, body: string): ProviderRequest;
+  parseProviderResponse(adapterId: string, body: string, contentType?: string): ProviderResponse;
   json(response: ServerResponse, status: number, value: unknown): void;
   reportError(pluginId: string, error: unknown): void;
 }

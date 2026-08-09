@@ -135,13 +135,14 @@ function publicSession(session: DemoSession): Json {
   };
 }
 
-function modelFor(baseUrl: URL, modelId: string): Model<'anthropic-messages'> {
+function modelFor(baseUrl: URL, modelId: string, traceId: string): Model<'anthropic-messages'> {
   return {
     id: modelId,
     name: modelId,
     provider: 'anthropic',
     api: 'anthropic-messages',
     baseUrl: baseUrl.href.replace(/\/$/, ''),
+    headers: { 'x-prompt-prism-trace-id': traceId },
     reasoning: false,
     input: ['text'],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
@@ -212,7 +213,7 @@ export async function startDemo(options: StartDemoOptions = {}) {
     const { session: agent } = await agentSessionFactory({
       cwd: workspace,
       agentDir: path.join(workspace, '.pi-demo'),
-      model: modelFor(baseUrl, model),
+      model: modelFor(baseUrl, model, id),
       thinkingLevel: 'off',
       modelRuntime,
       resourceLoader,

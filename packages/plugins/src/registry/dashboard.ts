@@ -7,6 +7,7 @@ export function defineDetailTab<Data>(definition: DetailTabPluginDefinition<Data
     id: definition.id,
     label: definition.label,
     order: definition.order,
+    pollIntervalMs: definition.pollIntervalMs,
     load: definition.load ? async (capture, signal) => definition.load!(capture, signal) : undefined,
     render: (props) => createElement(definition.Panel, props as DetailTabPanelProps<Data>),
   };

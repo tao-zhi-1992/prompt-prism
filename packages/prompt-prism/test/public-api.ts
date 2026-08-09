@@ -1,4 +1,4 @@
-import { createPromptPrism, type Analysis, type Capture, type PromptPrismOptions, type Usage } from 'prompt-prism';
+import { createPromptPrism, type Analysis, type Capture, type ConversationMessage, type ModelOutputSnapshot, type PromptPrismOptions, type Usage } from 'prompt-prism';
 
 const options: PromptPrismOptions = {
   upstreamUrl: 'http://127.0.0.1:8787/v1/messages',
@@ -11,13 +11,21 @@ const options: PromptPrismOptions = {
 };
 
 const usage: Usage = { input_tokens: 1, cache_read_input_tokens: 1 };
+const conversation: ConversationMessage[] = [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }];
+const output: ModelOutputSnapshot = {
+  adapter_id: 'anthropic', id: 'message', model: 'test-model', role: 'assistant', stop_reason: 'end_turn',
+  content: [{ type: 'text', text: 'hello' }], usage,
+};
 const capture: Capture = {
   id: 'capture',
   timestamp: new Date().toISOString(),
   token_hash: 'token',
   model: 'test-model',
   messages: [{ role: 'user', content: 'hello' }],
-  usage
+  usage,
+  trace_id: 'session:one',
+  prompt_input: { adapter_id: 'anthropic', primary_section_id: 'messages', sections: [], conversation },
+  model_output: output,
 };
 
 const analysis: Analysis = {

@@ -6,14 +6,14 @@
 
 **Inspect exactly what your model receives.**
 
-Prompt Prism is a zero-runtime-dependency local proxy for model APIs. It forwards responses immediately—including SSE streams—while capturing a redacted copy in the background and showing how the complete model input differs from its closest related request. Anthropic Messages is the first built-in API format; the adapter registry is designed for additional formats.
+Prompt Prism is a zero-runtime-dependency local proxy for model APIs. It forwards responses immediately—including SSE streams—while capturing a redacted copy in the background, showing input changes, structured model output, and multi-request Agent traces. Anthropic Messages is the first built-in API format; the adapter registry is designed for additional formats.
 
 ![Prompt Prism dashboard showing captured requests and an Input Diff](docs/dashboard.png)
 
 ```text
 your app  ──►  http://127.0.0.1:8787  ──►  api.anthropic.com
                        │
-                       └──► capture + Input Diff + dashboard
+                       └──► capture + Input Diff + Output + Trace + dashboard
 ```
 
 ## Quick start
@@ -111,7 +111,7 @@ pnpm start
 pnpm test
 ```
 
-The Dashboard is built with React, TypeScript, Vite, and Base UI. Its page shell lives in `packages/dashboard/`. Built-in detail plugins live in `packages/plugins/`, with each plugin's Dashboard panel, server hooks, styles, and tests maintained together. Input Diff and Raw are registered through the same internal contracts; they are compiled into the Dashboard and into `packages/prompt-prism/dist/internal/plugins.js`. The production Dashboard bundle is generated in `packages/prompt-prism/public/dashboard/` and served under `/_pp/`.
+The Dashboard is built with React, TypeScript, Vite, and Base UI. Its page shell lives in `packages/dashboard/`. Built-in detail plugins live in `packages/plugins/`, with each plugin's Dashboard panel, server hooks, styles, and tests maintained together. Input Diff, Output, Trace, and Raw are registered through the same internal contracts; they are compiled into the Dashboard and into `packages/prompt-prism/dist/internal/plugins.js`. The production Dashboard bundle is generated in `packages/prompt-prism/public/dashboard/` and served under `/_pp/`.
 
 ```bash
 pnpm dashboard:dev # Vite development server

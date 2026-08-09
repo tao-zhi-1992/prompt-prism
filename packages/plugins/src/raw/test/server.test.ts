@@ -10,6 +10,8 @@ function context(capture: unknown): ServerPluginContext {
     analysisPath: '/tmp/analysis.jsonl',
     captures: [],
     readCapture: vi.fn().mockResolvedValue(capture),
+    parseProviderRequest: vi.fn(),
+    parseProviderResponse: vi.fn(),
     json: vi.fn(),
     reportError: vi.fn(),
   };

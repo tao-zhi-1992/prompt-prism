@@ -63,6 +63,7 @@ export class CaptureStore {
       usage: capture.usage,
       response_status: capture.response?.status,
       upstream_host: capture.upstream_host,
+      trace_id: capture.trace_id,
       file_ref: fileRef,
       messages: capture.messages,
       adapter_id: capture.adapter_id,

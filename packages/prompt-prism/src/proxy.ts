@@ -11,7 +11,9 @@ import { loadBuiltinPluginRuntime } from './plugin-runtime.js';
 import type { Capture, PromptPrismInstance, PromptPrismOptions, RawHeaders, StartedPromptPrism } from './types.js';
 
 const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
+const INTERNAL_HEADERS = new Set(['x-prompt-prism-trace-id']);
 const SENSITIVE = /^(authorization|proxy-authorization|x-api-key|api-key|cookie|set-cookie)$/i;
+const TRACE_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const rootBrandFiles = new Map([
   ['/favicon.ico', { file: 'favicon.ico', contentType: 'image/x-icon' }],
   ['/apple-touch-icon.png', { file: 'apple-touch-icon.png', contentType: 'image/png' }]
@@ -37,7 +39,9 @@ function serveRootBrandAsset(request: http.IncomingMessage, response: http.Serve
 
 function forwardedHeaders(headers: http.IncomingHttpHeaders, upstreamUrl: URL): http.OutgoingHttpHeaders {
   const result: http.OutgoingHttpHeaders = {};
-  for (const [name, value] of Object.entries(headers)) if (!HOP_BY_HOP.has(name.toLowerCase())) result[name] = value;
+  for (const [name, value] of Object.entries(headers)) {
+    if (!HOP_BY_HOP.has(name.toLowerCase()) && !INTERNAL_HEADERS.has(name.toLowerCase())) result[name] = value;
+  }
   result.host = upstreamUrl.host;
   return result;
 }
@@ -55,6 +59,12 @@ function redactedHeaders(headers: http.IncomingHttpHeaders): RawHeaders {
 function tokenIdentity(headers: http.IncomingHttpHeaders): string {
   const secret = headers['x-api-key'] || headers.authorization || headers['api-key'] || 'anonymous';
   return crypto.createHash('sha256').update(String(secret)).digest('hex').slice(0, 16);
+}
+
+function traceIdentity(headers: http.IncomingHttpHeaders): string | undefined {
+  const value = headers['x-prompt-prism-trace-id'];
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return typeof candidate === 'string' && TRACE_ID.test(candidate) ? candidate : undefined;
 }
 
 export function parseUpstreamUrl(value: string | URL): URL {
@@ -83,6 +93,8 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     analysisPath: store.analysisPath,
     captures: store.captures,
     readCapture: (id) => store.readCapture(id),
+    parseProviderRequest: (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body),
+    parseProviderResponse: (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType),
     json,
     reportError: (pluginId, error) => console.error(`[prompt-prism:${pluginId}]`, error instanceof Error ? error.message : String(error)),
   });
@@ -117,7 +129,8 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
         let parsedRequest;
         try { parsedRequest = adapter.parseRequest(requestBody); }
         catch { return; }
-        const { usage } = adapter.parseResponse(responseBody, upstreamResponse.headers['content-type']);
+        const parsedResponse = adapter.parseResponse(responseBody, upstreamResponse.headers['content-type']);
+        const traceId = traceIdentity(request.headers);
         const capture: Capture = {
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString(),
@@ -126,7 +139,9 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
           messages: parsedRequest.messages,
           adapter_id: adapter.id,
           prompt_input: parsedRequest.input,
-          usage,
+          usage: parsedResponse.usage,
+          ...(parsedResponse.output ? { model_output: parsedResponse.output } : {}),
+          ...(traceId ? { trace_id: traceId } : {}),
           upstream_host: upstreamUrl.host,
           request: { method: request.method ?? 'GET', url: request.url ?? '/', headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
           response: { status: upstreamResponse.statusCode ?? null, headers: redactedHeaders(upstreamResponse.headers), body: responseBody.toString('utf8') }

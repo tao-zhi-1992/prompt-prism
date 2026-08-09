@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { dashboardPluginRegistry, type CaptureSummary, type DetailTabPlugin } from '@prompt-prism/plugins/dashboard';
 
-type Resource = { status: 'loading' } | { status: 'ready'; data: unknown } | { status: 'error'; error: string };
+type Resource = { status: 'loading' } | { status: 'ready'; data: unknown; refreshError?: string } | { status: 'error'; error: string };
 
-export function DetailPane({ capture }: { capture: CaptureSummary | null }) {
+export function DetailPane({ capture, onSelectCapture }: { capture: CaptureSummary | null; onSelectCapture?: (id: string) => void }) {
   const plugins = dashboardPluginRegistry.plugins;
   const [tab, setTab] = useState(plugins[0]?.id ?? '');
   const cache = useRef(new Map<string, Resource>());
@@ -14,21 +14,36 @@ export function DetailPane({ capture }: { capture: CaptureSummary | null }) {
   const key = capture && activePlugin ? `${activePlugin.id}:${capture.id}` : null;
 
   useEffect(() => {
-    if (!capture || !activePlugin?.load || !key || cache.current.has(key)) return;
-    const controller = new AbortController();
-    cache.current.set(key, { status: 'loading' });
-    render((value) => value + 1);
-    activePlugin.load(capture, controller.signal).then((data) => {
-      if (controller.signal.aborted) return;
-      cache.current.set(key, { status: 'ready', data });
-      render((value) => value + 1);
-    }).catch((error: unknown) => {
-      if (controller.signal.aborted) return;
-      cache.current.set(key, { status: 'error', error: error instanceof Error ? error.message : String(error) });
-      render((value) => value + 1);
-    });
+    if (!capture || !activePlugin?.load || !key) return;
+    let controller: AbortController | null = null;
+    let inFlight = false;
+    const load = (background: boolean) => {
+      if (inFlight) return;
+      inFlight = true;
+      controller = new AbortController();
+      const previous = cache.current.get(key);
+      if (!background) {
+        cache.current.set(key, { status: 'loading' });
+        render((value) => value + 1);
+      }
+      activePlugin.load!(capture, controller.signal).then((data) => {
+        if (controller?.signal.aborted) return;
+        cache.current.set(key, { status: 'ready', data });
+        render((value) => value + 1);
+      }).catch((error: unknown) => {
+        if (controller?.signal.aborted) return;
+        const message = error instanceof Error ? error.message : String(error);
+        cache.current.set(key, background && previous?.status === 'ready'
+          ? { ...previous, refreshError: message }
+          : { status: 'error', error: message });
+        render((value) => value + 1);
+      }).finally(() => { inFlight = false; });
+    };
+    if (!cache.current.has(key)) load(false);
+    const timer = activePlugin.pollIntervalMs ? window.setInterval(() => load(true), activePlugin.pollIntervalMs) : null;
     return () => {
-      controller.abort();
+      controller?.abort();
+      if (timer !== null) window.clearInterval(timer);
       if (cache.current.get(key)?.status === 'loading') cache.current.delete(key);
     };
   }, [activePlugin, key, retryVersion]);
@@ -55,7 +70,9 @@ export function DetailPane({ capture }: { capture: CaptureSummary | null }) {
     data: resource?.status === 'ready' ? resource.data : null,
     loading: Boolean(activePlugin.load) && (!resource || resource.status === 'loading'),
     error: resource?.status === 'error' ? resource.error : null,
+    refreshError: resource?.status === 'ready' ? resource.refreshError ?? null : null,
     retry,
+    selectCapture: onSelectCapture ?? (() => {}),
   };
 
   return (

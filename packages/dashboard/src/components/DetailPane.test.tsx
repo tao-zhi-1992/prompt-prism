@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DetailPane } from './DetailPane';
@@ -25,13 +25,14 @@ const analysis = (id: string) => ({
   cache_hit_below_expected: false,
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('DetailPane plugin host', () => {
   it('supports keyboard tab selection and only loads the active plugin', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/input-diff/')) return new Response(JSON.stringify(analysis('one')), { status: 200 });
+      if (url.includes('/output/')) return new Response(JSON.stringify({ output: null }), { status: 200 });
       return new Response(JSON.stringify({ request: null, response: null }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -43,8 +44,9 @@ describe('DetailPane plugin host', () => {
     const diffTab = screen.getByRole('tab', { name: 'Input Diff' });
     diffTab.focus();
     await userEvent.keyboard('{ArrowRight}{Enter}');
-    expect(screen.getByRole('tab', { name: 'Raw' })).toHaveAttribute('data-active');
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/raw/one', expect.anything()));
+    expect(screen.getByRole('tab', { name: 'Output' })).toHaveAttribute('data-active');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/output/one', expect.anything()));
+    expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/one', expect.anything());
   });
 
   it('retries a failed load and caches the successful result', async () => {
@@ -76,5 +78,35 @@ describe('DetailPane plugin host', () => {
     rerender(<DetailPane capture={capture('two')} />);
     await waitFor(() => expect(firstSignal?.aborted).toBe(true));
     expect(await screen.findByText(/"two"/)).toBeVisible();
+  });
+
+  it('polls only the active polling plugin without overlapping requests and aborts on cleanup', async () => {
+    vi.useFakeTimers();
+    let traceCalls = 0;
+    let pollingSignal: AbortSignal | undefined;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/input-diff/')) return Promise.resolve(new Response(JSON.stringify(analysis('one')), { status: 200 }));
+      if (url.includes('/trace/')) {
+        traceCalls += 1;
+        if (traceCalls === 1) return Promise.resolve(new Response(JSON.stringify({ id: 'trace', source: 'explicit', selected_capture_id: 'one', truncated: false, calls: [] }), { status: 200 }));
+        pollingSignal = init?.signal ?? undefined;
+        return new Promise<Response>(() => undefined);
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const view = render(<DetailPane capture={capture('one')} />);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    fireEvent.click(screen.getByRole('tab', { name: 'Trace' }));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(traceCalls).toBe(1);
+    await act(async () => { vi.advanceTimersByTime(3_000); await Promise.resolve(); });
+    expect(traceCalls).toBe(2);
+    await act(async () => { vi.advanceTimersByTime(6_000); await Promise.resolve(); });
+    expect(traceCalls).toBe(2);
+    view.unmount();
+    expect(pollingSignal?.aborted).toBe(true);
   });
 });

@@ -7,6 +7,33 @@ export interface Usage {
   cache_read_input_tokens?: number;
 }
 
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | { [key: string]: JsonValue } | JsonValue[];
+export interface TextOutputBlock { type: 'text'; text: string; }
+export interface ReasoningOutputBlock { type: 'reasoning'; text: string; }
+export interface ToolCallOutputBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; input_raw?: string; }
+export interface UnknownOutputBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
+export type ModelOutputBlock = TextOutputBlock | ReasoningOutputBlock | ToolCallOutputBlock | UnknownOutputBlock;
+export interface ProviderError { type: string | null; message: string; details?: JsonValue; }
+export interface ModelOutputSnapshot {
+  adapter_id: string;
+  id: string | null;
+  model: string | null;
+  role: string | null;
+  stop_reason: string | null;
+  content: ModelOutputBlock[];
+  usage: Usage;
+  error?: ProviderError;
+}
+
+export interface ConversationTextBlock { type: 'text'; text: string; }
+export interface ConversationReasoningBlock { type: 'reasoning'; text: string; }
+export interface ConversationToolCallBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; }
+export interface ConversationToolResultBlock { type: 'tool_result'; tool_call_id: string | null; content: JsonValue; is_error: boolean | null; }
+export interface ConversationUnknownBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
+export type ConversationContentBlock = ConversationTextBlock | ConversationReasoningBlock | ConversationToolCallBlock | ConversationToolResultBlock | ConversationUnknownBlock;
+export interface ConversationMessage { role: string; content: ConversationContentBlock[]; }
+
 export interface CaptureSummary {
   id: string;
   timestamp: string;
@@ -15,6 +42,7 @@ export interface CaptureSummary {
   usage?: Usage;
   response_status?: number | null;
   upstream_host?: string;
+  trace_id?: string;
   file_ref: string;
   analysis?: unknown;
 }
@@ -24,13 +52,16 @@ export interface DetailTabPanelProps<Data> {
   data: Data | null;
   loading: boolean;
   error: string | null;
+  refreshError: string | null;
   retry: () => void;
+  selectCapture: (id: string) => void;
 }
 
 export interface DetailTabPluginDefinition<Data> {
   id: string;
   label: string;
   order: number;
+  pollIntervalMs?: number;
   load?: (capture: CaptureSummary, signal: AbortSignal) => Promise<Data>;
   Panel: ComponentType<DetailTabPanelProps<Data>>;
 }
@@ -39,6 +70,7 @@ export interface DetailTabPlugin {
   id: string;
   label: string;
   order: number;
+  pollIntervalMs?: number;
   load?: (capture: CaptureSummary, signal: AbortSignal) => Promise<unknown>;
   render: (props: DetailTabPanelProps<unknown>) => ReactNode;
 }
