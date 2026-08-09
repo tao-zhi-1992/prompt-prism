@@ -2,6 +2,8 @@
 node_modules/
 data/
 coverage/
+example/dist/
+example/.workspaces/
 packages/prompt-prism/public/dashboard/
 packages/prompt-prism/dist/
 packages/prompt-prism/README.md

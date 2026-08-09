@@ -27,4 +27,23 @@ describe('DiffPanel', () => {
     expect(container.querySelector('.diff-insert')).toBeNull();
     expect(container.querySelector('.diff-equal')).toHaveTextContent('first prompt');
   });
+
+  it('renders formatted JSON and expanded prompt lines with dual line numbers', () => {
+    render(<DiffPanel loading={false} error={null} onRetry={vi.fn()} analysis={{
+      id: 'multiline', timestamp: '2026-08-09T06:00:00.000Z', matched_parent_id: 'parent',
+      matched_message_count: 1, divergence_point: 10, estimated_cacheable_tokens: 2,
+      actual_cache_read_tokens: 0, estimated_cache_miss: 2, cache_hit_below_expected: false,
+      diff: [{ type: 'equal', value: '{"content":"first\\nsecond\\r\\nthird"}' }],
+    }} />);
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(5);
+    expect(screen.getByRole('rowheader', { name: 'Old line 1' })).toHaveTextContent('1');
+    expect(screen.getByRole('rowheader', { name: 'New line 5' })).toHaveTextContent('5');
+    expect(rows[0]).toHaveTextContent('{');
+    expect(rows[1]).toHaveTextContent('"content": "first');
+    expect(rows[2]).toHaveTextContent('second');
+    expect(rows[3]).toHaveTextContent('third"');
+    expect(rows[4]).toHaveTextContent('}');
+    expect(screen.getByText('Formatted JSON diff')).toBeVisible();
+  });
 });

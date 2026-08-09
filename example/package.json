@@ -4,10 +4,20 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "node --env-file-if-exists=.env server.js",
-    "test": "node --test test/integration/*.test.js"
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prestart": "pnpm build",
+    "start": "node --env-file-if-exists=.env dist/server.js",
+    "test": "tsx --test test/integration/*.test.ts"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "^0.84.1",
+    "@earendil-works/pi-coding-agent": "^0.84.1",
     "prompt-prism": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.11",
+    "typescript": "^7.0.2"
   }
 }

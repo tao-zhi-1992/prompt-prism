@@ -50,7 +50,7 @@ import { createPromptPrism, parseUpstreamUrl, startPromptPrism } from 'prompt-pr
 
 ## Agent demo
 
-The repository includes a small multi-turn chat Agent for exercising Prompt Prism. The Demo points at local Prism, while Prism alone owns the complete model-provider endpoint URL.
+The repository includes a Pi-powered Coding Agent for exercising Prompt Prism. Each browser session gets an isolated copy of a small TypeScript REST service. A single task naturally creates model → tool → model traffic, making cache prefixes and diffs visible in Prism.
 
 ```text
 browser chat → Demo Agent (:3000) → Prompt Prism (:8787) → model provider
@@ -67,14 +67,16 @@ cp example/.env.example example/.env
 pnpm demo
 ```
 
-Then open the Agent chat at [http://127.0.0.1:3000/](http://127.0.0.1:3000/).
+Then open the Agent chat at [http://127.0.0.1:3000/](http://127.0.0.1:3000/). Ask it to investigate the failing pagination test and approve each requested tool call. Sessions are in memory; their generated workspaces are retained under `example/.workspaces/` for inspection and are recreated by **Reset workspace**.
 
-Required variables (see [.env.example](.env.example)):
+Required variables (see [example/.env.example](example/.env.example)):
 
 - `DEMO_MODEL_PROVIDER_TOKEN`: provider credential sent through Prism by the Demo backend.
 - `DEMO_AGENT_MODEL`: model selected by the Demo Agent.
 
 `DEMO_BASE_URL` is optional and defaults to `http://127.0.0.1:8787`; do not include `/v1`. Demo appends `/v1/messages`. It identifies Prism, not the real model provider. `DEMO_PORT` is also optional and defaults to `3000`.
+
+The Demo intentionally uses complete Bash access after an explicit browser approval. Its workspace is a convenience boundary, not a system sandbox: approve commands only when you trust them.
 
 For any third-party Anthropic-compatible program, temporarily point its Base URL at Prism:
 
