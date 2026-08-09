@@ -49,6 +49,8 @@ const outputDetails: Record<string, OutputCapture> = {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.localStorage.removeItem('prompt-prism-locale');
+  document.documentElement.lang = '';
   window.history.replaceState(null, '', '/_pp/');
 });
 
@@ -105,5 +107,34 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: 'Input Diff' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/input-diff/older-capture', expect.anything()));
+  });
+
+  it('switches and persists Chinese across the shell and built-in tabs', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures.slice(0, 1)), { status: 200 });
+      if (url.includes('/input-diff/')) return new Response(JSON.stringify(details['newest-capture']), { status: 200 });
+      if (url.includes('/output/')) return new Response(JSON.stringify(outputDetails['newest-capture']), { status: 200 });
+      if (url.includes('/trace/')) return new Response(JSON.stringify({ id: 'trace-1', source: 'explicit', selected_capture_id: 'newest-capture', truncated: false, calls: [] }), { status: 200 });
+      return new Response(JSON.stringify(rawDetails['newest-capture']), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    await screen.findByRole('button', { name: /newest-model/i });
+    await userEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: /中文/ }));
+
+    expect(screen.getByText('提示词与响应检查器')).toBeVisible();
+    expect(screen.getByText('请求')).toBeVisible();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['输入差异', '输出', '追踪', '原始数据']);
+    expect(window.localStorage.getItem('prompt-prism-locale')).toBe('zh-CN');
+    expect(document.documentElement.lang).toBe('zh-CN');
+
+    await userEvent.click(screen.getByRole('tab', { name: '输出' }));
+    expect(await screen.findByText('文本')).toBeVisible();
+    await userEvent.click(screen.getByRole('tab', { name: '原始数据' }));
+    expect(await screen.findByRole('region', { name: '请求' })).toBeVisible();
+    await userEvent.click(screen.getByRole('tab', { name: '追踪' }));
+    expect(await screen.findByText('调用数')).toBeVisible();
   });
 });

@@ -15,6 +15,8 @@ export type {
   Usage,
 } from './contracts/dashboard.js';
 export { defineDetailTab, DetailTabRegistry } from './registry/dashboard.js';
+export { I18nProvider, LOCALE_STORAGE_KEY, resolveLocale, useI18n } from './i18n/index.js';
+export type { Locale, TranslationKey } from './i18n/index.js';
 export type { InputDiffAnalysis, InputDiffSection, InputDiffSectionState } from './input-diff/dashboard/InputDiffPanel.js';
 export type { RawCapture, RawHeaders } from './raw/dashboard/RawPanel.js';
 export type { OutputCapture } from './output/dashboard/OutputPanel.js';

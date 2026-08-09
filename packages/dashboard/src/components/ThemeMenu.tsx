@@ -1,10 +1,11 @@
 import { Menu } from '@base-ui/react/menu';
 import type { ThemePreference } from '../theme';
+import { useI18n, type TranslationKey } from '@prompt-prism/plugins/dashboard';
 
-const options: Array<{ value: ThemePreference; label: string; icon: 'system' | 'light' | 'dark' }> = [
-  { value: 'system', label: 'System', icon: 'system' },
-  { value: 'light', label: 'Light', icon: 'light' },
-  { value: 'dark', label: 'Dark', icon: 'dark' },
+const options: Array<{ value: ThemePreference; label: TranslationKey; icon: 'system' | 'light' | 'dark' }> = [
+  { value: 'system', label: 'theme.system', icon: 'system' },
+  { value: 'light', label: 'theme.light', icon: 'light' },
+  { value: 'dark', label: 'theme.dark', icon: 'dark' },
 ];
 
 function ThemeIcon({ type }: { type: 'system' | 'light' | 'dark' }) {
@@ -21,22 +22,23 @@ export function ThemeMenu({ preference, onPreferenceChange }: {
   preference: ThemePreference;
   onPreferenceChange: (preference: ThemePreference) => void;
 }) {
+  const { t } = useI18n();
   const selected = options.find((option) => option.value === preference)!;
 
   return (
     <Menu.Root>
-      <Menu.Trigger className="theme-trigger" aria-label={`Theme: ${selected.label}`} title={`Theme: ${selected.label}`}>
+      <Menu.Trigger className="theme-trigger" aria-label={`${t('theme.label')}: ${t(selected.label)}`} title={`${t('theme.label')}: ${t(selected.label)}`}>
         <ThemeIcon type={selected.icon} />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner sideOffset={7} align="end" className="theme-positioner">
-          <Menu.Popup className="theme-popup" aria-label="Theme">
-            <div className="theme-menu-label">Theme</div>
+          <Menu.Popup className="theme-popup" aria-label={t('theme.label')}>
+            <div className="theme-menu-label">{t('theme.label')}</div>
             <Menu.RadioGroup value={preference} onValueChange={(value) => onPreferenceChange(value as ThemePreference)}>
               {options.map((option) => (
                 <Menu.RadioItem key={option.value} value={option.value} className="theme-option">
                   <ThemeIcon type={option.icon} />
-                  <span>{option.label}</span>
+                  <span>{t(option.label)}</span>
                   <Menu.RadioItemIndicator className="theme-option-indicator">✓</Menu.RadioItemIndicator>
                 </Menu.RadioItem>
               ))}

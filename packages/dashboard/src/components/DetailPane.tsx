@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
-import { dashboardPluginRegistry, type CaptureSummary, type DetailTabPlugin } from '@prompt-prism/plugins/dashboard';
+import { dashboardPluginRegistry, useI18n, type CaptureSummary, type DetailTabPlugin, type TranslationKey } from '@prompt-prism/plugins/dashboard';
 
 type Resource = { status: 'loading' } | { status: 'ready'; data: unknown; refreshError?: string } | { status: 'error'; error: string };
 
 export function DetailPane({ capture, onSelectCapture }: { capture: CaptureSummary | null; onSelectCapture?: (id: string) => void }) {
+  const { t } = useI18n();
   const plugins = dashboardPluginRegistry.plugins;
   const [tab, setTab] = useState(plugins[0]?.id ?? '');
   const cache = useRef(new Map<string, Resource>());
@@ -52,13 +53,13 @@ export function DetailPane({ capture, onSelectCapture }: { capture: CaptureSumma
     return (
       <section className="detail-empty">
         <span className="empty-prism empty-prism--large" aria-hidden="true">◇</span>
-        <h2>Select a request</h2>
-        <p>Choose a capture from the request list to inspect its model input.</p>
+        <h2>{t('detail.selectTitle')}</h2>
+        <p>{t('detail.selectDescription')}</p>
       </section>
     );
   }
 
-  if (!activePlugin) return <section className="detail-empty"><h2>No detail plugins</h2></section>;
+  if (!activePlugin) return <section className="detail-empty"><h2>{t('detail.noPlugins')}</h2></section>;
 
   const resource = key ? cache.current.get(key) : undefined;
   const retry = () => {
@@ -78,8 +79,8 @@ export function DetailPane({ capture, onSelectCapture }: { capture: CaptureSumma
   return (
     <section className="detail-pane">
       <Tabs.Root className="detail-tabs" value={activePlugin.id} onValueChange={setTab}>
-        <Tabs.List className="tab-list" aria-label="Request detail views">
-          {plugins.map((plugin) => <Tabs.Tab className="tab" value={plugin.id} key={plugin.id}>{plugin.label}</Tabs.Tab>)}
+        <Tabs.List className="tab-list" aria-label={t('detail.tabsLabel')}>
+          {plugins.map((plugin) => <Tabs.Tab className="tab" value={plugin.id} key={plugin.id}>{t(`tab.${plugin.id}` as TranslationKey)}</Tabs.Tab>)}
           <Tabs.Indicator className="tab-indicator" />
         </Tabs.List>
         {plugins.map((plugin: DetailTabPlugin) => (

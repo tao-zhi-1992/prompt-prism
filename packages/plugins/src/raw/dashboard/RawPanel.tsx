@@ -1,6 +1,7 @@
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { ReactNode } from 'react';
 import { JsonView } from 'react-json-view-lite';
+import { useI18n } from '../../i18n/index.js';
 
 export type RawHeaders = Record<string, string | string[] | undefined>;
 export type RawCapture = {
@@ -15,7 +16,6 @@ const jsonStyles = {
   numberValue: 'json-number', otherValue: 'json-other', punctuation: 'json-punctuation',
   collapseIcon: 'json-expander json-expander--open', expandIcon: 'json-expander json-expander--closed',
   collapsedContent: 'json-collapsed', quotesForFieldNames: true, stringifyStringValues: true,
-  ariaLables: { collapseJson: 'Collapse JSON node', expandJson: 'Expand JSON node' },
 };
 
 const expandAllNodes = () => true;
@@ -34,27 +34,31 @@ function httpStatusTone(status?: number | null): 'good' | 'bad' | 'neutral' {
 }
 
 function Headers({ headers }: { headers: RawHeaders }) {
+  const { t } = useI18n();
   const entries = Object.entries(headers ?? {}).sort(([left], [right]) => left.localeCompare(right));
-  if (!entries.length) return <span className="raw-empty-inline">(no headers)</span>;
+  if (!entries.length) return <span className="raw-empty-inline">{t('raw.noHeaders')}</span>;
   return <dl className="raw-headers">{entries.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{Array.isArray(value) ? value.join('\n') : value ?? ''}</dd></div>)}</dl>;
 }
 
 function Body({ body, label }: { body: string; label: string }) {
+  const { t } = useI18n();
   const json = parseJsonObject(body);
-  if (!body) return <pre className="raw-text raw-text--empty">(empty body)</pre>;
-  if (json) return <JsonView data={json} style={jsonStyles} shouldExpandNode={expandAllNodes} clickToExpandNode aria-label={`${label} JSON body`} />;
+  if (!body) return <pre className="raw-text raw-text--empty">{t('raw.emptyBody')}</pre>;
+  if (json) return <JsonView data={json} style={{ ...jsonStyles, ariaLables: { collapseJson: t('json.collapse'), expandJson: t('json.expand') } }} shouldExpandNode={expandAllNodes} clickToExpandNode aria-label={t('raw.jsonBody', { kind: label })} />;
   return <pre className="raw-text">{body}</pre>;
 }
 
-function RawSection({ kind, meta, headers, body }: { kind: 'Request' | 'Response'; meta: ReactNode; headers: RawHeaders; body: string }) {
+function RawSection({ kind, meta, headers, body }: { kind: 'request' | 'response'; meta: ReactNode; headers: RawHeaders; body: string }) {
+  const { t } = useI18n();
+  const label = t(`raw.${kind}`);
   return (
-    <section className="raw-section" aria-label={kind}>
-      <header className="raw-section-header"><strong>{kind}</strong><span>{meta}</span></header>
+    <section className="raw-section" aria-label={label}>
+      <header className="raw-section-header"><strong>{label}</strong><span>{meta}</span></header>
       <ScrollArea.Root className="raw-scroll">
         <ScrollArea.Viewport className="scroll-viewport">
           <ScrollArea.Content className="raw-content">
-            <div className="raw-block"><span className="raw-block-label">Headers</span><Headers headers={headers} /></div>
-            <div className="raw-block"><span className="raw-block-label">Body</span><Body body={body} label={kind} /></div>
+            <div className="raw-block"><span className="raw-block-label">{t('raw.headers')}</span><Headers headers={headers} /></div>
+            <div className="raw-block"><span className="raw-block-label">{t('raw.body')}</span><Body body={body} label={label} /></div>
           </ScrollArea.Content>
         </ScrollArea.Viewport>
         <ScrollArea.Scrollbar className="scrollbar"><ScrollArea.Thumb className="scrollbar-thumb" /></ScrollArea.Scrollbar>
@@ -66,17 +70,18 @@ function RawSection({ kind, meta, headers, body }: { kind: 'Request' | 'Response
 }
 
 export function RawPanel({ raw, loading, error, onRetry }: { raw: RawCapture | null; loading: boolean; error: string | null; onRetry: () => void }) {
-  if (loading) return <div className="detail-message"><span className="spinner" />Loading raw data…</div>;
-  if (error) return <div className="detail-message detail-message--error"><strong>Couldn’t load raw data</strong><span>{error}</span><button onClick={onRetry}>Try again</button></div>;
+  const { t } = useI18n();
+  if (loading) return <div className="detail-message"><span className="spinner" />{t('raw.loading')}</div>;
+  if (error) return <div className="detail-message detail-message--error"><strong>{t('raw.loadFailed')}</strong><span>{error}</span><button onClick={onRetry}>{t('common.tryAgain')}</button></div>;
   if (!raw) return null;
   return (
     <div className="raw-panel">
       {raw.request
-        ? <RawSection kind="Request" meta={<><b>{raw.request.method}</b><code>{raw.request.url}</code></>} headers={raw.request.headers} body={raw.request.body} />
-        : <section className="raw-section raw-unavailable" aria-label="Request"><strong>Request</strong><span>Raw request data is unavailable for this capture.</span></section>}
+        ? <RawSection kind="request" meta={<><b>{raw.request.method}</b><code>{raw.request.url}</code></>} headers={raw.request.headers} body={raw.request.body} />
+        : <section className="raw-section raw-unavailable" aria-label={t('raw.request')}><strong>{t('raw.request')}</strong><span>{t('raw.requestUnavailable')}</span></section>}
       {raw.response
-        ? <RawSection kind="Response" meta={<b className={`http-status http-status--${httpStatusTone(raw.response.status)}`}>{raw.response.status ?? 'Unknown status'}</b>} headers={raw.response.headers} body={raw.response.body} />
-        : <section className="raw-section raw-unavailable" aria-label="Response"><strong>Response</strong><span>Raw response data is unavailable for this capture.</span></section>}
+        ? <RawSection kind="response" meta={<b className={`http-status http-status--${httpStatusTone(raw.response.status)}`}>{raw.response.status ?? t('raw.unknownStatus')}</b>} headers={raw.response.headers} body={raw.response.body} />
+        : <section className="raw-section raw-unavailable" aria-label={t('raw.response')}><strong>{t('raw.response')}</strong><span>{t('raw.responseUnavailable')}</span></section>}
     </div>
   );
 }

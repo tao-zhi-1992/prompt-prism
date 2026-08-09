@@ -267,6 +267,7 @@ button:focus-visible {
 }
 .theme-trigger:hover, .theme-trigger[data-popup-open] { color: var(--text); border-color: var(--line-strong); background: var(--surface-3); }
 .theme-trigger svg, .theme-option svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
+.language-trigger { font: 700 13px/1 var(--font-mono); }
 .theme-positioner { z-index: 20; outline: 0; }
 .theme-popup {
   min-width: 154px;

@@ -1,8 +1,8 @@
-export function formatTime(value: string) {
+export function formatTime(value: string, locale?: string) {
   const date = new Date(value);
   const today = new Date();
   const sameDay = date.toDateString() === today.toDateString();
-  return new Intl.DateTimeFormat(undefined, sameDay
+  return new Intl.DateTimeFormat(locale, sameDay
     ? { hour: '2-digit', minute: '2-digit', second: '2-digit' }
     : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 }

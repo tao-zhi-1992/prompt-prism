@@ -1,6 +1,7 @@
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { CaptureSummary } from '../types';
 import { RequestListItem } from './RequestListItem';
+import { useI18n } from '@prompt-prism/plugins/dashboard';
 
 type Props = {
   captures: CaptureSummary[];
@@ -12,28 +13,29 @@ type Props = {
 };
 
 export function RequestList({ captures, selectedId, loading, error, onSelect, onRetry }: Props) {
+  const { t } = useI18n();
   return (
     <ScrollArea.Root className="request-scroll">
       <ScrollArea.Viewport className="scroll-viewport">
-        <ScrollArea.Content className="request-list" role="list" aria-label="Captured requests">
+        <ScrollArea.Content className="request-list" role="list" aria-label={t('requests.listLabel')}>
           {error && captures.length === 0 && (
             <div className="list-message list-message--error">
-              <strong>Couldn’t load requests</strong>
+              <strong>{t('requests.loadFailed')}</strong>
               <span>{error}</span>
-              <button onClick={onRetry}>Try again</button>
+              <button onClick={onRetry}>{t('common.tryAgain')}</button>
             </div>
           )}
-          {error && captures.length > 0 && <div className="list-warning">Refresh paused · {error}</div>}
+          {error && captures.length > 0 && <div className="list-warning">{t('requests.refreshPaused', { error })}</div>}
           {!error && loading && captures.length === 0 && (
-            <div className="request-skeletons" aria-label="Loading requests">
+            <div className="request-skeletons" aria-label={t('requests.loading')}>
               {Array.from({ length: 5 }, (_, index) => <span key={index} />)}
             </div>
           )}
           {!error && !loading && captures.length === 0 && (
             <div className="list-message">
               <span className="empty-prism" aria-hidden="true">◇</span>
-              <strong>No requests yet</strong>
-              <span>Send a Messages request through the proxy to begin.</span>
+              <strong>{t('requests.emptyTitle')}</strong>
+              <span>{t('requests.emptyDescription')}</span>
             </div>
           )}
           {captures.map((capture) => (

@@ -5,7 +5,9 @@ import { Logo } from './components/Logo';
 import { RequestList } from './components/RequestList';
 import { DetailPane } from './components/DetailPane';
 import { ThemeMenu } from './components/ThemeMenu';
+import { LanguageMenu } from './components/LanguageMenu';
 import { useTheme } from './theme';
+import { I18nProvider, useI18n } from '@prompt-prism/plugins/dashboard';
 
 const POLL_INTERVAL = 3000;
 
@@ -13,8 +15,9 @@ function captureFromUrl() {
   return new URLSearchParams(window.location.search).get('capture');
 }
 
-export default function App() {
+function Dashboard() {
   const { preference, setPreference } = useTheme();
+  const { locale, setLocale, t } = useI18n();
   const [captures, setCaptures] = useState<CaptureSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(captureFromUrl);
   const [listLoading, setListLoading] = useState(true);
@@ -66,14 +69,15 @@ export default function App() {
     <main className="app-shell">
       <aside className="requests-pane">
         <header className="app-header">
-          <div className="brand"><Logo /><div><h1>Prompt Prism</h1><span>Prompt &amp; response inspector</span></div></div>
+          <div className="brand"><Logo /><div><h1>Prompt Prism</h1><span>{t('brand.subtitle')}</span></div></div>
           <div className="header-actions">
-            <div className="live-status"><span />Live</div>
+            <div className="live-status"><span />{t('status.live')}</div>
+            <LanguageMenu locale={locale} onLocaleChange={setLocale} />
             <ThemeMenu preference={preference} onPreferenceChange={setPreference} />
           </div>
         </header>
         <div className="request-heading">
-          <h2>Requests</h2>
+          <h2>{t('requests.title')}</h2>
           <span>{captures.length}</span>
         </div>
         <RequestList
@@ -88,4 +92,8 @@ export default function App() {
       <DetailPane capture={selected} onSelectCapture={select} />
     </main>
   );
+}
+
+export default function App() {
+  return <I18nProvider><Dashboard /></I18nProvider>;
 }

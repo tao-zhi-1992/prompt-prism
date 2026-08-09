@@ -1,6 +1,7 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import { buildFormattedDiff, type DiffPart } from './formattedDiff.js';
+import { useI18n, type TranslationKey } from '../../i18n/index.js';
 
 export type InputDiffSectionState = 'changed' | 'unchanged' | 'baseline' | 'empty' | 'unavailable';
 
@@ -40,20 +41,24 @@ function legacySections(analysis: InputDiffAnalysis): InputDiffSection[] {
 }
 
 function statusLabel(state: InputDiffSectionState): string {
-  if (state === 'empty') return 'Not set';
-  if (state === 'unavailable') return 'Unavailable for historical capture';
-  return state[0]!.toUpperCase() + state.slice(1);
+  return state;
+}
+
+function sectionKey(id: string): TranslationKey | null {
+  return ({ messages: 'section.messages', system: 'section.system', tools: 'section.tools', options: 'section.options' } as const)[id as 'messages'] ?? null;
 }
 
 function DiffCode({ section, hasParent }: { section: InputDiffSection; hasParent: boolean }) {
+  const { t } = useI18n();
+  const label = sectionKey(section.id) ? t(sectionKey(section.id)!) : section.label;
   if (section.state === 'unavailable') return null;
   const rows = buildFormattedDiff(section.diff, hasParent);
   return (
-    <div className={`diff-code${hasParent ? '' : ' diff-code--baseline'}`} role="table" aria-label={`${section.label} diff with line numbers`}>
+    <div className={`diff-code${hasParent ? '' : ' diff-code--baseline'}`} role="table" aria-label={t('diff.lineLabel', { section: label })}>
       {rows.map((row, lineIndex) => (
         <div className={`diff-line diff-line--${row.type}`} role="row" key={lineIndex}>
-          <span className="diff-line-number" role="rowheader" aria-label={row.oldLineNumber ? `Old line ${row.oldLineNumber}` : undefined} aria-hidden={row.oldLineNumber === null}>{row.oldLineNumber ?? ''}</span>
-          <span className="diff-line-number diff-line-number--new" role="rowheader" aria-label={row.newLineNumber ? `New line ${row.newLineNumber}` : undefined} aria-hidden={row.newLineNumber === null}>{row.newLineNumber ?? ''}</span>
+          <span className="diff-line-number" role="rowheader" aria-label={row.oldLineNumber ? t('diff.oldLine', { line: row.oldLineNumber }) : undefined} aria-hidden={row.oldLineNumber === null}>{row.oldLineNumber ?? ''}</span>
+          <span className="diff-line-number diff-line-number--new" role="rowheader" aria-label={row.newLineNumber ? t('diff.newLine', { line: row.newLineNumber }) : undefined} aria-hidden={row.newLineNumber === null}>{row.newLineNumber ?? ''}</span>
           <span className="diff-line-marker" aria-hidden="true">{row.type === 'delete' ? '−' : row.type === 'insert' ? '+' : ''}</span>
           <code className="diff-line-content" role="cell">
             {row.parts.map((part, partIndex) => <span className={`diff-${part.type}`} key={`${partIndex}-${part.type}`}>{part.value}</span>)}
@@ -66,10 +71,12 @@ function DiffCode({ section, hasParent }: { section: InputDiffSection; hasParent
 }
 
 function SectionHeader({ section }: { section: InputDiffSection }) {
+  const { t } = useI18n();
+  const key = sectionKey(section.id);
   return (
     <Collapsible.Trigger className="input-diff-section-header">
-      <span>{section.label}</span>
-      <span className={`input-diff-section-state input-diff-section-state--${section.state}`}>{statusLabel(section.state)}</span>
+      <span>{key ? t(key) : section.label}</span>
+      <span className={`input-diff-section-state input-diff-section-state--${section.state}`}>{t(`diff.state.${statusLabel(section.state)}` as TranslationKey)}</span>
       <span className="input-diff-chevron" aria-hidden="true" />
     </Collapsible.Trigger>
   );
@@ -86,15 +93,16 @@ function InputSection({ section, hasParent }: { section: InputDiffSection; hasPa
 }
 
 export function InputDiffPanel({ analysis, loading, error, onRetry }: { analysis: InputDiffAnalysis | null; loading: boolean; error: string | null; onRetry: () => void }) {
-  if (loading) return <div className="detail-message"><span className="spinner" />Loading input diff…</div>;
-  if (error) return <div className="detail-message detail-message--error"><strong>Couldn’t load input diff</strong><span>{error}</span><button onClick={onRetry}>Try again</button></div>;
+  const { t } = useI18n();
+  if (loading) return <div className="detail-message"><span className="spinner" />{t('diff.loading')}</div>;
+  if (error) return <div className="detail-message detail-message--error"><strong>{t('diff.loadFailed')}</strong><span>{error}</span><button onClick={onRetry}>{t('common.tryAgain')}</button></div>;
   if (!analysis) return null;
   const hasParent = Boolean(analysis.matched_parent_id);
   return (
     <div className="input-diff-panel">
       <div className="input-diff-toolbar">
-        <span>{hasParent ? `Compared with ${analysis.matched_parent_id!.slice(0, 8)}` : 'No related request'}</span>
-        {hasParent && <div className="diff-legend"><span className="legend-delete">Removed</span><span className="legend-insert">Added</span></div>}
+        <span>{hasParent ? t('diff.comparedWith', { id: analysis.matched_parent_id!.slice(0, 8) }) : t('diff.noRelated')}</span>
+        {hasParent && <div className="diff-legend"><span className="legend-delete">{t('diff.removed')}</span><span className="legend-insert">{t('diff.added')}</span></div>}
       </div>
       <ScrollArea.Root className="input-diff-scroll">
         <ScrollArea.Viewport className="scroll-viewport">

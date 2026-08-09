@@ -9,6 +9,7 @@ import type {
   UnknownOutputBlock,
   Usage,
 } from '../../contracts/dashboard.js';
+import { useI18n, type TranslationKey } from '../../i18n/index.js';
 
 export type OutputCapture = { output: ModelOutputSnapshot | null };
 
@@ -19,7 +20,6 @@ const jsonStyles = {
   numberValue: 'output-json-number', otherValue: 'output-json-other', punctuation: 'output-json-punctuation',
   collapseIcon: 'output-json-expander output-json-expander--open', expandIcon: 'output-json-expander output-json-expander--closed',
   collapsedContent: 'output-json-collapsed', quotesForFieldNames: true, stringifyStringValues: true,
-  ariaLables: { collapseJson: 'Collapse JSON node', expandJson: 'Expand JSON node' },
 };
 
 const expandAllNodes = () => true;
@@ -29,8 +29,9 @@ function isContainer(value: JsonValue | null): value is { [key: string]: JsonVal
 }
 
 function JsonBody({ value, label }: { value: JsonValue | null; label: string }) {
-  if (isContainer(value)) return <JsonView data={value} style={jsonStyles} shouldExpandNode={expandAllNodes} clickToExpandNode aria-label={label} />;
-  if (value === null) return <pre className="output-code output-code--empty">(no arguments)</pre>;
+  const { t } = useI18n();
+  if (isContainer(value)) return <JsonView data={value} style={{ ...jsonStyles, ariaLables: { collapseJson: t('json.collapse'), expandJson: t('json.expand') } }} shouldExpandNode={expandAllNodes} clickToExpandNode aria-label={label} />;
+  if (value === null) return <pre className="output-code output-code--empty">{t('output.noArguments')}</pre>;
   return <pre className="output-code">{JSON.stringify(value, null, 2)}</pre>;
 }
 
@@ -45,37 +46,40 @@ function ToggleHeader({ label, detail }: { label: string; detail?: string }) {
 }
 
 function ToolCall({ block }: { block: ToolCallOutputBlock }) {
+  const { t } = useI18n();
   return (
     <section className="output-block output-tool-call">
       <header className="output-block-header">
-        <strong>Tool call</strong>
+        <strong>{t('output.toolCall')}</strong>
         <span><b>{block.name}</b>{block.id && <code>{block.id}</code>}</span>
       </header>
       <div className="output-block-body">
         {block.input_raw
-          ? <><span className="output-invalid-label">Invalid JSON arguments</span><pre className="output-code">{block.input_raw}</pre></>
-          : <JsonBody value={block.input} label={`${block.name} tool arguments`} />}
+          ? <><span className="output-invalid-label">{t('output.invalidJsonArguments')}</span><pre className="output-code">{block.input_raw}</pre></>
+          : <JsonBody value={block.input} label={t('output.toolArguments', { name: block.name })} />}
       </div>
     </section>
   );
 }
 
 function Unknown({ block }: { block: UnknownOutputBlock }) {
+  const { t } = useI18n();
   return (
     <Collapsible.Root className="output-block" defaultOpen={false}>
-      <ToggleHeader label="Unknown block" detail={block.provider_type} />
+      <ToggleHeader label={t('output.unknownBlock')} detail={block.provider_type} />
       <Collapsible.Panel className="output-collapsible-panel">
-        <div className="output-block-body"><JsonBody value={block.value} label={`${block.provider_type} provider block`} /></div>
+        <div className="output-block-body"><JsonBody value={block.value} label={t('output.providerBlock', { type: block.provider_type })} /></div>
       </Collapsible.Panel>
     </Collapsible.Root>
   );
 }
 
 function ContentBlock({ block, index }: { block: ModelOutputBlock; index: number }) {
+  const { t } = useI18n();
   if (block.type === 'text') {
     return (
       <Collapsible.Root className="output-block" defaultOpen>
-        <ToggleHeader label="Text" />
+        <ToggleHeader label={t('output.text')} />
         <Collapsible.Panel className="output-collapsible-panel"><pre className="output-text">{block.text}</pre></Collapsible.Panel>
       </Collapsible.Root>
     );
@@ -83,7 +87,7 @@ function ContentBlock({ block, index }: { block: ModelOutputBlock; index: number
   if (block.type === 'reasoning') {
     return (
       <Collapsible.Root className="output-block" defaultOpen>
-        <ToggleHeader label="Thinking" />
+        <ToggleHeader label={t('output.thinking')} />
         <Collapsible.Panel className="output-collapsible-panel"><pre className="output-text output-thinking">{block.text}</pre></Collapsible.Panel>
       </Collapsible.Root>
     );
@@ -92,29 +96,31 @@ function ContentBlock({ block, index }: { block: ModelOutputBlock; index: number
   return <Unknown block={block} key={`${block.provider_type}-${index}`} />;
 }
 
-const metrics: Array<{ key: keyof Usage; label: string }> = [
-  { key: 'input_tokens', label: 'Input' },
-  { key: 'output_tokens', label: 'Output' },
-  { key: 'cache_creation_input_tokens', label: 'Cache create' },
-  { key: 'cache_read_input_tokens', label: 'Cache read' },
+const metrics: Array<{ key: keyof Usage; label: TranslationKey }> = [
+  { key: 'input_tokens', label: 'usage.input' },
+  { key: 'output_tokens', label: 'usage.output' },
+  { key: 'cache_creation_input_tokens', label: 'usage.cacheCreate' },
+  { key: 'cache_read_input_tokens', label: 'usage.cacheRead' },
 ];
 
 function Summary({ output }: { output: ModelOutputSnapshot }) {
+  const { t } = useI18n();
   return (
     <div className="output-summary">
-      <div className="output-stop"><span>Stop reason</span><code>{output.stop_reason ?? '—'}</code></div>
+      <div className="output-stop"><span>{t('output.stopReason')}</span><code>{output.stop_reason ?? '—'}</code></div>
       <dl className="output-usage">
-        {metrics.map(({ key, label }) => <div key={key}><dt>{label}</dt><dd>{output.usage[key] ?? '—'}</dd></div>)}
+        {metrics.map(({ key, label }) => <div key={key}><dt>{t(label)}</dt><dd>{output.usage[key] ?? '—'}</dd></div>)}
       </dl>
     </div>
   );
 }
 
 export function OutputPanel({ result, loading, error, onRetry }: { result: OutputCapture | null; loading: boolean; error: string | null; onRetry: () => void }) {
-  if (loading) return <div className="detail-message"><span className="spinner" />Loading output…</div>;
-  if (error) return <div className="detail-message detail-message--error"><strong>Couldn’t load output</strong><span>{error}</span><button onClick={onRetry}>Try again</button></div>;
+  const { t } = useI18n();
+  if (loading) return <div className="detail-message"><span className="spinner" />{t('output.loading')}</div>;
+  if (error) return <div className="detail-message detail-message--error"><strong>{t('output.loadFailed')}</strong><span>{error}</span><button onClick={onRetry}>{t('common.tryAgain')}</button></div>;
   if (!result) return null;
-  if (!result.output) return <div className="detail-message"><strong>Output unavailable</strong><span>This capture has no recognizable model response. Check Raw for the original response.</span></div>;
+  if (!result.output) return <div className="detail-message"><strong>{t('output.unavailable')}</strong><span>{t('output.unavailableDescription')}</span></div>;
   const output = result.output;
   const orderedContent = [...output.content.filter((block) => block.type === 'text'), ...output.content.filter((block) => block.type !== 'text')];
   return (
@@ -123,9 +129,9 @@ export function OutputPanel({ result, loading, error, onRetry }: { result: Outpu
       <ScrollArea.Root className="output-scroll">
         <ScrollArea.Viewport className="scroll-viewport">
           <ScrollArea.Content className="output-content">
-            {output.error && <section className="output-provider-error"><strong>{output.error.type ?? 'Provider error'}</strong><span>{output.error.message}</span></section>}
+            {output.error && <section className="output-provider-error"><strong>{output.error.type ?? t('output.providerError')}</strong><span>{output.error.message}</span></section>}
             {orderedContent.map((block, index) => <ContentBlock block={block} index={index} key={`${block.type}-${index}`} />)}
-            {!output.error && output.content.length === 0 && <div className="output-empty">(no output content)</div>}
+            {!output.error && output.content.length === 0 && <div className="output-empty">{t('output.noContent')}</div>}
           </ScrollArea.Content>
         </ScrollArea.Viewport>
         <ScrollArea.Scrollbar className="scrollbar"><ScrollArea.Thumb className="scrollbar-thumb" /></ScrollArea.Scrollbar>
