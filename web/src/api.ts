@@ -1,4 +1,4 @@
-import type { Analysis, CaptureSummary } from './types';
+import type { Analysis, CaptureSummary, RawCapture } from './types';
 
 async function readJson<T>(response: Response): Promise<T> {
   const value = await response.json();
@@ -12,4 +12,8 @@ export async function getCaptures(signal?: AbortSignal): Promise<CaptureSummary[
 
 export async function getDiff(id: string, signal?: AbortSignal): Promise<Analysis> {
   return readJson(await fetch(`/_pp/api/diff/${encodeURIComponent(id)}`, { signal, cache: 'no-store' }));
+}
+
+export async function getRawCapture(id: string, signal?: AbortSignal): Promise<RawCapture> {
+  return readJson(await fetch(`/_pp/api/raw/${encodeURIComponent(id)}`, { signal, cache: 'no-store' }));
 }

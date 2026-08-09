@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
-import type { Analysis, CaptureSummary } from './types';
+import type { Analysis, CaptureSummary, RawCapture } from './types';
 
 const captures: CaptureSummary[] = [
   {
@@ -22,6 +22,17 @@ const details: Record<string, Analysis> = {
   'older-capture': { ...captures[1].analysis!, diff: [{ type: 'insert', value: 'older prompt' }] },
 };
 
+const rawDetails: Record<string, RawCapture> = {
+  'newest-capture': {
+    request: { method: 'POST', url: '/v1/messages', headers: { 'content-type': 'application/json', 'x-api-key': '[REDACTED]' }, body: '{"model":"newest-model","messages":[{"role":"user","content":"hello"}]}' },
+    response: { status: 200, headers: { 'content-type': 'text/event-stream' }, body: 'event: message_stop\ndata: {}\n\n' },
+  },
+  'older-capture': {
+    request: { method: 'POST', url: '/v1/messages', headers: {}, body: '{"model":"older-model"}' },
+    response: { status: 401, headers: {}, body: '{"error":"unauthorized"}' },
+  },
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/_pp/');
@@ -33,7 +44,8 @@ describe('App', () => {
       const url = String(input);
       if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200, headers: { 'content-type': 'application/json' } });
       const id = decodeURIComponent(url.split('/').at(-1)!);
-      return new Response(JSON.stringify(details[id]), { status: 200, headers: { 'content-type': 'application/json' } });
+      const value = url.includes('/raw/') ? rawDetails[id] : details[id];
+      return new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } });
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -42,11 +54,25 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'newest-model' })).toBeVisible();
     expect(await screen.findByText('newest prompt')).toBeVisible();
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('newest-capture');
+    expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/newest-capture', expect.anything());
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Raw' }));
+    expect(screen.getByRole('tab', { name: 'Raw' })).toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: 'Diff' })).not.toHaveAttribute('data-active');
+    expect(await screen.findByRole('region', { name: 'Request' })).toHaveTextContent('newest-model');
+    expect(screen.getByRole('region', { name: 'Response' })).toHaveTextContent('message_stop');
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/raw/newest-capture', expect.anything());
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Diff' }));
+    expect(screen.getByRole('tab', { name: 'Diff' })).toHaveAttribute('data-active');
+    await userEvent.click(screen.getByRole('tab', { name: 'Raw' }));
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/_pp/api/raw/newest-capture')).toHaveLength(1);
 
     await userEvent.click(screen.getByRole('button', { name: /older-model/i }));
     expect(await screen.findByRole('heading', { name: 'older-model' })).toBeVisible();
-    expect(await screen.findByText('older prompt')).toBeVisible();
+    expect(await screen.findByText(/unauthorized/)).toBeVisible();
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('older-capture');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/diff/older-capture', expect.anything()));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/raw/older-capture', expect.anything()));
   });
 });

@@ -66,6 +66,25 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal('diff' in parsedLogs[0].analysis, false, 'list responses should not include detail diff data');
   const detail = await request({ port: proxyPort, pathname: `/_pp/api/diff/${parsedLogs[0].id}` });
   assert.equal(JSON.parse(detail.body).id, parsedLogs[0].id);
+  const raw = await request({ port: proxyPort, pathname: `/_pp/api/raw/${parsedLogs[0].id}` });
+  assert.equal(raw.status, 200);
+  const parsedRaw = JSON.parse(raw.body);
+  assert.equal(parsedRaw.request.method, 'POST');
+  assert.equal(parsedRaw.request.url, '/v1/messages?beta=1');
+  assert.equal(parsedRaw.request.headers['x-api-key'], '[REDACTED]');
+  assert.equal(parsedRaw.request.body, body);
+  assert.equal(parsedRaw.response.status, 200);
+  assert.equal(parsedRaw.response.headers['x-upstream'], 'yes');
+  assert.match(parsedRaw.response.body, /message_start/);
+  const missingRaw = await request({ port: proxyPort, pathname: '/_pp/api/raw/missing-capture' });
+  assert.equal(missingRaw.status, 404);
+
+  await prism.store.writeCapture({
+    id: 'legacy-capture', timestamp: '2026-08-09T00:00:00.000Z', token_hash: 'legacy',
+    model: 'legacy-model', messages: [], usage: {}
+  });
+  const legacyRaw = await request({ port: proxyPort, pathname: '/_pp/api/raw/legacy-capture' });
+  assert.deepEqual(JSON.parse(legacyRaw.body), { request: null, response: null });
 
   const dashboard = await request({ port: proxyPort, pathname: '/_pp/' });
   assert.equal(dashboard.status, 200);

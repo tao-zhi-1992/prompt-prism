@@ -32,3 +32,23 @@ export type CaptureSummary = {
   file_ref: string;
   analysis: Omit<Analysis, 'diff'> | null;
 };
+
+export type RawHeaders = Record<string, string | string[] | undefined>;
+
+export type RawRequest = {
+  method: string;
+  url: string;
+  headers: RawHeaders;
+  body: string;
+};
+
+export type RawResponse = {
+  status: number | null;
+  headers: RawHeaders;
+  body: string;
+};
+
+export type RawCapture = {
+  request: RawRequest | null;
+  response: RawResponse | null;
+};

@@ -76,6 +76,15 @@ export function createAdminHandler({ store, analyzer }) {
       if (!analysis) return json(response, 404, { error: 'Capture not found' });
       return json(response, 200, analysis);
     }
+    if (url.pathname.startsWith('/_pp/api/raw/')) {
+      const id = decodeURIComponent(url.pathname.slice('/_pp/api/raw/'.length));
+      const capture = await store.readCapture(id);
+      if (!capture) return json(response, 404, { error: 'Capture not found' });
+      return json(response, 200, {
+        request: capture.request ?? null,
+        response: capture.response ?? null
+      });
+    }
     if (url.pathname === '/_pp' || url.pathname === '/_pp/') return staticFile(response, 'index.html');
     if (url.pathname.startsWith('/_pp/brand/')) return brandFile(response, decodeURIComponent(url.pathname.slice('/_pp/brand/'.length)));
     if (url.pathname.startsWith('/_pp/assets/')) return staticFile(response, url.pathname.slice('/_pp/'.length));
