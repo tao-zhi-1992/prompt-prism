@@ -55,11 +55,11 @@ async function staticFile(response: http.ServerResponse, filename: string): Prom
   } catch { json(response, 404, { error: 'Not found' }); }
 }
 
-function logSummary(capture: CaptureIndexEntry, analyzer: { analyses: Map<string, Analysis> }): Omit<CaptureIndexEntry, 'messages'> & { analysis: Omit<Analysis, 'diff'> | null } {
-  const { messages: _messages, ...summary } = capture;
+function logSummary(capture: CaptureIndexEntry, analyzer: { analyses: Map<string, Analysis> }): Omit<CaptureIndexEntry, 'messages' | 'prompt_input'> & { analysis: Omit<Analysis, 'diff' | 'sections'> | null } {
+  const { messages: _messages, prompt_input: _promptInput, ...summary } = capture;
   const analysis = analyzer.analyses.get(capture.id);
   if (!analysis) return { ...summary, analysis: null };
-  const { diff: _diff, ...analysisSummary } = analysis;
+  const { diff: _diff, sections: _sections, ...analysisSummary } = analysis;
   return { ...summary, analysis: analysisSummary };
 }
 

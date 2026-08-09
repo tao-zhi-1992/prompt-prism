@@ -38,7 +38,7 @@ export function DetailPane({ capture }: { capture: CaptureSummary | null }) {
       <section className="detail-empty">
         <span className="empty-prism empty-prism--large" aria-hidden="true">◇</span>
         <h2>Select a request</h2>
-        <p>Choose a capture from the request list to inspect its prompt-cache diff.</p>
+        <p>Choose a capture from the request list to inspect its model input.</p>
       </section>
     );
   }

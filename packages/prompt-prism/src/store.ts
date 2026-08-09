@@ -64,7 +64,9 @@ export class CaptureStore {
       response_status: capture.response?.status,
       upstream_host: capture.upstream_host,
       file_ref: fileRef,
-      messages: capture.messages
+      messages: capture.messages,
+      adapter_id: capture.adapter_id,
+      prompt_input: capture.prompt_input
     };
     await appendFile(this.capturesPath, `${JSON.stringify(indexEntry)}\n`);
     this.captures.push(indexEntry);

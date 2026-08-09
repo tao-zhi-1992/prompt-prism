@@ -34,6 +34,11 @@ test('persists HTTP status and upstream host in the capture index across restart
   const store = await new CaptureStore({ dataDir: dir }).init();
   await store.writeCapture({
     ...capture('http-metadata', '2026-01-01T00:00:00.000Z'),
+    adapter_id: 'anthropic',
+    prompt_input: {
+      adapter_id: 'anthropic', primary_section_id: 'messages',
+      sections: [{ id: 'messages', label: 'Messages', order: 10, value: [], compare_as: 'sequence', default_collapsed: false }]
+    },
     upstream_host: 'provider.example.com:8443',
     response: { status: 429, headers: {}, body: '{"error":"rate limited"}' }
   });
@@ -41,4 +46,6 @@ test('persists HTTP status and upstream host in the capture index across restart
   const restarted = await new CaptureStore({ dataDir: dir }).init();
   assert.equal(restarted.captures[0]?.response_status, 429);
   assert.equal(restarted.captures[0]?.upstream_host, 'provider.example.com:8443');
+  assert.equal(restarted.captures[0]?.adapter_id, 'anthropic');
+  assert.equal(restarted.captures[0]?.prompt_input?.primary_section_id, 'messages');
 });

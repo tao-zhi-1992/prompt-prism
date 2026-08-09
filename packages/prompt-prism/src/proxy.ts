@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CaptureStore } from './store.js';
-import anthropic from './adapter/anthropic.js';
+import { getProviderAdapter } from './adapter/registry.js';
 import { createAdminHandler, json } from './server.js';
 import { loadBuiltinPluginRuntime } from './plugin-runtime.js';
 import type { Capture, PromptPrismInstance, PromptPrismOptions, RawHeaders, StartedPromptPrism } from './types.js';
@@ -76,6 +76,7 @@ function openBrowser(url: string): void {
 
 export async function createPromptPrism(options: PromptPrismOptions = {}): Promise<PromptPrismInstance> {
   const upstreamUrl = parseUpstreamUrl(options.upstreamUrl ?? 'https://api.anthropic.com/v1/messages');
+  const adapter = getProviderAdapter(options.apiFormat);
   const store = await new CaptureStore({ dataDir: options.dataDir ?? path.resolve('data'), maxBytes: options.maxBytes }).init();
   const plugins = await loadBuiltinPluginRuntime();
   await plugins.init({
@@ -114,15 +115,17 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
         const requestBody = Buffer.concat(requestChunks);
         const responseBody = Buffer.concat(responseChunks);
         let parsedRequest;
-        try { parsedRequest = anthropic.parseRequest(requestBody); }
+        try { parsedRequest = adapter.parseRequest(requestBody); }
         catch { return; }
-        const { usage } = anthropic.parseResponse(responseBody, upstreamResponse.headers['content-type']);
+        const { usage } = adapter.parseResponse(responseBody, upstreamResponse.headers['content-type']);
         const capture: Capture = {
           id: crypto.randomUUID(),
           timestamp: new Date().toISOString(),
           token_hash: tokenIdentity(request.headers),
           model: parsedRequest.model,
           messages: parsedRequest.messages,
+          adapter_id: adapter.id,
+          prompt_input: parsedRequest.input,
           usage,
           upstream_host: upstreamUrl.host,
           request: { method: request.method ?? 'GET', url: request.url ?? '/', headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
@@ -143,7 +146,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     request.pipe(upstream);
   });
 
-  return { server, store, analyzer, upstreamUrl };
+  return { server, store, analyzer, upstreamUrl, apiFormat: adapter.id };
 }
 
 export async function startPromptPrism(options: PromptPrismOptions = {}): Promise<StartedPromptPrism> {
@@ -156,7 +159,7 @@ export async function startPromptPrism(options: PromptPrismOptions = {}): Promis
   const address = instance.server.address();
   const port = address && typeof address === 'object' ? address.port : requestedPort;
   const dashboard = `http://127.0.0.1:${port}/_pp/`;
-  console.log(`\n  Prompt Prism is running\n\n  Proxy        http://127.0.0.1:${port}\n  Dashboard    ${dashboard}\n  Upstream URL ${instance.upstreamUrl.href}\n\n  Point your Anthropic base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
+  console.log(`\n  Prompt Prism is running\n\n  Proxy        http://127.0.0.1:${port}\n  Dashboard    ${dashboard}\n  Upstream URL ${instance.upstreamUrl.href}\n  API format   ${instance.apiFormat}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
   if (options.open !== false) openBrowser(dashboard);
   return { ...instance, port, dashboard };
 }

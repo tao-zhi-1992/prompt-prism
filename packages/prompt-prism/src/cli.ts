@@ -5,11 +5,12 @@ function usage(): void {
   console.log(`Prompt Prism
 
 Usage:
-  pp start [--upstream-url URL] [--port NUMBER] [--data-dir PATH]
+  pp start [--upstream-url URL] [--api-format FORMAT] [--port NUMBER] [--data-dir PATH]
            [--max-storage SIZE] [--open | --no-open]
 
 Defaults:
   upstream-url https://api.anthropic.com/v1/messages
+  api-format   anthropic
   port         8787
   data-dir     ./data
   max-storage  1GB`);
@@ -41,6 +42,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
     args: args.slice(1),
     options: {
       'upstream-url': { type: 'string', default: 'https://api.anthropic.com/v1/messages' },
+      'api-format': { type: 'string', default: 'anthropic' },
       port: { type: 'string', default: '8787' },
       'data-dir': { type: 'string', default: './data' },
       'max-storage': { type: 'string', default: '1GB' },
@@ -57,6 +59,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid port: ${values.port}`);
   await startPromptPrism({
     upstreamUrl: values['upstream-url'],
+    apiFormat: values['api-format'],
     port,
     dataDir: values['data-dir'],
     maxBytes: parseBytes(values['max-storage']),

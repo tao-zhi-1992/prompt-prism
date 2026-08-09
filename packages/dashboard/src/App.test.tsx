@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Analysis, RawCapture } from '@prompt-prism/plugins/dashboard';
+import type { InputDiffAnalysis, RawCapture } from '@prompt-prism/plugins/dashboard';
 import App from './App';
 import type { CaptureSummary } from './types';
 
@@ -20,9 +20,9 @@ const captures: CaptureSummary[] = [
   },
 ];
 
-const details: Record<string, Analysis> = {
-  'newest-capture': { ...(captures[0].analysis as Omit<Analysis, 'diff'>), diff: [{ type: 'equal', value: 'newest prompt' }] },
-  'older-capture': { ...(captures[1].analysis as Omit<Analysis, 'diff'>), diff: [{ type: 'insert', value: 'older prompt' }] },
+const details: Record<string, InputDiffAnalysis> = {
+  'newest-capture': { ...(captures[0].analysis as Omit<InputDiffAnalysis, 'diff'>), diff: [{ type: 'equal', value: 'newest prompt' }] },
+  'older-capture': { ...(captures[1].analysis as Omit<InputDiffAnalysis, 'diff'>), diff: [{ type: 'insert', value: 'older prompt' }] },
 };
 
 const rawDetails: Record<string, RawCapture> = {
@@ -68,13 +68,13 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: 'Raw' }));
     expect(screen.getByRole('tab', { name: 'Raw' })).toHaveAttribute('data-active');
-    expect(screen.getByRole('tab', { name: 'Diff' })).not.toHaveAttribute('data-active');
+    expect(screen.getByRole('tab', { name: 'Input Diff' })).not.toHaveAttribute('data-active');
     expect(await screen.findByRole('region', { name: 'Request' })).toHaveTextContent('newest-model');
     expect(screen.getByRole('region', { name: 'Response' })).toHaveTextContent('message_stop');
     expect(fetchMock).toHaveBeenCalledWith('/_pp/api/raw/newest-capture', expect.anything());
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Diff' }));
-    expect(screen.getByRole('tab', { name: 'Diff' })).toHaveAttribute('data-active');
+    await userEvent.click(screen.getByRole('tab', { name: 'Input Diff' }));
+    expect(screen.getByRole('tab', { name: 'Input Diff' })).toHaveAttribute('data-active');
     await userEvent.click(screen.getByRole('tab', { name: 'Raw' }));
     expect(fetchMock.mock.calls.filter(([url]) => url === '/_pp/api/raw/newest-capture')).toHaveLength(1);
 
@@ -83,9 +83,9 @@ describe('App', () => {
     expect(await screen.findByText(/unauthorized/)).toBeVisible();
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('older-capture');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/raw/older-capture', expect.anything()));
-    expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/diff/older-capture', expect.anything());
+    expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/input-diff/older-capture', expect.anything());
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Diff' }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/diff/older-capture', expect.anything()));
+    await userEvent.click(screen.getByRole('tab', { name: 'Input Diff' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/input-diff/older-capture', expect.anything()));
   });
 });

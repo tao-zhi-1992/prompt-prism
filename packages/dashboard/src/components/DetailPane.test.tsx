@@ -31,16 +31,16 @@ describe('DetailPane plugin host', () => {
   it('supports keyboard tab selection and only loads the active plugin', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes('/diff/')) return new Response(JSON.stringify(analysis('one')), { status: 200 });
+      if (url.includes('/input-diff/')) return new Response(JSON.stringify(analysis('one')), { status: 200 });
       return new Response(JSON.stringify({ request: null, response: null }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<DetailPane capture={capture('one')} />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/diff/one', expect.anything()));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/input-diff/one', expect.anything()));
     expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/one', expect.anything());
 
-    const diffTab = screen.getByRole('tab', { name: 'Diff' });
+    const diffTab = screen.getByRole('tab', { name: 'Input Diff' });
     diffTab.focus();
     await userEvent.keyboard('{ArrowRight}{Enter}');
     expect(screen.getByRole('tab', { name: 'Raw' })).toHaveAttribute('data-active');

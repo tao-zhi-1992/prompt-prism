@@ -71,6 +71,8 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(firstCapture.response_status, 200);
   assert.equal(firstCapture.upstream_host, `127.0.0.1:${upstreamPort}`);
   assert.equal(stored.upstream_host, `127.0.0.1:${upstreamPort}`);
+  assert.equal(stored.adapter_id, 'anthropic');
+  assert.deepEqual(stored.prompt_input?.sections.map(({ id }) => id), ['messages', 'system', 'tools', 'options']);
 
   const logs = await request({ port: proxyPort, pathname: '/_pp/api/logs' });
   const parsedLogs = JSON.parse(logs.body);
@@ -79,9 +81,15 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(parsedLogs[0].upstream_host, `127.0.0.1:${upstreamPort}`);
   assert.equal(parsedLogs[0].analysis.actual_cache_read_tokens, 4);
   assert.equal('messages' in parsedLogs[0], false, 'list responses should not repeat complete prompts');
+  assert.equal('prompt_input' in parsedLogs[0], false, 'list responses should not repeat normalized input');
   assert.equal('diff' in parsedLogs[0].analysis, false, 'list responses should not include detail diff data');
-  const detail = await request({ port: proxyPort, pathname: `/_pp/api/diff/${parsedLogs[0].id}` });
-  assert.equal(JSON.parse(detail.body).id, parsedLogs[0].id);
+  assert.equal('sections' in parsedLogs[0].analysis, false, 'list responses should not include section diff data');
+  const detail = await request({ port: proxyPort, pathname: `/_pp/api/input-diff/${parsedLogs[0].id}` });
+  const parsedDetail = JSON.parse(detail.body);
+  assert.equal(parsedDetail.id, parsedLogs[0].id);
+  assert.deepEqual(parsedDetail.sections.map(({ id }: { id: string }) => id), ['messages', 'system', 'tools', 'options']);
+  const removedDiffRoute = await request({ port: proxyPort, pathname: `/_pp/api/diff/${parsedLogs[0].id}` });
+  assert.equal(removedDiffRoute.status, 404);
   const raw = await request({ port: proxyPort, pathname: `/_pp/api/raw/${parsedLogs[0].id}` });
   assert.equal(raw.status, 200);
   const parsedRaw = JSON.parse(raw.body);

@@ -2,6 +2,7 @@ import { createPromptPrism, type Analysis, type Capture, type PromptPrismOptions
 
 const options: PromptPrismOptions = {
   upstreamUrl: 'http://127.0.0.1:8787/v1/messages',
+  apiFormat: 'anthropic',
   dataDir: './data',
   maxBytes: 1024,
   port: 0,
@@ -34,6 +35,7 @@ const analysis: Analysis = {
 
 void createPromptPrism(options).then((instance) => {
   const server = instance.server;
+  const format = instance.apiFormat;
   const storedAnalysis = instance.analyzer.analyses.get(analysis.id);
-  return [server, storedAnalysis];
+  return [server, format, storedAnalysis];
 });

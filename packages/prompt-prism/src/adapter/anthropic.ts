@@ -1,4 +1,5 @@
-import type { JsonObject, Message, ProviderRequest, ProviderResponse, Usage } from '../types.js';
+import type { JsonObject, JsonValue, Message, ModelInputSection, ProviderRequest, ProviderResponse, Usage } from '../types.js';
+import type { ProviderAdapter } from './provider.js';
 
 function asObject(value: unknown): JsonObject {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as JsonObject : {};
@@ -10,6 +11,16 @@ function asMessages(value: unknown): Message[] {
 
 function numberValue(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function inputIdentity(value: JsonValue): JsonValue {
+  if (Array.isArray(value)) return value.map(inputIdentity);
+  if (value === null || typeof value !== 'object') return value;
+  const normalized: JsonObject = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key !== 'cache_control' && child !== undefined) normalized[key] = inputIdentity(child);
+  }
+  return normalized;
 }
 
 function normalizeUsage(usage: unknown = {}): Usage {
@@ -25,7 +36,16 @@ function normalizeUsage(usage: unknown = {}): Usage {
 export function parseRequest(body: Buffer | string): ProviderRequest {
   const value = Buffer.isBuffer(body) ? body.toString('utf8') : String(body || '');
   const parsed = asObject(JSON.parse(value));
-  return { model: typeof parsed.model === 'string' ? parsed.model : null, messages: asMessages(parsed.messages) };
+  const model = typeof parsed.model === 'string' ? parsed.model : null;
+  const messages = asMessages(parsed.messages);
+  const options = Object.fromEntries(Object.entries(parsed).filter(([key]) => !['messages', 'system', 'tools'].includes(key))) as JsonObject;
+  const sections: ModelInputSection[] = [
+    { id: 'messages', label: 'Messages', order: 10, value: messages, compare_as: 'sequence', default_collapsed: false },
+    { id: 'system', label: 'System', order: 20, value: (parsed.system ?? null) as JsonValue, compare_as: 'json', default_collapsed: true },
+    { id: 'tools', label: 'Tools', order: 30, value: (parsed.tools ?? []) as JsonValue, compare_as: 'json', default_collapsed: true },
+    { id: 'options', label: 'Request options', order: 40, value: options, compare_as: 'json', default_collapsed: true },
+  ];
+  return { model, messages, input: { adapter_id: 'anthropic', primary_section_id: 'messages', primary_sequence: messages.map(inputIdentity), sections } };
 }
 
 export function parseResponse(body: Buffer | string, contentType = ''): ProviderResponse {
@@ -50,4 +70,6 @@ export function parseResponse(body: Buffer | string, contentType = ''): Provider
   return { usage: normalizeUsage(usage) };
 }
 
-export default { parseRequest, parseResponse };
+const anthropic: ProviderAdapter = { id: 'anthropic', parseRequest, parseResponse };
+
+export default anthropic;

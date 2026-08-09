@@ -1,3 +1,4 @@
+/** Character operations used by each Input Diff section. */
 export type DiffType = 'equal' | 'insert' | 'delete';
 
 export interface DiffPart {

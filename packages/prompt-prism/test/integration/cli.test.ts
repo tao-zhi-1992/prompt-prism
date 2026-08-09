@@ -10,7 +10,15 @@ const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
 test('CLI documents upstream-url and removes the old routing options', async () => {
   const { stdout } = await run(process.execPath, [cli, '--help']);
   assert.match(stdout, /--upstream-url URL/);
+  assert.match(stdout, /--api-format FORMAT/);
   assert.doesNotMatch(stdout, /--base-url|--target|\btarget\b/i);
+});
+
+test('CLI rejects unknown API formats before starting', async () => {
+  await assert.rejects(
+    run(process.execPath, [cli, 'start', '--api-format', 'unknown', '--no-open']),
+    (error: unknown) => error instanceof Error && 'stderr' in error && /Unsupported API format: unknown/.test(String(error.stderr))
+  );
 });
 
 test('CLI reads and validates --upstream-url', async () => {

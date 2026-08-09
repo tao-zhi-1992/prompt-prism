@@ -1,25 +1,25 @@
 import type { PromptPrismServerPlugin } from '../../contracts/server.js';
-import { diffPluginMeta } from '../index.js';
-import { Analyzer } from './analyzer.js';
+import { inputDiffPluginMeta } from '../index.js';
+import { InputDiffAnalyzer } from './analyzer.js';
 
-export function createDiffServerPlugin(): PromptPrismServerPlugin & { getAnalyzer(): Analyzer } {
-  let analyzer: Analyzer | null = null;
+export function createInputDiffServerPlugin(): PromptPrismServerPlugin & { getAnalyzer(): InputDiffAnalyzer } {
+  let analyzer: InputDiffAnalyzer | null = null;
   const getAnalyzer = () => {
     if (!analyzer) throw new Error('Diff plugin has not been initialized');
     return analyzer;
   };
   return {
-    id: diffPluginMeta.id,
+    id: inputDiffPluginMeta.id,
     getAnalyzer,
     async init(context) {
-      analyzer = new Analyzer({ analysisPath: context.analysisPath });
+      analyzer = new InputDiffAnalyzer({ analysisPath: context.analysisPath });
       await analyzer.init(context.captures);
     },
-    async onCapture(capture) {
-      await getAnalyzer().analyze(capture);
+    async onCapture(capture, entry) {
+      await getAnalyzer().analyze(capture, entry);
     },
     onEvict(entry) {
-      getAnalyzer().remove(entry.id, entry.token_hash);
+      getAnalyzer().remove(entry);
     },
     async handleApi(request, response, subpath, context) {
       if (request.method !== 'GET') {

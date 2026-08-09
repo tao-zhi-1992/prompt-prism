@@ -4,16 +4,16 @@
 
 # Prompt Prism
 
-**See exactly where your prompt cache breaks.**
+**Inspect exactly what your model receives.**
 
-Prompt Prism is a zero-runtime-dependency local proxy for Anthropic's Messages API. It forwards responses immediately—including SSE streams—while capturing a redacted copy in the background and showing exactly where a conversation diverged from its best historical prefix.
+Prompt Prism is a zero-runtime-dependency local proxy for model APIs. It forwards responses immediately—including SSE streams—while capturing a redacted copy in the background and showing how the complete model input differs from its closest related request. Anthropic Messages is the first built-in API format; the adapter registry is designed for additional formats.
 
-![Prompt Prism dashboard showing cache results and a character-level diff](docs/dashboard.png)
+![Prompt Prism dashboard showing captured requests and an Input Diff](docs/dashboard.png)
 
 ```text
 your app  ──►  http://127.0.0.1:8787  ──►  api.anthropic.com
                        │
-                       └──► capture + character diff + dashboard
+                       └──► capture + Input Diff + dashboard
 ```
 
 ## Quick start
@@ -22,7 +22,7 @@ Requires Node.js 20 or later.
 
 ```bash
 npm install -g prompt-prism
-pp start --upstream-url https://provider.example.com/v1/messages
+pp start --upstream-url https://provider.example.com/v1/messages --api-format anthropic
 ```
 
 Then set the Anthropic SDK base URL to `http://127.0.0.1:8787`. Keep using your normal API key; authentication headers are forwarded but never stored in plaintext.
@@ -87,11 +87,13 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:8787 your-command
 ## CLI
 
 ```text
-pp start [--upstream-url URL] [--port NUMBER] [--data-dir PATH]
+pp start [--upstream-url URL] [--api-format FORMAT] [--port NUMBER] [--data-dir PATH]
          [--max-storage 1GB] [--open | --no-open]
 ```
 
 `--upstream-url` is the complete upstream HTTP or HTTPS endpoint, including its final path and optional query string. Prism always sends model traffic to this exact endpoint; it does not append, remove, or rewrite `/v1/messages` based on the client request path.
+
+`--api-format` selects the request/response adapter used for capture analysis. It currently defaults to and accepts `anthropic`; additional adapters can provide their own ordered Input Diff sections without changing the Dashboard.
 
 For example:
 
@@ -109,16 +111,16 @@ pnpm start
 pnpm test
 ```
 
-The Dashboard is built with React, TypeScript, Vite, and Base UI. Its page shell lives in `packages/dashboard/`. Built-in detail plugins live in `packages/plugins/`, with each plugin's Dashboard panel, server hooks, styles, and tests maintained together. Diff and Raw are registered through the same internal contracts; they are compiled into the Dashboard and into `packages/prompt-prism/dist/internal/plugins.js`. The production Dashboard bundle is generated in `packages/prompt-prism/public/dashboard/` and served under `/_pp/`.
+The Dashboard is built with React, TypeScript, Vite, and Base UI. Its page shell lives in `packages/dashboard/`. Built-in detail plugins live in `packages/plugins/`, with each plugin's Dashboard panel, server hooks, styles, and tests maintained together. Input Diff and Raw are registered through the same internal contracts; they are compiled into the Dashboard and into `packages/prompt-prism/dist/internal/plugins.js`. The production Dashboard bundle is generated in `packages/prompt-prism/public/dashboard/` and served under `/_pp/`.
 
 ```bash
 pnpm dashboard:dev # Vite development server
 pnpm build         # type-check and create the production bundle
 ```
 
-## How matching works
+## How Input Diff matching works
 
-Captures are grouped by a one-way SHA-256-derived API-token hash. Within a group, Prompt Prism selects the earlier capture with the most equal complete message objects; ties are broken by the longest serialized character prefix. It then calculates a Myers character diff and compares the prefix length (approximately four characters per token) with Anthropic's `cache_read_input_tokens`.
+Captures are grouped by API format, a one-way SHA-256-derived API-token hash, upstream host, and model. Prompt Prism only selects a parent when at least one complete primary input item matches from the beginning. It prefers the most equal items, then the longest serialized character prefix, then the newest request. The Input Diff adapter supplies ordered sections: Anthropic currently shows Messages first, followed by System, Tools, and Request options.
 
 The token estimate is diagnostic, not billing data: tokenization is model-dependent. The actual cache usage always comes from the provider response.
 

@@ -34,6 +34,7 @@ describe('RequestListItem', () => {
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByText('HTTP 200')).toHaveClass('status-label--good');
     expect(screen.getByText('api.stepfun.com')).toHaveAttribute('title', 'api.stepfun.com');
+    expect(screen.getByText('capture-')).toHaveAttribute('title', capture.id);
     expect(screen.queryByText('Below expected')).not.toBeInTheDocument();
     expect(screen.queryByText(/cached/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button'));

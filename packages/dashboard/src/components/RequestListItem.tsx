@@ -26,6 +26,7 @@ export function RequestListItem({ capture, selected, onSelect }: Props) {
         <span className="request-line request-line--secondary">
           <span className={`status-label status-label--${tone}`}>{formatHttpStatus(capture.response_status)}</span>
           <span className="request-host" title={capture.upstream_host}>{capture.upstream_host || 'Unknown host'}</span>
+          <span className="request-id" title={capture.id}>{capture.id.slice(0, 8)}</span>
         </span>
       </span>
     </button>

@@ -9,6 +9,22 @@ export interface Message extends JsonObject {
   content?: JsonValue;
 }
 
+export interface ModelInputSection {
+  id: string;
+  label: string;
+  order: number;
+  value: JsonValue;
+  compare_as: 'sequence' | 'json';
+  default_collapsed: boolean;
+}
+
+export interface ModelInputSnapshot {
+  adapter_id: string;
+  primary_section_id: string;
+  primary_sequence?: JsonValue[];
+  sections: ModelInputSection[];
+}
+
 export interface Usage {
   input_tokens?: number;
   output_tokens?: number;
@@ -35,6 +51,8 @@ export interface Capture {
   token_hash: string;
   model: string | null;
   messages: Message[];
+  adapter_id?: string;
+  prompt_input?: ModelInputSnapshot;
   usage: Usage;
   upstream_host?: string;
   request?: RawRequest;
@@ -52,6 +70,8 @@ export interface CaptureIndexEntry {
   upstream_host?: string;
   file_ref: string;
   messages: Message[];
+  adapter_id?: string;
+  prompt_input?: ModelInputSnapshot;
 }
 
 export interface ServerPluginContext {
