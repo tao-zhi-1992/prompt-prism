@@ -1,6 +1,5 @@
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { Analysis } from '../types';
-import { formatNumber } from '../format';
 import { buildFormattedDiff } from '../formattedDiff';
 
 type Props = {
@@ -9,15 +8,6 @@ type Props = {
   error: string | null;
   onRetry: () => void;
 };
-
-function Metric({ label, value, alert = false }: { label: string; value: string; alert?: boolean }) {
-  return (
-    <div className={`metric${alert ? ' metric--alert' : ''}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
 
 export function DiffPanel({ analysis, loading, error, onRetry }: Props) {
   if (loading) return <div className="detail-message"><span className="spinner" />Loading diff…</div>;
@@ -28,25 +18,10 @@ export function DiffPanel({ analysis, loading, error, onRetry }: Props) {
   const rows = buildFormattedDiff(analysis.diff, hasParent);
   return (
     <div className="diff-panel">
-      <section className="diff-summary" aria-label="Diff summary">
-        <div className="parent-summary">
-          <span className="eyebrow">Compared with</span>
-          <strong>{hasParent ? `#${analysis.matched_parent_id!.slice(0, 8)}` : 'No earlier request'}</strong>
-          <span>{hasParent ? `${analysis.matched_message_count} matching messages` : 'This request establishes the baseline.'}</span>
-        </div>
-        <div className="metrics">
-          <Metric label="Divergence" value={formatNumber(analysis.divergence_point)} />
-          <Metric label="Cacheable" value={`${formatNumber(analysis.estimated_cacheable_tokens)} tok`} />
-          <Metric label="Cache read" value={`${formatNumber(analysis.actual_cache_read_tokens)} tok`} />
-          <Metric label="Est. miss" value={`${formatNumber(analysis.estimated_cache_miss)} tok`} alert={analysis.cache_hit_below_expected} />
-        </div>
-      </section>
-
-      <section className="diff-viewer">
-        <div className="diff-toolbar">
-          <span>Formatted JSON diff</span>
-          {hasParent && <div className="diff-legend"><span className="legend-delete">Removed</span><span className="legend-insert">Added</span></div>}
-        </div>
+      <section className={`diff-viewer${hasParent ? '' : ' diff-viewer--baseline'}`}>
+        {hasParent && <div className="diff-toolbar">
+          <div className="diff-legend"><span className="legend-delete">Removed</span><span className="legend-insert">Added</span></div>
+        </div>}
         <ScrollArea.Root className="diff-scroll">
           <ScrollArea.Viewport className="scroll-viewport">
             <ScrollArea.Content>

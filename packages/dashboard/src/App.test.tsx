@@ -8,11 +8,13 @@ const captures: CaptureSummary[] = [
   {
     id: 'newest-capture', timestamp: '2026-08-09T07:00:00.000Z', token_hash: 'aaaaaaaaaaaaaaaa',
     model: 'newest-model', file_ref: 'newest.json', usage: { input_tokens: 100, cache_read_input_tokens: 80 },
+    response_status: 200, upstream_host: 'api.stepfun.com',
     analysis: { id: 'newest-capture', timestamp: '2026-08-09T07:00:00.000Z', matched_parent_id: 'older-capture', matched_message_count: 1, divergence_point: 40, estimated_cacheable_tokens: 10, actual_cache_read_tokens: 8, estimated_cache_miss: 2, cache_hit_below_expected: false },
   },
   {
     id: 'older-capture', timestamp: '2026-08-09T06:00:00.000Z', token_hash: 'bbbbbbbbbbbbbbbb',
     model: 'older-model', file_ref: 'older.json', usage: { input_tokens: 50, cache_read_input_tokens: 0 },
+    response_status: 401, upstream_host: 'provider.example.com:8443',
     analysis: { id: 'older-capture', timestamp: '2026-08-09T06:00:00.000Z', matched_parent_id: null, matched_message_count: 0, divergence_point: 0, estimated_cacheable_tokens: 0, actual_cache_read_tokens: 0, estimated_cache_miss: 0, cache_hit_below_expected: false },
   },
 ];
@@ -51,8 +53,15 @@ describe('App', () => {
 
     const { container } = render(<App />);
     expect(container.querySelector('.logo-mark')).toHaveAttribute('src', '/_pp/brand/logo-mark.png');
-    expect(await screen.findByRole('heading', { name: 'newest-model' })).toBeVisible();
+    expect(container.querySelector('.app-header .logo-mark')).toBeVisible();
+    expect(screen.getByText('Prompt Prism')).toBeVisible();
+    expect(screen.getByText('Prompt & response inspector')).toBeVisible();
+    expect(screen.queryByText('Prompt cache debugger')).not.toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /newest-model/i })).toHaveAttribute('data-selected');
+    expect(screen.getAllByText('HTTP 200')[0]).toHaveClass('status-label--good');
+    expect(screen.getAllByText('api.stepfun.com')[0]).toBeVisible();
     expect(await screen.findByText('newest prompt')).toBeVisible();
+    expect(screen.queryByText(/cache read/i)).not.toBeInTheDocument();
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('newest-capture');
     expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/newest-capture', expect.anything());
 
@@ -69,7 +78,7 @@ describe('App', () => {
     expect(fetchMock.mock.calls.filter(([url]) => url === '/_pp/api/raw/newest-capture')).toHaveLength(1);
 
     await userEvent.click(screen.getByRole('button', { name: /older-model/i }));
-    expect(await screen.findByRole('heading', { name: 'older-model' })).toBeVisible();
+    expect(await screen.findByRole('button', { name: /older-model/i })).toHaveAttribute('data-selected');
     expect(await screen.findByText(/unauthorized/)).toBeVisible();
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('older-capture');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/diff/older-capture', expect.anything()));

@@ -29,6 +29,8 @@ export type CaptureSummary = {
   token_hash: string;
   model: string | null;
   usage?: Usage;
+  response_status?: number | null;
+  upstream_host?: string;
   file_ref: string;
   analysis: Omit<Analysis, 'diff'> | null;
 };

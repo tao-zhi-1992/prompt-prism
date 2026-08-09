@@ -11,6 +11,8 @@ const capture: CaptureSummary = {
   model: '<img src=x onerror=alert(1)>',
   file_ref: 'capture.json',
   usage: { input_tokens: 100, cache_read_input_tokens: 75 },
+  response_status: 200,
+  upstream_host: 'api.stepfun.com',
   analysis: {
     id: 'capture-123456789',
     timestamp: '2026-08-09T06:00:00.000Z',
@@ -25,14 +27,32 @@ const capture: CaptureSummary = {
 };
 
 describe('RequestListItem', () => {
-  it('shows request health and selects without interpreting model text as HTML', async () => {
+  it('shows HTTP status and upstream host and selects without interpreting model text as HTML', async () => {
     const onSelect = vi.fn();
     const { container } = render(<RequestListItem capture={capture} selected onSelect={onSelect} />);
     expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeVisible();
     expect(container.querySelector('img')).toBeNull();
-    expect(screen.getByText('Below expected')).toBeVisible();
-    expect(screen.getByText('43%')).toBeVisible();
+    expect(screen.getByText('HTTP 200')).toHaveClass('status-label--good');
+    expect(screen.getByText('api.stepfun.com')).toHaveAttribute('title', 'api.stepfun.com');
+    expect(screen.queryByText('Below expected')).not.toBeInTheDocument();
+    expect(screen.queryByText(/cached/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button'));
     expect(onSelect).toHaveBeenCalledWith(capture.id);
+  });
+
+  it.each([
+    [302, 'bad'],
+    [401, 'bad'],
+    [503, 'bad'],
+    [undefined, 'neutral'],
+  ] as const)('uses HTTP-only status coloring for %s', (responseStatus, tone) => {
+    const { container } = render(<RequestListItem
+      capture={{ ...capture, response_status: responseStatus, upstream_host: undefined }}
+      selected={false}
+      onSelect={vi.fn()}
+    />);
+    expect(screen.getByText(responseStatus === undefined ? 'HTTP —' : `HTTP ${responseStatus}`)).toHaveClass(`status-label--${tone}`);
+    expect(container.querySelector('.status-dot')).toHaveClass(`status-dot--${tone}`);
+    expect(screen.getByText('Unknown host')).toBeVisible();
   });
 });

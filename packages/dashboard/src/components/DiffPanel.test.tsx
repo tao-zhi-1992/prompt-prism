@@ -13,7 +13,10 @@ describe('DiffPanel', () => {
     expect(container.querySelector('.diff-equal')).toHaveTextContent('same');
     expect(container.querySelector('.diff-delete')).toHaveTextContent('old');
     expect(container.querySelector('.diff-insert')).toHaveTextContent('<new>');
-    expect(screen.getByText('#parent-1')).toBeVisible();
+    expect(screen.queryByText('Cacheable')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cache read')).not.toBeInTheDocument();
+    expect(screen.queryByText('Est. miss')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Diff summary')).not.toBeInTheDocument();
   });
 
   it('presents a first request as a neutral baseline', () => {
@@ -23,7 +26,6 @@ describe('DiffPanel', () => {
       actual_cache_read_tokens: 0, estimated_cache_miss: 0, cache_hit_below_expected: false,
       diff: [{ type: 'insert', value: 'first prompt' }],
     }} />);
-    expect(screen.getByText('No earlier request')).toBeVisible();
     expect(container.querySelector('.diff-insert')).toBeNull();
     expect(container.querySelector('.diff-equal')).toHaveTextContent('first prompt');
   });
@@ -44,6 +46,6 @@ describe('DiffPanel', () => {
     expect(rows[2]).toHaveTextContent('second');
     expect(rows[3]).toHaveTextContent('third"');
     expect(rows[4]).toHaveTextContent('}');
-    expect(screen.getByText('Formatted JSON diff')).toBeVisible();
+    expect(screen.queryByText('Formatted JSON diff')).not.toBeInTheDocument();
   });
 });

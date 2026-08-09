@@ -61,6 +61,8 @@ export class CaptureStore {
       token_hash: capture.token_hash,
       model: capture.model,
       usage: capture.usage,
+      response_status: capture.response?.status,
+      upstream_host: capture.upstream_host,
       file_ref: fileRef,
       messages: capture.messages
     };

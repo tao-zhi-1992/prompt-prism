@@ -68,10 +68,15 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(stored.request.headers['x-api-key'], '[REDACTED]');
   assert.ok(!JSON.stringify(stored.request.headers).includes('top-secret'));
   assert.equal(stored.usage.cache_read_input_tokens, 4);
+  assert.equal(firstCapture.response_status, 200);
+  assert.equal(firstCapture.upstream_host, `127.0.0.1:${upstreamPort}`);
+  assert.equal(stored.upstream_host, `127.0.0.1:${upstreamPort}`);
 
   const logs = await request({ port: proxyPort, pathname: '/_pp/api/logs' });
   const parsedLogs = JSON.parse(logs.body);
   assert.equal(parsedLogs[0].model, 'claude-test');
+  assert.equal(parsedLogs[0].response_status, 200);
+  assert.equal(parsedLogs[0].upstream_host, `127.0.0.1:${upstreamPort}`);
   assert.equal(parsedLogs[0].analysis.actual_cache_read_tokens, 4);
   assert.equal('messages' in parsedLogs[0], false, 'list responses should not repeat complete prompts');
   assert.equal('diff' in parsedLogs[0].analysis, false, 'list responses should not include detail diff data');

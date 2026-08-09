@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import type { Analysis, CaptureSummary, RawCapture } from '../types';
-import { DetailHeader } from './DetailHeader';
 import { DiffPanel } from './DiffPanel';
 import { RawPanel } from './RawPanel';
 
@@ -37,7 +36,6 @@ export function DetailPane({ capture, analysis, loading, error, onRetry, raw, ra
 
   return (
     <section className="detail-pane">
-      <DetailHeader capture={capture} />
       <Tabs.Root className="detail-tabs" value={tab} onValueChange={(value) => setTab(value as 'diff' | 'raw')}>
         <Tabs.List className="tab-list" aria-label="Request detail views">
           <Tabs.Tab className="tab" value="diff">Diff</Tabs.Tab>

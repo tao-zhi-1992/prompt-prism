@@ -38,6 +38,7 @@ export interface Capture {
   model: string | null;
   messages: Message[];
   usage: Usage;
+  upstream_host?: string;
   request?: RawRequest;
   response?: RawResponse;
   [key: string]: unknown;
@@ -49,6 +50,8 @@ export interface CaptureIndexEntry {
   token_hash: string;
   model: string | null;
   usage: Usage;
+  response_status?: number | null;
+  upstream_host?: string;
   file_ref: string;
   messages: Message[];
 }

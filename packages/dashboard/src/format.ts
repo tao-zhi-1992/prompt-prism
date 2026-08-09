@@ -1,13 +1,3 @@
-import type { Usage } from './types';
-
-export const formatNumber = (value?: number) => new Intl.NumberFormat().format(value ?? 0);
-
-export function totalInputTokens(usage?: Usage) {
-  return (usage?.input_tokens ?? 0)
-    + (usage?.cache_creation_input_tokens ?? 0)
-    + (usage?.cache_read_input_tokens ?? 0);
-}
-
 export function formatTime(value: string) {
   const date = new Date(value);
   const today = new Date();
@@ -17,7 +7,13 @@ export function formatTime(value: string) {
     : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
-export function cachePercent(input?: number, cached?: number) {
-  if (!input) return null;
-  return Math.min(100, Math.round(((cached ?? 0) / input) * 100));
+export type HttpTone = 'good' | 'bad' | 'neutral';
+
+export function httpStatusTone(status?: number | null): HttpTone {
+  if (status === undefined || status === null) return 'neutral';
+  return status >= 200 && status <= 299 ? 'good' : 'bad';
+}
+
+export function formatHttpStatus(status?: number | null) {
+  return `HTTP ${status ?? '—'}`;
 }

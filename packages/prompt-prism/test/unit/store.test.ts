@@ -28,3 +28,17 @@ test('a single capture larger than the cap is not written', async () => {
   assert.equal(await store.writeCapture(capture('large', '2026-01-01T00:00:00.000Z', 'x'.repeat(300))), null);
   assert.equal(store.captures.length, 0);
 });
+
+test('persists HTTP status and upstream host in the capture index across restarts', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  await store.writeCapture({
+    ...capture('http-metadata', '2026-01-01T00:00:00.000Z'),
+    upstream_host: 'provider.example.com:8443',
+    response: { status: 429, headers: {}, body: '{"error":"rate limited"}' }
+  });
+
+  const restarted = await new CaptureStore({ dataDir: dir }).init();
+  assert.equal(restarted.captures[0]?.response_status, 429);
+  assert.equal(restarted.captures[0]?.upstream_host, 'provider.example.com:8443');
+});

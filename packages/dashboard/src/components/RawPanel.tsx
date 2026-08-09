@@ -2,6 +2,7 @@ import { JsonView } from 'react-json-view-lite';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { ReactNode } from 'react';
 import type { RawCapture, RawHeaders } from '../types';
+import { httpStatusTone } from '../format';
 
 const jsonStyles = {
   container: 'json-tree',
@@ -97,7 +98,7 @@ export function RawPanel({ raw, loading, error, onRetry }: {
         ? <RawSection kind="Request" meta={<><b>{raw.request.method}</b><code>{raw.request.url}</code></>} headers={raw.request.headers} body={raw.request.body} />
         : <section className="raw-section raw-unavailable" aria-label="Request"><strong>Request</strong><span>Raw request data is unavailable for this capture.</span></section>}
       {raw.response
-        ? <RawSection kind="Response" meta={<b className={raw.response.status !== null && raw.response.status >= 400 ? 'raw-status--error' : ''}>{raw.response.status ?? 'Unknown status'}</b>} headers={raw.response.headers} body={raw.response.body} />
+        ? <RawSection kind="Response" meta={<b className={`http-status http-status--${httpStatusTone(raw.response.status)}`}>{raw.response.status ?? 'Unknown status'}</b>} headers={raw.response.headers} body={raw.response.body} />
         : <section className="raw-section raw-unavailable" aria-label="Response"><strong>Response</strong><span>Raw response data is unavailable for this capture.</span></section>}
     </div>
   );

@@ -117,6 +117,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
           model: parsedRequest.model,
           messages: parsedRequest.messages,
           usage,
+          upstream_host: upstreamUrl.host,
           request: { method: request.method ?? 'GET', url: request.url ?? '/', headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
           response: { status: upstreamResponse.statusCode ?? null, headers: redactedHeaders(upstreamResponse.headers), body: responseBody.toString('utf8') }
         };

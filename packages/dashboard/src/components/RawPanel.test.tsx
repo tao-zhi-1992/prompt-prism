@@ -16,11 +16,23 @@ describe('RawPanel', () => {
     expect(within(request).getAllByRole('term').map((node) => node.textContent)).toEqual(['alpha', 'zebra']);
     expect(within(request).getByText('not json')).toBeVisible();
     expect(screen.getByText('(empty body)')).toBeVisible();
-    expect(screen.getByText('503')).toHaveClass('raw-status--error');
+    expect(screen.getByText('503')).toHaveClass('http-status--bad');
 
     rerender(<RawPanel raw={{ request: null, response: null }} loading={false} error={null} onRetry={vi.fn()} />);
     expect(screen.getByText(/Raw request data is unavailable/)).toBeVisible();
     expect(screen.getByText(/Raw response data is unavailable/)).toBeVisible();
+  });
+
+  it.each([
+    [200, 'good'],
+    [302, 'bad'],
+    [null, 'neutral'],
+  ] as const)('uses the shared HTTP color rule for response status %s', (status, tone) => {
+    render(<RawPanel raw={{
+      request: null,
+      response: { status, headers: {}, body: '' },
+    }} loading={false} error={null} onRetry={vi.fn()} />);
+    expect(screen.getByText(status === null ? 'Unknown status' : String(status))).toHaveClass(`http-status--${tone}`);
   });
 
   it('shows JSON as an accessible tree with all nodes expanded by default', () => {
