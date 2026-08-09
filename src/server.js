@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const dashboardDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/dashboard');
 const brandDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets');
-const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png']);
+const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png', 'favicon.ico']);
 
 function json(response, status, value) {
   const body = JSON.stringify(value);
@@ -30,7 +30,7 @@ async function brandFile(response, filename) {
   try {
     const body = await readFile(path.join(brandDir, filename));
     response.writeHead(200, {
-      'content-type': 'image/png',
+      'content-type': filename.endsWith('.ico') ? 'image/x-icon' : 'image/png',
       'content-length': body.length,
       'cache-control': 'public, max-age=31536000, immutable'
     });

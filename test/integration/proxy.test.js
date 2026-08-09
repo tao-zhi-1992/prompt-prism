@@ -79,6 +79,9 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   const logo = await request({ port: proxyPort, pathname: '/_pp/brand/logo-mark.png' });
   assert.equal(logo.status, 200);
   assert.match(logo.headers['content-type'], /image\/png/);
+  const rootFavicon = await request({ port: proxyPort, pathname: '/favicon.ico' });
+  assert.equal(rootFavicon.status, 200);
+  assert.match(rootFavicon.headers['content-type'], /image\/x-icon/);
   const unsafeBrandPath = await request({ port: proxyPort, pathname: '/_pp/brand/%2e%2e%2f.env' });
   assert.equal(unsafeBrandPath.status, 404);
   assert.match(await readFile(path.join(dir, 'captures.jsonl'), 'utf8'), /claude-test/);

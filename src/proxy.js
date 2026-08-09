@@ -2,6 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CaptureStore } from './store.js';
 import { Analyzer } from './analyzer.js';
@@ -10,6 +11,28 @@ import { createAdminHandler } from './server.js';
 
 const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
 const SENSITIVE = /^(authorization|proxy-authorization|x-api-key|api-key|cookie|set-cookie)$/i;
+const rootBrandFiles = new Map([
+  ['/favicon.ico', { file: 'favicon.ico', contentType: 'image/x-icon' }],
+  ['/apple-touch-icon.png', { file: 'apple-touch-icon.png', contentType: 'image/png' }]
+]);
+
+function serveRootBrandAsset(request, response) {
+  const asset = request.method === 'GET' ? rootBrandFiles.get(request.url) : null;
+  if (!asset) return false;
+  const absolute = path.resolve(path.dirname(new URL(import.meta.url).pathname), `../assets/${asset.file}`);
+  readFile(absolute).then((body) => {
+    response.writeHead(200, {
+      'content-type': asset.contentType,
+      'content-length': body.length,
+      'cache-control': 'public, max-age=31536000, immutable'
+    });
+    response.end(body);
+  }).catch(() => {
+    response.writeHead(404);
+    response.end();
+  });
+  return true;
+}
 
 function forwardedHeaders(headers, upstreamUrl) {
   const result = {};
@@ -60,6 +83,7 @@ export async function createPromptPrism(options = {}) {
   const transport = upstreamUrl.protocol === 'https:' ? https : http;
 
   const server = http.createServer((request, response) => {
+    if (serveRootBrandAsset(request, response)) return;
     if (request.url === '/_pp' || request.url.startsWith('/_pp/')) {
       admin(request, response).catch((error) => { if (!response.headersSent) response.writeHead(500); response.end(error.message); });
       return;

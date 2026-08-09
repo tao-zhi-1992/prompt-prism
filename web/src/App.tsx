@@ -4,6 +4,8 @@ import type { Analysis, CaptureSummary } from './types';
 import { Logo } from './components/Logo';
 import { RequestList } from './components/RequestList';
 import { DetailPane } from './components/DetailPane';
+import { ThemeMenu } from './components/ThemeMenu';
+import { useTheme } from './theme';
 
 const POLL_INTERVAL = 3000;
 
@@ -12,6 +14,7 @@ function captureFromUrl() {
 }
 
 export default function App() {
+  const { preference, setPreference } = useTheme();
   const [captures, setCaptures] = useState<CaptureSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(captureFromUrl);
   const [listLoading, setListLoading] = useState(true);
@@ -87,7 +90,10 @@ export default function App() {
       <aside className="requests-pane">
         <header className="app-header">
           <div className="brand"><Logo /><div><h1>Prompt Prism</h1><span>Prompt cache debugger</span></div></div>
-          <div className="live-status"><span />Live</div>
+          <div className="header-actions">
+            <div className="live-status"><span />Live</div>
+            <ThemeMenu preference={preference} onPreferenceChange={setPreference} />
+          </div>
         </header>
         <div className="request-heading">
           <h2>Requests</h2>
