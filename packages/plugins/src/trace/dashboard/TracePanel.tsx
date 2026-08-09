@@ -1,5 +1,6 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
+import { Tooltip } from '@base-ui/react/tooltip';
 import { JsonView } from 'react-json-view-lite';
 import type {
   ConversationContentBlock,
@@ -7,6 +8,7 @@ import type {
   JsonValue,
   ModelOutputBlock,
   ModelOutputSnapshot,
+  Usage,
 } from '../../contracts/dashboard.js';
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';
@@ -87,7 +89,58 @@ function statusTone(status?: number | null) {
   return status >= 200 && status < 300 ? 'good' : 'bad';
 }
 
+type UsageSummary = {
+  input: number | null;
+  output: number | null;
+  cacheRead: number | null;
+  cacheWrite: number | null;
+  cacheHitRate: number | null;
+};
+
+function aggregateUsage(usages: Array<Usage | undefined>): UsageSummary {
+  let input = 0;
+  let output = 0;
+  let cacheRead = 0;
+  let cacheWrite = 0;
+  let inputKnown = false;
+  let outputKnown = false;
+  let cacheKnown = false;
+  for (const usage of usages) {
+    if (!usage) continue;
+    if (typeof usage.input_tokens === 'number') { input += usage.input_tokens; inputKnown = true; }
+    if (typeof usage.output_tokens === 'number') { output += usage.output_tokens; outputKnown = true; }
+    if (typeof usage.cache_read_input_tokens === 'number') { cacheRead += usage.cache_read_input_tokens; cacheKnown = true; }
+    if (typeof usage.cache_creation_input_tokens === 'number') { cacheWrite += usage.cache_creation_input_tokens; cacheKnown = true; }
+  }
+  const totalInput = input + cacheRead + cacheWrite;
+  return {
+    input: inputKnown || cacheKnown ? totalInput : null,
+    output: outputKnown ? output : null,
+    cacheRead: cacheKnown ? cacheRead : null,
+    cacheWrite: cacheKnown ? cacheWrite : null,
+    cacheHitRate: cacheKnown && totalInput > 0 ? cacheRead / totalInput : null,
+  };
+}
+
+const numberFormat = new Intl.NumberFormat();
+
+function tokenValue(value: number | null): string { return value === null ? '—' : numberFormat.format(value); }
+function rateValue(value: number | null): string { return value === null ? '—' : `${Math.round(value * 100)}%`; }
+
+function UsageMetrics({ usage, compact = false }: { usage: UsageSummary; compact?: boolean }) {
+  const metrics = [
+    { label: compact ? 'Input' : 'Input total', value: tokenValue(usage.input), title: 'Uncached input + cache read + cache write tokens' },
+    { label: 'Output', value: tokenValue(usage.output) },
+    { label: 'Cache read', value: tokenValue(usage.cacheRead) },
+    { label: 'Cache write', value: tokenValue(usage.cacheWrite) },
+    { label: 'Cache hit', value: rateValue(usage.cacheHitRate) },
+  ];
+  return <dl className={compact ? 'trace-call-usage' : 'trace-usage'}>{metrics.map((metric) => <div key={metric.label}><dt title={metric.title}>{metric.label}</dt><dd>{metric.value}</dd></div>)}</dl>;
+}
+
 function Call({ call, selected, selectCapture }: { call: TraceCall; selected: boolean; selectCapture: (id: string) => void }) {
+  const usage = aggregateUsage([call.output?.usage]);
+  const hasUsage = Object.values(usage).some((value) => value !== null);
   return (
     <article className="trace-call" data-selected={selected || undefined}>
       <button className="trace-call-header" type="button" onClick={() => selectCapture(call.capture_id)} aria-label={`Select request ${call.capture_id}`}>
@@ -97,6 +150,7 @@ function Call({ call, selected, selectCapture }: { call: TraceCall; selected: bo
         <time dateTime={call.timestamp}>{new Date(call.timestamp).toLocaleTimeString()}</time>
         <b className={`trace-http trace-http--${statusTone(call.response_status)}`}>HTTP {call.response_status ?? '—'}</b>
       </button>
+      {hasUsage && <UsageMetrics usage={usage} compact />}
       <div className="trace-events">
         {call.input_relation === 'rewritten' && <div className="trace-notice">Input history was rewritten; showing the complete current input.</div>}
         {call.input_delta.flatMap((message, messageIndex) => message.content.map((block, blockIndex) => conversationEvent(block, message.role, messageIndex * 1000 + blockIndex)))}
@@ -105,6 +159,26 @@ function Call({ call, selected, selectCapture }: { call: TraceCall; selected: bo
         {!call.input_delta.length && !call.output?.content.length && !call.output?.error && <div className="trace-empty-event">No recognizable events for this request.</div>}
       </div>
     </article>
+  );
+}
+
+function TraceSource({ source }: { source: TraceResult['source'] }) {
+  if (source === 'explicit') return <div><span>Source</span><b>Explicit</b></div>;
+  return (
+    <div>
+      <span>Source</span>
+      <div className="trace-source-value">
+        <b>Inferred</b>
+        <Tooltip.Root>
+          <Tooltip.Trigger className="trace-info-trigger" aria-label="About inferred traces">?</Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Positioner side="bottom" align="start" className="trace-tooltip-positioner">
+              <Tooltip.Popup className="trace-tooltip">Matched from related request history. For reliable tracking, send <code>x-prompt-prism-trace-id</code> with the same value on every related model request.</Tooltip.Popup>
+            </Tooltip.Positioner>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </div>
+    </div>
   );
 }
 
@@ -119,14 +193,22 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
   if (loading) return <div className="detail-message"><span className="spinner" />Loading trace…</div>;
   if (error) return <div className="detail-message detail-message--error"><strong>Couldn’t load trace</strong><span>{error}</span><button onClick={onRetry}>Try again</button></div>;
   if (!trace) return null;
+  const usage = aggregateUsage(trace.calls.map((call) => call.output?.usage));
   return (
     <div className="trace-panel">
-      <header className="trace-summary">
-        <div><span>Trace</span><code title={trace.id}>{trace.id}</code></div>
-        <div><span>Source</span><b>{trace.source === 'explicit' ? 'Explicit' : 'Inferred'}</b></div>
-        <div><span>Calls · newest first</span><b>{trace.calls.length}</b></div>
-      </header>
-      {(trace.truncated || refreshError) && <div className={`trace-warning${refreshError ? ' trace-warning--error' : ''}`}>{refreshError ? `Refresh failed: ${refreshError}` : 'The beginning of this trace is no longer available.'}</div>}
+      <div className="trace-overview">
+        <header className="trace-summary">
+          <div><span>Trace</span><code title={trace.id}>{trace.id}</code></div>
+          <TraceSource source={trace.source} />
+          <div><span>Calls</span><b>{trace.calls.length}</b></div>
+        </header>
+        <UsageMetrics usage={usage} />
+        {(trace.truncated || refreshError) && (
+          <div className="trace-notices">
+            <div className={`trace-warning${refreshError ? ' trace-warning--error' : ''}`}>{refreshError ? `Refresh failed: ${refreshError}` : 'The beginning of this trace is no longer available.'}</div>
+          </div>
+        )}
+      </div>
       <ScrollArea.Root className="trace-scroll">
         <ScrollArea.Viewport className="scroll-viewport">
           <ScrollArea.Content className="trace-content">
