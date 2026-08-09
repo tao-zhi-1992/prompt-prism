@@ -3,12 +3,13 @@ import type http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Analysis, Capture, CaptureIndexEntry } from './types.js';
+import type { BuiltinPluginRuntime } from './plugin-runtime.js';
 
 const dashboardDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/dashboard');
 const brandDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets');
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png', 'favicon.ico']);
 
-function json(response: http.ServerResponse, status: number, value: unknown): void {
+export function json(response: http.ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
   response.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
@@ -64,35 +65,31 @@ function logSummary(capture: CaptureIndexEntry, analyzer: { analyses: Map<string
 
 export function createAdminHandler({
   store,
-  analyzer
+  analyzer,
+  plugins,
 }: {
   store: { captures: CaptureIndexEntry[]; readCapture(id: string): Promise<Capture | null> };
   analyzer: { analyses: Map<string, Analysis> };
+  plugins: Pick<BuiltinPluginRuntime, 'handleApi'>;
 }): (request: http.IncomingMessage, response: http.ServerResponse) => Promise<void> {
   return async function handleAdmin(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
     const url = new URL(request.url ?? '/', 'http://localhost');
-    if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
 
     if (url.pathname === '/_pp/api/logs') {
+      if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
       const logs = store.captures.map((capture) => logSummary(capture, analyzer))
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       return json(response, 200, logs);
     }
-    if (url.pathname.startsWith('/_pp/api/diff/')) {
-      const id = decodeURIComponent(url.pathname.slice('/_pp/api/diff/'.length));
-      const analysis = analyzer.analyses.get(id);
-      if (!analysis) return json(response, 404, { error: 'Capture not found' });
-      return json(response, 200, analysis);
+    if (url.pathname.startsWith('/_pp/api/')) {
+      const pluginPath = url.pathname.slice('/_pp/api/'.length);
+      const separator = pluginPath.indexOf('/');
+      const pluginId = separator === -1 ? pluginPath : pluginPath.slice(0, separator);
+      const subpath = separator === -1 ? '' : pluginPath.slice(separator + 1);
+      if (pluginId && await plugins.handleApi(pluginId, request, response, subpath)) return;
+      return json(response, 404, { error: 'Not found' });
     }
-    if (url.pathname.startsWith('/_pp/api/raw/')) {
-      const id = decodeURIComponent(url.pathname.slice('/_pp/api/raw/'.length));
-      const capture = await store.readCapture(id);
-      if (!capture) return json(response, 404, { error: 'Capture not found' });
-      return json(response, 200, {
-        request: capture.request ?? null,
-        response: capture.response ?? null
-      });
-    }
+    if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
     if (url.pathname === '/_pp' || url.pathname === '/_pp/') return staticFile(response, 'index.html');
     if (url.pathname.startsWith('/_pp/brand/')) return brandFile(response, decodeURIComponent(url.pathname.slice('/_pp/brand/'.length)));
     if (url.pathname.startsWith('/_pp/assets/')) return staticFile(response, url.pathname.slice('/_pp/'.length));

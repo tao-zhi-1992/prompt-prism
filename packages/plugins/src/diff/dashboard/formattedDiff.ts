@@ -1,5 +1,6 @@
 import { diffArrays, diffChars } from 'diff';
-import type { DiffPart } from './types';
+
+export type DiffPart = { type: 'equal' | 'insert' | 'delete'; value: string };
 
 export type FormattedDiffRow = {
   oldLineNumber: number | null;
@@ -24,43 +25,25 @@ function append(output: { value: string }, value: string, column: { value: numbe
   column.value = newline === -1 ? column.value + value.length : value.length - newline - 1;
 }
 
-/** Expand newline escapes inside JSON strings for prompt readability. */
 export function expandJsonStringNewlines(text: string): string {
   const output = { value: '' };
   const column = { value: 0 };
   let inString = false;
   let continuationColumn = 0;
   let index = 0;
-
   while (index < text.length) {
     const character = text[index]!;
     if (character === '\n' || character === '\r') {
       if (character === '\r' && text[index + 1] === '\n') index++;
-      append(output, '\n', column);
-      index++;
-      continue;
+      append(output, '\n', column); index++; continue;
     }
     if (!inString) {
       append(output, character, column);
-      if (character === '"') {
-        inString = true;
-        continuationColumn = column.value;
-      }
-      index++;
-      continue;
+      if (character === '"') { inString = true; continuationColumn = column.value; }
+      index++; continue;
     }
-    if (character === '"') {
-      append(output, character, column);
-      inString = false;
-      index++;
-      continue;
-    }
-    if (character !== '\\') {
-      append(output, character, column);
-      index++;
-      continue;
-    }
-
+    if (character === '"') { append(output, character, column); inString = false; index++; continue; }
+    if (character !== '\\') { append(output, character, column); index++; continue; }
     const slashStart = index;
     while (text[index] === '\\') index++;
     const slashCount = index - slashStart;
@@ -68,13 +51,9 @@ export function expandJsonStringNewlines(text: string): string {
     const isNewline = slashCount % 2 === 1 && (escape === 'n' || escape === 'r');
     if (!isNewline) {
       append(output, '\\'.repeat(slashCount), column);
-      if (slashCount % 2 === 1 && escape !== undefined) {
-        append(output, escape, column);
-        index++;
-      }
+      if (slashCount % 2 === 1 && escape !== undefined) { append(output, escape, column); index++; }
       continue;
     }
-
     append(output, '\\'.repeat(slashCount - 1), column);
     index++;
     if (escape === 'r' && text[index] === '\\' && text[index + 1] === 'n') index += 2;
@@ -90,9 +69,7 @@ export function formatDiffText(raw: string): string {
   return expandJsonStringNewlines(formatted);
 }
 
-function wholeLine(value: string, type: DiffPart['type']): DiffPart[] {
-  return value ? [{ type, value }] : [];
-}
+function wholeLine(value: string, type: DiffPart['type']): DiffPart[] { return value ? [{ type, value }] : []; }
 
 function changedLineParts(oldLine: string, newLine: string): { removed: DiffPart[]; added: DiffPart[] } {
   const changes = diffChars(oldLine, newLine);
@@ -106,28 +83,17 @@ export function buildFormattedDiff(parts: DiffPart[], hasParent: boolean): Forma
   const { oldText, newText } = reconstructDiff(parts);
   const oldLines = formatDiffText(oldText).split('\n');
   const newLines = formatDiffText(newText).split('\n');
-  if (!hasParent) {
-    return newLines.map((line, index) => ({ oldLineNumber: null, newLineNumber: index + 1, type: 'equal', parts: wholeLine(line, 'equal') }));
-  }
-
+  if (!hasParent) return newLines.map((line, index) => ({ oldLineNumber: null, newLineNumber: index + 1, type: 'equal', parts: wholeLine(line, 'equal') }));
   const changes = diffArrays(oldLines, newLines);
   const rows: FormattedDiffRow[] = [];
   let oldLineNumber = 1;
   let newLineNumber = 1;
-
-  const addDeleted = (line: string, partsForLine = wholeLine(line, 'delete')) => {
-    rows.push({ oldLineNumber: oldLineNumber++, newLineNumber: null, type: 'delete', parts: partsForLine });
-  };
-  const addInserted = (line: string, partsForLine = wholeLine(line, 'insert')) => {
-    rows.push({ oldLineNumber: null, newLineNumber: newLineNumber++, type: 'insert', parts: partsForLine });
-  };
-
+  const addDeleted = (line: string, partsForLine = wholeLine(line, 'delete')) => rows.push({ oldLineNumber: oldLineNumber++, newLineNumber: null, type: 'delete', parts: partsForLine });
+  const addInserted = (line: string, partsForLine = wholeLine(line, 'insert')) => rows.push({ oldLineNumber: null, newLineNumber: newLineNumber++, type: 'insert', parts: partsForLine });
   for (let index = 0; index < changes.length; index++) {
     const change = changes[index]!;
     if (!change.added && !change.removed) {
-      for (const line of change.value) {
-        rows.push({ oldLineNumber: oldLineNumber++, newLineNumber: newLineNumber++, type: 'equal', parts: wholeLine(line, 'equal') });
-      }
+      for (const line of change.value) rows.push({ oldLineNumber: oldLineNumber++, newLineNumber: newLineNumber++, type: 'equal', parts: wholeLine(line, 'equal') });
       continue;
     }
     if (change.removed && changes[index + 1]?.added) {

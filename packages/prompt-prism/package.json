@@ -15,9 +15,11 @@
     "./assets/*": "./assets/*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build:core": "node scripts/clean-build.js && tsc -p tsconfig.build.json",
+    "build:plugins": "pnpm --dir ../plugins build:server",
+    "build": "pnpm build:core && pnpm build:plugins",
     "typecheck": "pnpm build && tsc -p tsconfig.json",
-    "build:all": "pnpm --dir ../dashboard build && pnpm build",
+    "build:all": "pnpm --dir ../plugins typecheck && pnpm build && pnpm --dir ../dashboard build",
     "prepare": "pnpm build:all",
     "prestart": "pnpm build:all",
     "pretest": "pnpm build:all",
@@ -26,7 +28,7 @@
     "test:unit": "pnpm typecheck && tsx --test test/unit/*.test.ts",
     "test:integration": "pnpm build:all && pnpm typecheck && tsx --test test/integration/*.test.ts",
     "test:live": "pnpm build:all && pnpm typecheck && node --env-file-if-exists=.env --import tsx --test test/live/*.test.ts",
-    "prepack": "node scripts/prepare-package.js"
+    "prepack": "pnpm build:all && node scripts/prepare-package.js"
   },
   "engines": {
     "node": ">=20"

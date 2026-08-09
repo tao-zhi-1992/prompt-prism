@@ -1,6 +1,25 @@
 import { appendFile, readFile } from 'node:fs/promises';
-import { diffCharacters, divergencePoint } from './diff.js';
-import type { Analysis, Capture, CaptureIndexEntry, Message, ParentMatch } from './types.js';
+import { diffCharacters, divergencePoint, type DiffPart } from './diff.js';
+import type { Capture, CaptureIndexEntry, Message } from '../../contracts/server.js';
+
+export interface Analysis {
+  id: string;
+  timestamp: string;
+  matched_parent_id: string | null;
+  matched_message_count: number;
+  divergence_point: number;
+  diff: DiffPart[];
+  estimated_cacheable_tokens: number;
+  actual_cache_read_tokens: number;
+  estimated_cache_miss: number;
+  cache_hit_below_expected: boolean;
+}
+
+interface ParentMatch {
+  id: string;
+  messages: Message[];
+  score: { messages: number; chars: number };
+}
 
 export function serializeMessages(messages: Message[] | undefined): string {
   return JSON.stringify(messages ?? []);
@@ -21,7 +40,7 @@ export class Analyzer {
     this.analysisPath = analysisPath;
   }
 
-  async init(captures: CaptureIndexEntry[] = []): Promise<void> {
+  async init(captures: readonly CaptureIndexEntry[] = []): Promise<void> {
     try {
       const lines = (await readFile(this.analysisPath, 'utf8')).trim().split('\n').filter(Boolean);
       for (const line of lines) {
@@ -40,13 +59,8 @@ export class Analyzer {
     let best: ParentMatch | null = null;
     for (const candidate of candidates) {
       const candidateText = serializeMessages(candidate.messages);
-      const score = {
-        messages: commonMessagePrefix(candidate.messages, messages),
-        chars: divergencePoint(candidateText, text)
-      };
-      if (!best || score.messages > best.score.messages || (score.messages === best.score.messages && score.chars > best.score.chars)) {
-        best = { ...candidate, score };
-      }
+      const score = { messages: commonMessagePrefix(candidate.messages, messages), chars: divergencePoint(candidateText, text) };
+      if (!best || score.messages > best.score.messages || (score.messages === best.score.messages && score.chars > best.score.chars)) best = { ...candidate, score };
     }
     return best;
   }

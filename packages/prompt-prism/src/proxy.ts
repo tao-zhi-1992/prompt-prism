@@ -5,9 +5,9 @@ import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CaptureStore } from './store.js';
-import { Analyzer } from './analyzer.js';
 import anthropic from './adapter/anthropic.js';
-import { createAdminHandler } from './server.js';
+import { createAdminHandler, json } from './server.js';
+import { loadBuiltinPluginRuntime } from './plugin-runtime.js';
 import type { Capture, PromptPrismInstance, PromptPrismOptions, RawHeaders, StartedPromptPrism } from './types.js';
 
 const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
@@ -77,10 +77,17 @@ function openBrowser(url: string): void {
 export async function createPromptPrism(options: PromptPrismOptions = {}): Promise<PromptPrismInstance> {
   const upstreamUrl = parseUpstreamUrl(options.upstreamUrl ?? 'https://api.anthropic.com/v1/messages');
   const store = await new CaptureStore({ dataDir: options.dataDir ?? path.resolve('data'), maxBytes: options.maxBytes }).init();
-  const analyzer = new Analyzer({ analysisPath: store.analysisPath });
-  await analyzer.init(store.captures);
-  store.onEvict = (item) => analyzer.remove(item.id, item.token_hash);
-  const admin = createAdminHandler({ store, analyzer });
+  const plugins = await loadBuiltinPluginRuntime();
+  await plugins.init({
+    analysisPath: store.analysisPath,
+    captures: store.captures,
+    readCapture: (id) => store.readCapture(id),
+    json,
+    reportError: (pluginId, error) => console.error(`[prompt-prism:${pluginId}]`, error instanceof Error ? error.message : String(error)),
+  });
+  const analyzer = plugins.analyzer;
+  store.onEvict = (item) => plugins.onEvict(item);
+  const admin = createAdminHandler({ store, analyzer, plugins });
   const transport = upstreamUrl.protocol === 'https:' ? https : http;
 
   const server = http.createServer((request, response) => {
@@ -121,7 +128,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
           request: { method: request.method ?? 'GET', url: request.url ?? '/', headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
           response: { status: upstreamResponse.statusCode ?? null, headers: redactedHeaders(upstreamResponse.headers), body: responseBody.toString('utf8') }
         };
-        setImmediate(() => store.enqueue(capture, (stored) => analyzer.analyze({ ...capture, ...stored })).catch(() => {}));
+        setImmediate(() => store.enqueue(capture, (stored) => plugins.onCapture({ ...capture, ...stored }, stored)).catch(() => {}));
       });
       upstreamResponse.on('error', (error) => response.destroy(error));
       // pipe() applies downstream backpressure while the data listener above only

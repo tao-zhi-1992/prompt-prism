@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getCaptures, getDiff, getRawCapture } from './api';
-import type { Analysis, CaptureSummary, RawCapture } from './types';
+import { getCaptures } from './api';
+import type { CaptureSummary } from './types';
 import { Logo } from './components/Logo';
 import { RequestList } from './components/RequestList';
 import { DetailPane } from './components/DetailPane';
@@ -19,13 +19,6 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(captureFromUrl);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [details, setDetails] = useState<Map<string, Analysis>>(() => new Map());
-  const [rawDetails, setRawDetails] = useState<Map<string, RawCapture>>(() => new Map());
-  const [rawLoadingIds, setRawLoadingIds] = useState<Set<string>>(() => new Set());
-  const [rawErrors, setRawErrors] = useState<Map<string, string>>(() => new Map());
-  const rawPending = useRef(new Set<string>());
   const mounted = useRef(true);
 
   const select = useCallback((id: string) => {
@@ -67,52 +60,7 @@ export default function App() {
     };
   }, [refresh]);
 
-  const loadDetail = useCallback(async (id: string, force = false) => {
-    if (!force && details.has(id)) return;
-    setDetailLoading(true);
-    setDetailError(null);
-    try {
-      const analysis = await getDiff(id);
-      if (!mounted.current) return;
-      setDetails((current) => new Map(current).set(id, analysis));
-    } catch (error) {
-      if (mounted.current) setDetailError(error instanceof Error ? error.message : String(error));
-    } finally {
-      if (mounted.current) setDetailLoading(false);
-    }
-  }, [details]);
-
-  useEffect(() => {
-    if (selectedId) void loadDetail(selectedId);
-  }, [selectedId, loadDetail]);
-
-  const loadRaw = useCallback(async (id: string, force = false) => {
-    if (rawPending.current.has(id) || (!force && rawDetails.has(id))) return;
-    rawPending.current.add(id);
-    setRawLoadingIds((current) => new Set(current).add(id));
-    setRawErrors((current) => {
-      const next = new Map(current);
-      next.delete(id);
-      return next;
-    });
-    try {
-      const raw = await getRawCapture(id);
-      if (!mounted.current) return;
-      setRawDetails((current) => new Map(current).set(id, raw));
-    } catch (error) {
-      if (mounted.current) setRawErrors((current) => new Map(current).set(id, error instanceof Error ? error.message : String(error)));
-    } finally {
-      rawPending.current.delete(id);
-      if (mounted.current) setRawLoadingIds((current) => {
-        const next = new Set(current);
-        next.delete(id);
-        return next;
-      });
-    }
-  }, [rawDetails]);
-
   const selected = useMemo(() => captures.find((item) => item.id === selectedId) ?? null, [captures, selectedId]);
-  const detail = selectedId ? details.get(selectedId) ?? null : null;
 
   return (
     <main className="app-shell">
@@ -137,18 +85,7 @@ export default function App() {
           onRetry={() => { setListLoading(true); void refresh(); }}
         />
       </aside>
-      <DetailPane
-        capture={selected}
-        analysis={detail}
-        loading={detailLoading}
-        error={detailError}
-        onRetry={() => selectedId && void loadDetail(selectedId, true)}
-        raw={selectedId ? rawDetails.get(selectedId) ?? null : null}
-        rawLoading={Boolean(selectedId && rawLoadingIds.has(selectedId))}
-        rawError={selectedId ? rawErrors.get(selectedId) ?? null : null}
-        onRawOpen={loadRaw}
-        onRawRetry={() => selectedId && void loadRaw(selectedId, true)}
-      />
+      <DetailPane capture={selected} />
     </main>
   );
 }

@@ -109,7 +109,7 @@ pnpm start
 pnpm test
 ```
 
-The Dashboard is built with React, TypeScript, Vite, and Base UI. Its source lives in `packages/dashboard/`; the production bundle is generated in `packages/prompt-prism/public/dashboard/` and served under `/_pp/`.
+The Dashboard is built with React, TypeScript, Vite, and Base UI. Its page shell lives in `packages/dashboard/`. Built-in detail plugins live in `packages/plugins/`, with each plugin's Dashboard panel, server hooks, styles, and tests maintained together. Diff and Raw are registered through the same internal contracts; they are compiled into the Dashboard and into `packages/prompt-prism/dist/internal/plugins.js`. The production Dashboard bundle is generated in `packages/prompt-prism/public/dashboard/` and served under `/_pp/`.
 
 ```bash
 pnpm dashboard:dev # Vite development server

@@ -1,28 +1,37 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
-import type { Analysis, CaptureSummary, RawCapture } from '../types';
-import { DiffPanel } from './DiffPanel';
-import { RawPanel } from './RawPanel';
+import { dashboardPluginRegistry, type CaptureSummary, type DetailTabPlugin } from '@prompt-prism/plugins/dashboard';
 
-type Props = {
-  capture: CaptureSummary | null;
-  analysis: Analysis | null;
-  loading: boolean;
-  error: string | null;
-  onRetry: () => void;
-  raw: RawCapture | null;
-  rawLoading: boolean;
-  rawError: string | null;
-  onRawOpen: (id: string) => void;
-  onRawRetry: () => void;
-};
+type Resource = { status: 'loading' } | { status: 'ready'; data: unknown } | { status: 'error'; error: string };
 
-export function DetailPane({ capture, analysis, loading, error, onRetry, raw, rawLoading, rawError, onRawOpen, onRawRetry }: Props) {
-  const [tab, setTab] = useState<'diff' | 'raw'>('diff');
+export function DetailPane({ capture }: { capture: CaptureSummary | null }) {
+  const plugins = dashboardPluginRegistry.plugins;
+  const [tab, setTab] = useState(plugins[0]?.id ?? '');
+  const cache = useRef(new Map<string, Resource>());
+  const [, render] = useState(0);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const activePlugin = useMemo(() => plugins.find((plugin) => plugin.id === tab) ?? plugins[0] ?? null, [plugins, tab]);
+  const key = capture && activePlugin ? `${activePlugin.id}:${capture.id}` : null;
 
   useEffect(() => {
-    if (tab === 'raw' && capture) onRawOpen(capture.id);
-  }, [tab, capture, onRawOpen]);
+    if (!capture || !activePlugin?.load || !key || cache.current.has(key)) return;
+    const controller = new AbortController();
+    cache.current.set(key, { status: 'loading' });
+    render((value) => value + 1);
+    activePlugin.load(capture, controller.signal).then((data) => {
+      if (controller.signal.aborted) return;
+      cache.current.set(key, { status: 'ready', data });
+      render((value) => value + 1);
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      cache.current.set(key, { status: 'error', error: error instanceof Error ? error.message : String(error) });
+      render((value) => value + 1);
+    });
+    return () => {
+      controller.abort();
+      if (cache.current.get(key)?.status === 'loading') cache.current.delete(key);
+    };
+  }, [activePlugin, key, retryVersion]);
 
   if (!capture) {
     return (
@@ -34,20 +43,33 @@ export function DetailPane({ capture, analysis, loading, error, onRetry, raw, ra
     );
   }
 
+  if (!activePlugin) return <section className="detail-empty"><h2>No detail plugins</h2></section>;
+
+  const resource = key ? cache.current.get(key) : undefined;
+  const retry = () => {
+    if (key) cache.current.delete(key);
+    setRetryVersion((value) => value + 1);
+  };
+  const panelProps = {
+    capture,
+    data: resource?.status === 'ready' ? resource.data : null,
+    loading: Boolean(activePlugin.load) && (!resource || resource.status === 'loading'),
+    error: resource?.status === 'error' ? resource.error : null,
+    retry,
+  };
+
   return (
     <section className="detail-pane">
-      <Tabs.Root className="detail-tabs" value={tab} onValueChange={(value) => setTab(value as 'diff' | 'raw')}>
+      <Tabs.Root className="detail-tabs" value={activePlugin.id} onValueChange={setTab}>
         <Tabs.List className="tab-list" aria-label="Request detail views">
-          <Tabs.Tab className="tab" value="diff">Diff</Tabs.Tab>
-          <Tabs.Tab className="tab" value="raw">Raw</Tabs.Tab>
+          {plugins.map((plugin) => <Tabs.Tab className="tab" value={plugin.id} key={plugin.id}>{plugin.label}</Tabs.Tab>)}
           <Tabs.Indicator className="tab-indicator" />
         </Tabs.List>
-        <Tabs.Panel className="tab-panel" value="diff">
-          <DiffPanel analysis={analysis} loading={loading} error={error} onRetry={onRetry} />
-        </Tabs.Panel>
-        <Tabs.Panel className="tab-panel" value="raw">
-          <RawPanel raw={raw} loading={rawLoading} error={rawError} onRetry={onRawRetry} />
-        </Tabs.Panel>
+        {plugins.map((plugin: DetailTabPlugin) => (
+          <Tabs.Panel className="tab-panel" value={plugin.id} key={plugin.id}>
+            {plugin.id === activePlugin.id ? plugin.render(panelProps) : null}
+          </Tabs.Panel>
+        ))}
       </Tabs.Root>
     </section>
   );
