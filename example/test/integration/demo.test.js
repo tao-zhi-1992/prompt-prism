@@ -4,8 +4,8 @@ import http from 'node:http';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { DEFAULT_DEMO_BASE_URL, messagesUrl, parseBaseUrl, startDemo } from '../../demo/server.js';
-import { createPromptPrism } from '../../src/proxy.js';
+import { DEFAULT_DEMO_BASE_URL, messagesUrl, parseBaseUrl, startDemo } from '../../server.js';
+import { createPromptPrism } from 'prompt-prism';
 
 const listen = (server) => new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server.address().port)));
 const close = (server) => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo-mark.png" alt="Prompt Prism logo" width="260">
+  <img src="packages/prompt-prism/assets/logo-mark.png" alt="Prompt Prism logo" width="260">
 </p>
 
 # Prompt Prism
@@ -8,7 +8,7 @@
 
 Prompt Prism is a zero-runtime-dependency local proxy for Anthropic's Messages API. It forwards responses immediately—including SSE streams—while capturing a redacted copy in the background and showing exactly where a conversation diverged from its best historical prefix.
 
-![Prompt Prism dashboard showing cache results and a character-level diff](public/dashboard.png)
+![Prompt Prism dashboard showing cache results and a character-level diff](docs/dashboard.png)
 
 ```text
 your app  ──►  http://127.0.0.1:8787  ──►  api.anthropic.com
@@ -40,6 +40,14 @@ Open [http://127.0.0.1:8787/_pp/](http://127.0.0.1:8787/_pp/) to inspect capture
 
 The longer `prompt-prism` command is also installed as an alias for `pp`.
 
+## Programmatic API
+
+The package also exposes the local server API for embedding and integration tests:
+
+```js
+import { createPromptPrism, parseUpstreamUrl, startPromptPrism } from 'prompt-prism';
+```
+
 ## Agent demo
 
 The repository includes a small multi-turn chat Agent for exercising Prompt Prism. The Demo points at local Prism, while Prism alone owns the complete model-provider endpoint URL.
@@ -55,8 +63,8 @@ Start Prompt Prism with the complete provider endpoint, then copy the environmen
 pp start --upstream-url https://api.stepfun.com/step_plan/v1/messages
 
 # Terminal 2
-cp .env.example .env
-npm run demo
+cp example/.env.example example/.env
+pnpm demo
 ```
 
 Then open the Agent chat at [http://127.0.0.1:3000/](http://127.0.0.1:3000/).
@@ -90,19 +98,20 @@ Demo → http://127.0.0.1:8787/v1/messages
      → https://api.stepfun.com/step_plan/v1/messages
 ```
 
-For local development:
+For local development, use pnpm 10.28.0 or later:
 
 ```bash
-npm link
-pp start --upstream-url https://provider.example.com/v1/messages --no-open
-npm test
+pnpm install
+pnpm --filter prompt-prism link --global
+pnpm start
+pnpm test
 ```
 
-The Dashboard is built with React, TypeScript, Vite, and Base UI. Its source lives in `web/`; the production bundle is written to `public/dashboard/` and served under `/_pp/`.
+The Dashboard is built with React, TypeScript, Vite, and Base UI. Its source lives in `packages/dashboard/`; the production bundle is generated in `packages/prompt-prism/public/dashboard/` and served under `/_pp/`.
 
 ```bash
-npm run web:dev    # Vite development server
-npm run web:build  # type-check and create the production bundle
+pnpm dashboard:dev # Vite development server
+pnpm build         # type-check and create the production bundle
 ```
 
 ## How matching works

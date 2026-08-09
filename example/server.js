@@ -1,12 +1,14 @@
 import http from 'node:http';
 import https from 'node:https';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const demoDir = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(demoDir, 'public');
-const brandDir = path.resolve(demoDir, '../assets');
+const require = createRequire(import.meta.url);
+const brandDir = path.dirname(require.resolve('prompt-prism/assets/logo-mark.png'));
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png']);
 export const DEFAULT_DEMO_BASE_URL = 'http://127.0.0.1:8787';
 

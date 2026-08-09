@@ -2,11 +2,10 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  root: 'web',
   base: '/_pp/',
   plugins: [react()],
   build: {
-    outDir: '../public/dashboard',
+    outDir: '../prompt-prism/public/dashboard',
     emptyOutDir: true,
   },
   test: {

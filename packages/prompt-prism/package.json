@@ -1,0 +1,45 @@
+{
+  "name": "prompt-prism",
+  "version": "0.1.0",
+  "description": "A transparent local proxy that explains prompt-cache misses.",
+  "type": "module",
+  "bin": {
+    "pp": "bin/pp.js",
+    "prompt-prism": "bin/pp.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./assets/*": "./assets/*"
+  },
+  "scripts": {
+    "prepare": "pnpm --dir ../dashboard build",
+    "prestart": "pnpm --dir ../dashboard build",
+    "pretest": "pnpm --dir ../dashboard build",
+    "start": "node bin/pp.js start --no-open --upstream-url https://api.stepfun.com/step_plan/v1/messages",
+    "test": "node --test test/unit/*.test.js test/integration/*.test.js test/live/*.test.js",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:integration": "node --test test/integration/*.test.js",
+    "test:live": "node --env-file-if-exists=.env --test test/live/*.test.js",
+    "prepack": "pnpm --dir ../dashboard build && node scripts/prepare-package.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "anthropic",
+    "prompt-cache",
+    "proxy",
+    "debugging",
+    "sse"
+  ],
+  "license": "MIT",
+  "files": [
+    "bin",
+    "src",
+    "public",
+    "assets",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ]
+}
