@@ -4,8 +4,7 @@ import type { CaptureSummary } from './types';
 import { Logo } from './components/Logo';
 import { RequestList } from './components/RequestList';
 import { DetailPane } from './components/DetailPane';
-import { ThemeMenu } from './components/ThemeMenu';
-import { LanguageMenu } from './components/LanguageMenu';
+import { SettingsMenu } from './components/SettingsMenu';
 import { useTheme } from './theme';
 import { I18nProvider, useI18n } from '@prompt-prism/plugins/dashboard';
 
@@ -72,8 +71,12 @@ function Dashboard() {
           <div className="brand"><Logo /><div><h1>Prompt Prism</h1><span>{t('brand.subtitle')}</span></div></div>
           <div className="header-actions">
             <div className="live-status"><span />{t('status.live')}</div>
-            <LanguageMenu locale={locale} onLocaleChange={setLocale} />
-            <ThemeMenu preference={preference} onPreferenceChange={setPreference} />
+            <SettingsMenu
+              preference={preference}
+              onPreferenceChange={setPreference}
+              locale={locale}
+              onLocaleChange={setLocale}
+            />
           </div>
         </header>
         <div className="request-heading">

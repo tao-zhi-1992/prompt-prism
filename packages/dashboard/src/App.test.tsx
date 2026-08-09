@@ -121,7 +121,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<App />);
     await screen.findByRole('button', { name: /newest-model/i });
-    await userEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
     await userEvent.click(await screen.findByRole('menuitemradio', { name: /中文/ }));
 
     expect(screen.getByText('提示词与响应检查器')).toBeVisible();

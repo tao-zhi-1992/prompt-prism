@@ -254,7 +254,7 @@ button:focus-visible {
 .spinner { width: 17px; height: 17px; border: 2px solid var(--line-strong); border-top-color: var(--accent); animation: spin 700ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.theme-trigger {
+.settings-trigger {
   display: grid;
   place-items: center;
   width: 30px;
@@ -265,11 +265,10 @@ button:focus-visible {
   background: var(--surface-1);
   cursor: pointer;
 }
-.theme-trigger:hover, .theme-trigger[data-popup-open] { color: var(--text); border-color: var(--line-strong); background: var(--surface-3); }
-.theme-trigger svg, .theme-option svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
-.language-trigger { font: 700 13px/1 var(--font-mono); }
-.theme-positioner { z-index: 20; outline: 0; }
-.theme-popup {
+.settings-trigger:hover, .settings-trigger[data-popup-open] { color: var(--text); border-color: var(--line-strong); background: var(--surface-3); }
+.settings-trigger svg, .settings-option svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
+.settings-positioner { z-index: 20; outline: 0; }
+.settings-popup {
   min-width: 154px;
   padding: 5px;
   color: var(--text);
@@ -278,11 +277,13 @@ button:focus-visible {
   box-shadow: var(--menu-shadow);
   transform-origin: var(--transform-origin);
 }
-.theme-menu-label { padding: 7px 9px 5px; color: var(--faint); font-size: 9px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
-.theme-option { display: grid; grid-template-columns: 18px 1fr 16px; align-items: center; gap: 8px; min-height: 34px; padding: 5px 8px; color: var(--muted); font-size: 12px; cursor: default; outline: none; }
-.theme-option[data-highlighted] { color: var(--text); background: var(--surface-3); }
-.theme-option[data-checked] { color: var(--accent); }
-.theme-option-indicator { color: var(--accent); font-size: 12px; font-weight: 700; text-align: right; }
+.settings-menu-label { padding: 7px 9px 5px; color: var(--faint); font-size: 9px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+.settings-option { display: grid; grid-template-columns: 18px 1fr 16px; align-items: center; gap: 8px; min-height: 34px; padding: 5px 8px; color: var(--muted); font-size: 12px; cursor: default; outline: none; }
+.settings-option[data-highlighted] { color: var(--text); background: var(--surface-3); }
+.settings-option[data-checked] { color: var(--accent); }
+.settings-option-indicator { color: var(--accent); font-size: 12px; font-weight: 700; text-align: right; }
+.settings-separator { height: 1px; margin: 5px 4px; background: var(--line); }
+.settings-language-symbol { font: 700 10px/1 "DM Mono", monospace; text-align: center; }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 310px minmax(0, 1fr); }
