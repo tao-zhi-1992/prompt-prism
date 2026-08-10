@@ -2,6 +2,7 @@ import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { ReactNode } from 'react';
 import { JsonView } from 'react-json-view-lite';
 import { useI18n } from '../../i18n/index.js';
+import { Button } from '@prompt-prism/ui';
 
 export type RawHeaders = Record<string, string | string[] | undefined>;
 export type RawCapture = {
@@ -72,7 +73,7 @@ function RawSection({ kind, meta, headers, body }: { kind: 'request' | 'response
 export function RawPanel({ raw, loading, error, onRetry }: { raw: RawCapture | null; loading: boolean; error: string | null; onRetry: () => void }) {
   const { t } = useI18n();
   if (loading) return <div className="detail-message"><span className="spinner" />{t('raw.loading')}</div>;
-  if (error) return <div className="detail-message detail-message--error"><strong>{t('raw.loadFailed')}</strong><span>{error}</span><button onClick={onRetry}>{t('common.tryAgain')}</button></div>;
+  if (error) return <div className="detail-message detail-message--error"><strong>{t('raw.loadFailed')}</strong><span>{error}</span><Button onClick={onRetry}>{t('common.tryAgain')}</Button></div>;
   if (!raw) return null;
   return (
     <div className="raw-panel">

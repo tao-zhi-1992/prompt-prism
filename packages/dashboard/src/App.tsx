@@ -7,6 +7,7 @@ import { DetailPane } from './components/DetailPane';
 import { SettingsMenu } from './components/SettingsMenu';
 import { useTheme } from './theme';
 import { I18nProvider, useI18n } from '@prompt-prism/plugins/dashboard';
+import { Button } from '@prompt-prism/ui';
 
 const POLL_INTERVAL = 3000;
 
@@ -24,6 +25,7 @@ function Dashboard() {
   const [clearOpen, setClearOpen] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
   const mounted = useRef(true);
+  const clearActionRef = useRef<HTMLSpanElement>(null);
 
   const select = useCallback((id: string) => {
     setSelectedId(id);
@@ -77,6 +79,22 @@ function Dashboard() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    if (!clearOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !clearActionRef.current?.contains(event.target)) setClearOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setClearOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [clearOpen]);
+
   const selected = useMemo(() => captures.find((item) => item.id === selectedId) ?? null, [captures, selectedId]);
 
   return (
@@ -96,12 +114,12 @@ function Dashboard() {
         </header>
         <div className="request-heading">
           <h2>{t('requests.title')}</h2>
-          <span className="request-heading-actions"><span>{captures.length}</span><span className="clear-action"><button type="button" onClick={() => setClearOpen((open) => !open)}>{t('requests.clear')}</button>{clearOpen && <section className="clear-popup" role="dialog" aria-labelledby="clear-dialog-title" aria-describedby="clear-dialog-description">
+          <span className="request-heading-actions"><span>{captures.length}</span><span ref={clearActionRef} className="clear-action"><Button onClick={() => setClearOpen((open) => !open)}>{t('requests.clear')}</Button>{clearOpen && <section className="clear-popup" role="dialog" aria-labelledby="clear-dialog-title" aria-describedby="clear-dialog-description">
             <h2 id="clear-dialog-title">{t('requests.clearTitle')}</h2>
             <p id="clear-dialog-description">{t('requests.clearConfirm')}</p>
             <div className="confirm-actions">
-              <button type="button" onClick={() => setClearOpen(false)} disabled={clearBusy}>{t('common.cancel')}</button>
-              <button type="button" className="confirm-danger" onClick={() => { void clear(); }} disabled={clearBusy}>{clearBusy ? t('requests.clearing') : t('requests.clear')}</button>
+              <Button onClick={() => setClearOpen(false)} disabled={clearBusy}>{t('common.cancel')}</Button>
+              <Button variant="danger" onClick={() => { void clear(); }} disabled={clearBusy}>{clearBusy ? t('requests.clearing') : t('requests.clear')}</Button>
             </div>
           </section>}</span></span>
         </div>

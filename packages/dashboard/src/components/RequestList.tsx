@@ -2,6 +2,7 @@ import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { CaptureSummary } from '../types';
 import { RequestListItem } from './RequestListItem';
 import { useI18n } from '@prompt-prism/plugins/dashboard';
+import { Button } from '@prompt-prism/ui';
 
 type Props = {
   captures: CaptureSummary[];
@@ -22,7 +23,7 @@ export function RequestList({ captures, selectedId, loading, error, onSelect, on
             <div className="list-message list-message--error">
               <strong>{t('requests.loadFailed')}</strong>
               <span>{error}</span>
-              <button onClick={onRetry}>{t('common.tryAgain')}</button>
+              <Button onClick={onRetry}>{t('common.tryAgain')}</Button>
             </div>
           )}
           {error && captures.length > 0 && <div className="list-warning">{t('requests.refreshPaused', { error })}</div>}

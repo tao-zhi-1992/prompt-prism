@@ -1,0 +1,59 @@
+.ui-interactive {
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.ui-interactive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.ui-interactive:disabled,
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 11px;
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-button:hover:not(:disabled) {
+  border-color: var(--control-hover-border, var(--line-strong));
+  background: var(--surface-2);
+}
+
+.ui-button:active:not(:disabled) {
+  border-color: var(--control-hover-border, var(--line-strong));
+  background: var(--control-active-bg, var(--surface-1));
+}
+
+.ui-button--danger {
+  color: #fff;
+  border-color: var(--red);
+  background: var(--red);
+}
+
+.ui-button--danger:hover:not(:disabled) {
+  border-color: var(--red-hover, var(--red));
+  background: var(--red-hover, var(--red));
+}
+
+.ui-button--danger:active:not(:disabled) {
+  border-color: var(--red-active, var(--red));
+  background: var(--red-active, var(--red));
+}
+
+.ui-button--icon {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+}

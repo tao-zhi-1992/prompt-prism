@@ -16,6 +16,7 @@
 .output-block-header b { color: var(--accent); font-size: 10px; }
 .output-block-header code, .output-block-toggle code { overflow: hidden; color: var(--faint); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .output-block-toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto 14px; cursor: pointer; }
+.output-block-toggle:hover { background: var(--surface-3); }
 .output-chevron { display: grid; place-items: center; width: 14px; height: 14px; color: var(--muted); transition: transform 120ms ease; }
 .output-chevron::before { content: ""; width: 0; height: 0; border-right: 3px solid transparent; border-left: 3px solid transparent; border-top: 4px solid currentColor; }
 .output-block-toggle:not([data-panel-open]) .output-chevron { transform: rotate(-90deg); }

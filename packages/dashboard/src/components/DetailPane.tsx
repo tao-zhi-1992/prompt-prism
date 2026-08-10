@@ -80,7 +80,7 @@ export function DetailPane({ capture, onSelectCapture }: { capture: CaptureSumma
     <section className="detail-pane">
       <Tabs.Root className="detail-tabs" value={activePlugin.id} onValueChange={setTab}>
         <Tabs.List className="tab-list" aria-label={t('detail.tabsLabel')}>
-          {plugins.map((plugin) => <Tabs.Tab className="tab" value={plugin.id} key={plugin.id}>{t(`tab.${plugin.id}` as TranslationKey)}</Tabs.Tab>)}
+          {plugins.map((plugin) => <Tabs.Tab className="tab ui-interactive" value={plugin.id} key={plugin.id}>{t(`tab.${plugin.id}` as TranslationKey)}</Tabs.Tab>)}
           <Tabs.Indicator className="tab-indicator" />
         </Tabs.List>
         {plugins.map((plugin: DetailTabPlugin) => (

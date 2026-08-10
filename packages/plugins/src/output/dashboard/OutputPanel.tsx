@@ -10,6 +10,7 @@ import type {
   Usage,
 } from '../../contracts/dashboard.js';
 import { useI18n, type TranslationKey } from '../../i18n/index.js';
+import { Button } from '@prompt-prism/ui';
 
 export type OutputCapture = { output: ModelOutputSnapshot | null };
 
@@ -37,7 +38,7 @@ function JsonBody({ value, label }: { value: JsonValue | null; label: string }) 
 
 function ToggleHeader({ label, detail }: { label: string; detail?: string }) {
   return (
-    <Collapsible.Trigger className="output-block-toggle">
+    <Collapsible.Trigger className="output-block-toggle ui-interactive">
       <strong>{label}</strong>
       {detail && <code>{detail}</code>}
       <span className="output-chevron" aria-hidden="true" />
@@ -118,7 +119,7 @@ function Summary({ output }: { output: ModelOutputSnapshot }) {
 export function OutputPanel({ result, loading, error, onRetry }: { result: OutputCapture | null; loading: boolean; error: string | null; onRetry: () => void }) {
   const { t } = useI18n();
   if (loading) return <div className="detail-message"><span className="spinner" />{t('output.loading')}</div>;
-  if (error) return <div className="detail-message detail-message--error"><strong>{t('output.loadFailed')}</strong><span>{error}</span><button onClick={onRetry}>{t('common.tryAgain')}</button></div>;
+  if (error) return <div className="detail-message detail-message--error"><strong>{t('output.loadFailed')}</strong><span>{error}</span><Button onClick={onRetry}>{t('common.tryAgain')}</Button></div>;
   if (!result) return null;
   if (!result.output) return <div className="detail-message"><strong>{t('output.unavailable')}</strong><span>{t('output.unavailableDescription')}</span></div>;
   const output = result.output;

@@ -5,6 +5,7 @@
 .input-diff-section { min-width: 100%; border: 1px solid var(--line); background: var(--surface-1); }
 .input-diff-section-header { display: grid; grid-template-columns: minmax(0, 1fr) auto 14px; align-items: center; gap: 12px; width: 100%; min-height: 38px; padding: 0 12px; color: var(--text); border: 0; border-bottom: 1px solid var(--line); background: var(--surface-2); text-align: left; cursor: pointer; }
 .input-diff-section-header > span:first-child { font-size: 11px; font-weight: 650; letter-spacing: 0.04em; }
+.input-diff-section-header:hover { background: var(--surface-3); }
 .input-diff-section-state { display: flex; align-items: center; height: 14px; color: var(--muted); font: 9px/1 "DM Mono", monospace; text-transform: uppercase; }
 .input-diff-section-state--changed { color: var(--accent); }
 .input-diff-section-state--empty, .input-diff-section-state--unavailable { color: var(--faint); }

@@ -14,7 +14,7 @@ export function RequestListItem({ capture, selected, onSelect }: Props) {
 
   return (
     <button
-      className="request-item"
+      className="request-item ui-interactive"
       data-selected={selected || undefined}
       aria-current={selected ? 'true' : undefined}
       onClick={() => onSelect(capture.id)}

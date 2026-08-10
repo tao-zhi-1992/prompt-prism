@@ -137,4 +137,19 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('tab', { name: '追踪' }));
     expect(await screen.findByText('调用数')).toBeVisible();
   });
+
+  it('closes the clear confirmation when clicking outside', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures.slice(0, 1)), { status: 200 });
+      return new Response(JSON.stringify(details['newest-capture']), { status: 200 });
+    }));
+    render(<App />);
+    await screen.findByRole('button', { name: /newest-model/i });
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]);
+    expect(screen.getByRole('dialog')).toBeVisible();
+    await userEvent.click(document.body);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

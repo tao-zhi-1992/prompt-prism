@@ -2,6 +2,7 @@ import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import { buildFormattedDiff, type DiffPart } from './formattedDiff.js';
 import { useI18n, type TranslationKey } from '../../i18n/index.js';
+import { Button } from '@prompt-prism/ui';
 
 export type InputDiffSectionState = 'changed' | 'unchanged' | 'baseline' | 'empty' | 'unavailable';
 
@@ -74,7 +75,7 @@ function SectionHeader({ section }: { section: InputDiffSection }) {
   const { t } = useI18n();
   const key = sectionKey(section.id);
   return (
-    <Collapsible.Trigger className="input-diff-section-header">
+    <Collapsible.Trigger className="input-diff-section-header ui-interactive">
       <span>{key ? t(key) : section.label}</span>
       <span className={`input-diff-section-state input-diff-section-state--${section.state}`}>{t(`diff.state.${statusLabel(section.state)}` as TranslationKey)}</span>
       <span className="input-diff-chevron" aria-hidden="true" />
@@ -95,7 +96,7 @@ function InputSection({ section, hasParent }: { section: InputDiffSection; hasPa
 export function InputDiffPanel({ analysis, loading, error, onRetry }: { analysis: InputDiffAnalysis | null; loading: boolean; error: string | null; onRetry: () => void }) {
   const { t } = useI18n();
   if (loading) return <div className="detail-message"><span className="spinner" />{t('diff.loading')}</div>;
-  if (error) return <div className="detail-message detail-message--error"><strong>{t('diff.loadFailed')}</strong><span>{error}</span><button onClick={onRetry}>{t('common.tryAgain')}</button></div>;
+  if (error) return <div className="detail-message detail-message--error"><strong>{t('diff.loadFailed')}</strong><span>{error}</span><Button onClick={onRetry}>{t('common.tryAgain')}</Button></div>;
   if (!analysis) return null;
   const hasParent = Boolean(analysis.matched_parent_id);
   return (

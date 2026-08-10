@@ -11,6 +11,7 @@ import type {
   Usage,
 } from '../../contracts/dashboard.js';
 import { useI18n, type TranslationKey } from '../../i18n/index.js';
+import { Button } from '@prompt-prism/ui';
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';
 export interface TraceCall {
@@ -47,7 +48,7 @@ function JsonBody({ value }: { value: JsonValue | null }) {
 }
 
 function Toggle({ label, detail }: { label: string; detail?: string | null }) {
-  return <Collapsible.Trigger className="trace-event-toggle"><strong>{label}</strong>{detail && <code>{detail}</code>}<span className="trace-chevron" aria-hidden="true" /></Collapsible.Trigger>;
+  return <Collapsible.Trigger className="trace-event-toggle ui-interactive"><strong>{label}</strong>{detail && <code>{detail}</code>}<span className="trace-chevron" aria-hidden="true" /></Collapsible.Trigger>;
 }
 
 function Event({ label, detail, text, value, defaultOpen = false, tone }: {
@@ -153,7 +154,7 @@ function Call({ call, selected, selectCapture }: { call: TraceCall; selected: bo
   const hasUsage = Object.values(usage).some((value) => value !== null);
   return (
     <article className="trace-call" data-selected={selected || undefined}>
-      <button className="trace-call-header" type="button" onClick={() => selectCapture(call.capture_id)} aria-label={t('trace.selectRequest', { id: call.capture_id })}>
+      <button className="trace-call-header ui-interactive" type="button" onClick={() => selectCapture(call.capture_id)} aria-label={t('trace.selectRequest', { id: call.capture_id })}>
         <span className="trace-call-index">{call.capture_id.slice(0, 8)}</span>
         <span className="trace-call-model">{call.model ?? t('common.unknownModel')}</span>
         <span className="trace-call-host" title={call.upstream_host}>{call.upstream_host ?? t('common.unknownUpstream')}</span>
@@ -203,7 +204,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
 }) {
   const { t } = useI18n();
   if (loading) return <div className="detail-message"><span className="spinner" />{t('trace.loading')}</div>;
-  if (error) return <div className="detail-message detail-message--error"><strong>{t('trace.loadFailed')}</strong><span>{error}</span><button onClick={onRetry}>{t('common.tryAgain')}</button></div>;
+  if (error) return <div className="detail-message detail-message--error"><strong>{t('trace.loadFailed')}</strong><span>{error}</span><Button onClick={onRetry}>{t('common.tryAgain')}</Button></div>;
   if (!trace) return null;
   const usage = aggregateUsage(trace.calls.map((call) => call.output?.usage));
   return (

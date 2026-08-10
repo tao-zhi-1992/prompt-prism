@@ -37,7 +37,7 @@ export function SettingsMenu({ preference, onPreferenceChange, locale, onLocaleC
   const { t } = useI18n();
   return (
     <Menu.Root>
-      <Menu.Trigger className="settings-trigger" aria-label={t('settings.label')} title={t('settings.label')}>
+      <Menu.Trigger className="settings-trigger ui-interactive" aria-label={t('settings.label')} title={t('settings.label')}>
         <SettingsIcon />
       </Menu.Trigger>
       <Menu.Portal>
