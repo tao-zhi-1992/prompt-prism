@@ -9,4 +9,5 @@ packages/prompt-prism/dist/
 packages/prompt-prism/README.md
 packages/prompt-prism/LICENSE
 packages/prompt-prism/docs/
+packages/prompt-prism/data/
 .DS_Store
