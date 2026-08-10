@@ -88,7 +88,7 @@ export function parseUpstreamBaseUrl(value: string | URL): URL {
 function joinedTarget(baseUrl: URL, requestUrl: string | undefined, protocol: DetectedProtocol | null): URL {
   const incoming = new URL(requestUrl ?? '/', 'http://prompt-prism.local');
   const target = new URL(baseUrl);
-  const suffix = protocol ? endpointPath(protocol) : incoming.pathname;
+  const suffix = detectProtocolFromPath(incoming.pathname) ? incoming.pathname : protocol ? endpointPath(protocol) : incoming.pathname;
   target.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/${suffix.replace(/^\/+/, '')}`;
   target.search = incoming.search;
   return target;
@@ -205,7 +205,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
             time_to_headers_ms: headersMs - startedMs,
             time_to_first_byte_ms: firstByteMs === null ? null : firstByteMs - startedMs,
           },
-          request: { method: request.method ?? 'GET', url: request.url ?? '/', headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
+          request: { method: request.method ?? 'GET', url: request.url ?? '/', target_url: targetUrl.href, headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
           response: { status: upstreamResponse.statusCode ?? null, headers: redactedHeaders(upstreamResponse.headers), body: responseBody.toString('utf8') }
         };
         setImmediate(() => store.enqueue(capture, (stored) => plugins.onCapture({ ...capture, ...stored }, stored)).catch(() => {}));
@@ -228,7 +228,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
 
 export async function startPromptPrism(options: PromptPrismOptions = {}): Promise<StartedPromptPrism> {
   const instance = await createPromptPrism(options);
-  const requestedPort = options.port ?? 8787;
+  const requestedPort = options.port ?? 1028;
   await new Promise<void>((resolve, reject) => {
     instance.server.once('error', reject);
     instance.server.listen(requestedPort, options.host ?? '127.0.0.1', resolve);

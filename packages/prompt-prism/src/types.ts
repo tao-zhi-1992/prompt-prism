@@ -102,6 +102,7 @@ export type RawHeaders = Record<string, string | string[] | undefined>;
 export interface RawRequest {
   method: string;
   url: string;
+  target_url?: string;
   headers: RawHeaders;
   body: string;
 }

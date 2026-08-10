@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import type { InsightComparison, InsightEvidence, InsightReport, InsightRunSummary } from './types.js';
 
-const DEFAULT_PRISM_URL = 'http://127.0.0.1:8787';
+const DEFAULT_PRISM_URL = 'http://127.0.0.1:1028';
 
 type RunsResponse = { schema_version: 1; runs: InsightRunSummary[] };
 

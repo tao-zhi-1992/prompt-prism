@@ -70,7 +70,7 @@ export function detectProtocolFromResponse(body: Buffer | string): ProviderProto
 
 export function endpointPath(protocol: DetectedProtocol): string {
   if (protocol === 'anthropic-messages') return '/v1/messages';
-  if (protocol === 'openai-chat-completions') return '/chat/completions';
+  if (protocol === 'openai-chat-completions') return '/v1/chat/completions';
   return '/responses';
 }
 

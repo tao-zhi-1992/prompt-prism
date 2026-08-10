@@ -6,10 +6,12 @@ import { parseJsonObject, RawPanel, type RawCapture } from '../dashboard/RawPane
 describe('RawPanel', () => {
   it('renders sorted headers, status, raw text, and unavailable data', () => {
     const raw: RawCapture = {
-      request: { method: 'POST', url: '/v1/messages', headers: { zebra: 'last', alpha: 'first' }, body: 'not json' },
+      request: { method: 'POST', url: '/v1/messages', target_url: 'http://provider.example.com/v1/messages', headers: { zebra: 'last', alpha: 'first' }, body: 'not json' },
       response: { status: 503, headers: {}, body: '' },
     };
     const { rerender } = render(<RawPanel raw={raw} loading={false} error={null} onRetry={vi.fn()} />);
+    expect(screen.getByText('http://provider.example.com/v1/messages')).toBeVisible();
+    expect(screen.getByText('/v1/messages')).toBeVisible();
     expect(within(screen.getByRole('region', { name: 'Request' })).getAllByRole('term').map((node) => node.textContent)).toEqual(['alpha', 'zebra']);
     expect(screen.getByText('503')).toHaveClass('http-status--bad');
     rerender(<RawPanel raw={{ request: null, response: null }} loading={false} error={null} onRetry={vi.fn()} />);

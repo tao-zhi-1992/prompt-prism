@@ -127,6 +127,7 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   const parsedRaw = JSON.parse(raw.body);
   assert.equal(parsedRaw.request.method, 'POST');
   assert.equal(parsedRaw.request.url, '/v1/messages?beta=1');
+  assert.equal(parsedRaw.request.target_url, `http://127.0.0.1:${upstreamPort}/api/v1/messages?configured=1`);
   assert.equal(parsedRaw.request.headers['x-api-key'], '[REDACTED]');
   assert.equal(parsedRaw.request.body, body);
   assert.equal(parsedRaw.response.status, 200);
@@ -277,6 +278,7 @@ test('OpenAI chat SSE flows through every normalized dashboard and insights API'
   assert.equal(trace.calls[0].output.content[2].name, 'read');
   const raw = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/raw/${entry.id}` })).body);
   assert.equal(raw.request.url, '/v1/chat/completions?client=ignored');
+  assert.equal(raw.request.target_url, `http://127.0.0.1:${upstreamPort}/tenant/openai/v1/chat/completions?region=test`);
   assert.equal(JSON.parse(raw.response.body.split('\n').find((line: string) => line.startsWith('data: {'))!.slice(6)).object, 'chat.completion.chunk');
   const insights = JSON.parse((await request({ port: proxyPort, pathname: `/_pp/api/insights/report/${entry.id}` })).body);
   assert.equal(insights.run.tokens.uncached_input_tokens, 10);
@@ -325,7 +327,10 @@ test('base URL mode derives provider endpoints and Auto locks the request protoc
   const body = JSON.stringify({ model: 'deepseek-test', messages: [{ role: 'user', content: 'hello' }] });
   const result = await request({ port: proxyPort, pathname: '/v1/chat/completions?region=cn', headers: { 'content-type': 'application/json', authorization: 'Bearer token' }, body });
   assert.equal(result.status, 200);
-  assert.deepEqual(seen, ['/tenant/chat/completions?region=cn']);
+  assert.deepEqual(seen, ['/tenant/v1/chat/completions?region=cn']);
+  const legacyResult = await request({ port: proxyPort, pathname: '/chat/completions?region=legacy', headers: { 'content-type': 'application/json', authorization: 'Bearer token' }, body });
+  assert.equal(legacyResult.status, 200);
+  assert.deepEqual(seen, ['/tenant/v1/chat/completions?region=cn', '/tenant/chat/completions?region=legacy']);
   await prism.store.pending;
   assert.equal(prism.store.captures[0]?.adapter_id, 'openai-chat-completions');
   assert.equal(prism.apiFormat.resolved, 'openai-chat-completions');

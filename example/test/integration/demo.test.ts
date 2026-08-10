@@ -231,7 +231,7 @@ test('Pi Coding Agent uses OpenAI Chat Completions through the OpenAI Prism adap
 });
 
 test('Demo defaults to local Prompt Prism and validates its base URL and required credentials', async (t) => {
-  assert.equal(DEFAULT_DEMO_BASE_URL, 'http://127.0.0.1:8787');
+  assert.equal(DEFAULT_DEMO_BASE_URL, 'http://127.0.0.1:1028');
   assert.equal(DEFAULT_DEMO_API_FORMAT, 'auto');
   assert.equal(messagesUrl(parseBaseUrl('https://example.com/prism/')).href, 'https://example.com/prism/v1/messages');
   assert.equal(openAIBaseUrl(parseBaseUrl('https://example.com/prism/')).href, 'https://example.com/prism/v1');

@@ -18,7 +18,7 @@ const brandDir = path.dirname(require.resolve('prompt-prism/assets/logo-mark.png
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png']);
 const OPENAI_DEMO_PROVIDER = 'prompt-prism-openai';
 
-export const DEFAULT_DEMO_BASE_URL = 'http://127.0.0.1:8787';
+export const DEFAULT_DEMO_BASE_URL = 'http://127.0.0.1:1028';
 export const DEFAULT_DEMO_API_FORMAT = 'auto';
 export type DemoApiFormat = 'auto' | ResolvedDemoApiFormat | 'anthropic' | 'openai';
 export type ResolvedDemoApiFormat = 'anthropic-messages' | 'openai-chat-completions';

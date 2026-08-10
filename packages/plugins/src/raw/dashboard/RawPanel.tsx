@@ -5,7 +5,7 @@ import { useI18n } from '../../i18n/index.js';
 
 export type RawHeaders = Record<string, string | string[] | undefined>;
 export type RawCapture = {
-  request: { method: string; url: string; headers: RawHeaders; body: string } | null;
+  request: { method: string; url: string; target_url?: string; headers: RawHeaders; body: string } | null;
   response: { status: number | null; headers: RawHeaders; body: string } | null;
 };
 
@@ -77,7 +77,7 @@ export function RawPanel({ raw, loading, error, onRetry }: { raw: RawCapture | n
   return (
     <div className="raw-panel">
       {raw.request
-        ? <RawSection kind="request" meta={<><b>{raw.request.method}</b><code>{raw.request.url}</code></>} headers={raw.request.headers} body={raw.request.body} />
+        ? <RawSection kind="request" meta={<><b>{raw.request.method}</b><span className="raw-url"><small>{t('raw.clientUrl')}</small><code>{raw.request.url}</code></span>{raw.request.target_url && <span className="raw-url"><small>{t('raw.upstreamUrl')}</small><code>{raw.request.target_url}</code></span>}</>} headers={raw.request.headers} body={raw.request.body} />
         : <section className="raw-section raw-unavailable" aria-label={t('raw.request')}><strong>{t('raw.request')}</strong><span>{t('raw.requestUnavailable')}</span></section>}
       {raw.response
         ? <RawSection kind="response" meta={<b className={`http-status http-status--${httpStatusTone(raw.response.status)}`}>{raw.response.status ?? t('raw.unknownStatus')}</b>} headers={raw.response.headers} body={raw.response.body} />

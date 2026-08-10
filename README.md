@@ -11,7 +11,7 @@ Prompt Prism is a zero-runtime-dependency local proxy for model APIs. It forward
 ![Prompt Prism dashboard showing captured requests and an Input Diff](docs/dashboard.png)
 
 ```text
-your app  ──►  http://127.0.0.1:8787  ──►  model provider
+your app  ──►  http://127.0.0.1:1028  ──►  model provider
                        │
                        └──► capture + Input Diff + Output + Trace + dashboard
 ```
@@ -25,18 +25,18 @@ npm install -g prompt-prism
 pp start --upstream-base-url https://api.anthropic.com
 ```
 
-Then set the Anthropic SDK base URL to `http://127.0.0.1:8787`. Keep using your normal API key; authentication headers are forwarded but never stored in plaintext.
+Then set the Anthropic SDK base URL to `http://127.0.0.1:1028`. Keep using your normal API key; authentication headers are forwarded but never stored in plaintext.
 
 ```js
 import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: 'http://127.0.0.1:8787'
+  baseURL: 'http://127.0.0.1:1028'
 });
 ```
 
-Open [http://127.0.0.1:8787/_pp/](http://127.0.0.1:8787/_pp/) to inspect captures. `pp start` opens it automatically.
+Open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/) to inspect captures. `pp start` opens it automatically.
 
 The longer `prompt-prism` command is also installed as an alias for `pp`.
 
@@ -53,7 +53,7 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'http://127.0.0.1:8787/v1'
+  baseURL: 'http://127.0.0.1:1028/v1'
 });
 ```
 
@@ -72,7 +72,7 @@ import { createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl, startPromptP
 The repository includes a Pi-powered Coding Agent for exercising Prompt Prism. Each browser session gets an isolated copy of a small TypeScript REST service. A single task naturally creates model → tool → model traffic, making cache prefixes and diffs visible in Prism.
 
 ```text
-browser chat → Demo Agent (:3000) → Prompt Prism (:8787) → model provider
+browser chat → Demo Agent (:3000) → Prompt Prism (:1028) → model provider
 ```
 
 Start Prompt Prism with the provider Base URL, then copy the environment template and fill in the credential and model name:
@@ -93,7 +93,7 @@ Required variables (see [example/.env.example](example/.env.example)):
 - `DEMO_MODEL_PROVIDER_TOKEN`: provider credential sent through Prism by the Demo backend.
 - `DEMO_AGENT_MODEL`: model selected by the Demo Agent.
 
-`DEMO_BASE_URL` is optional and defaults to `http://127.0.0.1:8787`; do not include `/v1`. It identifies Prism, not the real model provider. `DEMO_API_FORMAT` defaults to `auto`: the Demo queries Prism and selects the matching Pi protocol. Use `anthropic-messages` or `openai-chat-completions` only as an explicit override. `DEMO_PORT` is also optional and defaults to `3000`.
+`DEMO_BASE_URL` is optional and defaults to `http://127.0.0.1:1028`; do not include `/v1`. It identifies Prism, not the real model provider. `DEMO_API_FORMAT` defaults to `auto`: the Demo queries Prism and selects the matching Pi protocol. Use `anthropic-messages` or `openai-chat-completions` only as an explicit override. `DEMO_PORT` is also optional and defaults to `3000`.
 
 The Demo intentionally uses complete Bash access after an explicit browser approval. Its workspace is a convenience boundary, not a system sandbox: approve commands only when you trust them.
 
@@ -104,7 +104,7 @@ To exercise an OpenAI-compatible Agent flow, use the provider's documented Base 
 pp start --upstream-base-url https://api.deepseek.com
 
 # example/.env
-DEMO_BASE_URL=http://127.0.0.1:8787
+DEMO_BASE_URL=http://127.0.0.1:1028
 DEMO_API_FORMAT=auto
 DEMO_MODEL_PROVIDER_TOKEN=replace-with-your-token
 DEMO_AGENT_MODEL=your-model-name
@@ -116,7 +116,7 @@ pnpm demo
 For any third-party Anthropic-compatible program, temporarily point its Base URL at Prism:
 
 ```bash
-ANTHROPIC_BASE_URL=http://127.0.0.1:8787 your-command
+ANTHROPIC_BASE_URL=http://127.0.0.1:1028 your-command
 ```
 
 ## CLI
@@ -146,7 +146,7 @@ OpenAI reports cached prompt tokens as a subset of `prompt_tokens`. Prism normal
 For example:
 
 ```text
-Demo → http://127.0.0.1:8787/v1/messages
+Demo → http://127.0.0.1:1028/v1/messages
      → https://api.stepfun.com/step_plan/v1/messages
 ```
 
@@ -176,7 +176,7 @@ pp insights evidence CAPTURE_ID --section tool-events --max-bytes 128KB --json
 pp insights evidence CAPTURE_ID --section output --json
 ```
 
-The CLI connects to `http://127.0.0.1:8787` by default. Override it with `--prism-url URL` or `PROMPT_PRISM_URL`; the command-line option takes precedence. Omit `--json` for a concise human-readable summary. Prism does not edit the Agent, replay requests, run tests, or decide whether task quality improved—the developing Agent combines its own test results with these efficiency measurements.
+The CLI connects to `http://127.0.0.1:1028` by default. Override it with `--prism-url URL` or `PROMPT_PRISM_URL`; the command-line option takes precedence. Omit `--json` for a concise human-readable summary. Prism does not edit the Agent, replay requests, run tests, or decide whether task quality improved—the developing Agent combines its own test results with these efficiency measurements.
 
 The first diagnostic rules flag failed model/tool calls, malformed tool arguments, repeated identical tool calls, rewritten history, changing System/Tools sections, tool results of at least 16 KiB, and cache reuse below 50% after at least 1,024 non-initial input tokens. Findings include the measured value, threshold, and Capture/section evidence location.
 

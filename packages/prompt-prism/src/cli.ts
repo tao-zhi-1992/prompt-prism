@@ -13,7 +13,7 @@ Usage:
 Defaults:
   upstream-base-url https://api.anthropic.com
   api-format        auto (available: auto, anthropic-messages, openai-chat-completions)
-  port         8787
+  port         1028
   data-dir     ./data
   max-storage  1GB`);
 }
@@ -50,7 +50,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
       'upstream-base-url': { type: 'string' },
       'upstream-url': { type: 'string' },
       'api-format': { type: 'string', default: 'auto' },
-      port: { type: 'string', default: '8787' },
+      port: { type: 'string', default: '1028' },
       'data-dir': { type: 'string', default: './data' },
       'max-storage': { type: 'string', default: '1GB' },
       open: { type: 'boolean', default: true },
