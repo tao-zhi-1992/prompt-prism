@@ -9,3 +9,7 @@ async function readJson<T>(response: Response): Promise<T> {
 export async function getCaptures(signal?: AbortSignal): Promise<CaptureSummary[]> {
   return readJson(await fetch('/_pp/api/logs', { signal, cache: 'no-store' }));
 }
+
+export async function clearCaptures(): Promise<void> {
+  await readJson(await fetch('/_pp/api/logs', { method: 'DELETE' }));
+}

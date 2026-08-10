@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, appendFile, stat, unlink } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, appendFile, stat, unlink, rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { Capture, CaptureIndexEntry } from './types.js';
 import { normalizeProviderProtocol } from './adapter/registry.js';
@@ -109,6 +109,13 @@ export class CaptureStore {
     if (!item) return null;
     try { return JSON.parse(await readFile(path.join(this.dataDir, item.file_ref), 'utf8')) as Capture; }
     catch (error: unknown) { if (isMissingFile(error)) return null; throw error; }
+  }
+
+  async clear(): Promise<void> {
+    await this.pending;
+    await rm(this.dataDir, { recursive: true, force: true });
+    await mkdir(this.dataDir, { recursive: true });
+    this.captures.length = 0;
   }
 }
 

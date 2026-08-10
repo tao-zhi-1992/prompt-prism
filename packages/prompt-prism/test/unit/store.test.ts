@@ -29,6 +29,19 @@ test('a single capture larger than the cap is not written', async () => {
   assert.equal(store.captures.length, 0);
 });
 
+test('clears captures and detail files', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  const captures = store.captures;
+  const written = await store.writeCapture(capture('clear-me', '2026-01-01T00:00:00.000Z'));
+  assert.ok(written);
+  await store.clear();
+  assert.strictEqual(store.captures, captures);
+  assert.deepEqual(store.captures, []);
+  await assert.rejects(access(store.capturesPath));
+  await assert.rejects(access(path.join(dir, written.file_ref)));
+});
+
 test('persists HTTP status, upstream host, trace ID, and timing in the capture index across restarts', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-'));
   const store = await new CaptureStore({ dataDir: dir }).init();

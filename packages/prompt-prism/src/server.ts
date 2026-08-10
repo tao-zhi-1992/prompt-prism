@@ -69,7 +69,7 @@ export function createAdminHandler({
   plugins,
   apiFormat,
 }: {
-  store: { captures: CaptureIndexEntry[]; readCapture(id: string): Promise<Capture | null> };
+  store: { captures: CaptureIndexEntry[]; readCapture(id: string): Promise<Capture | null>; clear(): Promise<void> };
   analyzer: { analyses: Map<string, Analysis> };
   plugins: Pick<BuiltinPluginRuntime, 'handleApi'>;
   apiFormat: () => ApiFormatResolution;
@@ -78,6 +78,11 @@ export function createAdminHandler({
     const url = new URL(request.url ?? '/', 'http://localhost');
 
     if (url.pathname === '/_pp/api/logs') {
+      if (request.method === 'DELETE') {
+        await store.clear();
+        analyzer.analyses.clear();
+        return json(response, 200, { cleared: true });
+      }
       if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
       const logs = store.captures.map((capture) => logSummary(capture, analyzer))
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
