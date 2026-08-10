@@ -90,6 +90,10 @@ function outputEvent(block: ModelOutputBlock, index: number, t: Translate) {
   return <Event key={index} label={t('trace.unknownOutput')} detail={block.provider_type} value={block.value} />;
 }
 
+function visibleOutput(block: ModelOutputBlock): boolean {
+  return block.type !== 'unknown' || block.provider_type !== 'openai_delta_fields';
+}
+
 function statusTone(status?: number | null) {
   if (status === undefined || status === null) return 'neutral';
   return status >= 200 && status < 300 ? 'good' : 'bad';
@@ -161,8 +165,8 @@ function Call({ call, selected, selectCapture }: { call: TraceCall; selected: bo
         {call.input_relation === 'rewritten' && <div className="trace-notice">{t('trace.inputRewritten')}</div>}
         {call.input_delta.flatMap((message, messageIndex) => message.content.map((block, blockIndex) => conversationEvent(block, message.role, messageIndex * 1000 + blockIndex, t)))}
         {call.output?.error && <div className="trace-provider-error"><strong>{call.output.error.type ?? t('trace.providerError')}</strong><span>{call.output.error.message}</span></div>}
-        {call.output?.content.map((block, index) => outputEvent(block, index, t))}
-        {!call.input_delta.length && !call.output?.content.length && !call.output?.error && <div className="trace-empty-event">{t('trace.noEvents')}</div>}
+        {call.output?.content.filter(visibleOutput).map((block, index) => outputEvent(block, index, t))}
+        {!call.input_delta.length && !call.output?.content.filter(visibleOutput).length && !call.output?.error && <div className="trace-empty-event">{t('trace.noEvents')}</div>}
       </div>
     </article>
   );

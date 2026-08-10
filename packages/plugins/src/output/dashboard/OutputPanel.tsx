@@ -122,7 +122,8 @@ export function OutputPanel({ result, loading, error, onRetry }: { result: Outpu
   if (!result) return null;
   if (!result.output) return <div className="detail-message"><strong>{t('output.unavailable')}</strong><span>{t('output.unavailableDescription')}</span></div>;
   const output = result.output;
-  const orderedContent = [...output.content.filter((block) => block.type === 'text'), ...output.content.filter((block) => block.type !== 'text')];
+  const visibleContent = output.content.filter((block) => block.type !== 'unknown' || block.provider_type !== 'openai_delta_fields');
+  const orderedContent = [...visibleContent.filter((block) => block.type === 'text'), ...visibleContent.filter((block) => block.type !== 'text')];
   return (
     <div className="output-panel">
       <Summary output={output} />

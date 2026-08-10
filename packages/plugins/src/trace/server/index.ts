@@ -59,7 +59,7 @@ export function readCaptureOutput(capture: Capture, context: ServerPluginContext
 
 function outputMessage(output: ModelOutputSnapshot | null): ConversationMessage | null {
   if (!output || output.error || !output.content.length) return null;
-  const content: ConversationContentBlock[] = output.content.map((block) => {
+  const content: ConversationContentBlock[] = output.content.filter((block) => block.type !== 'unknown' || block.provider_type !== 'openai_delta_fields').map((block) => {
     if (block.type === 'text') return { type: 'text', text: block.text };
     if (block.type === 'reasoning') return { type: 'reasoning', text: block.text };
     if (block.type === 'tool_call') return {
@@ -68,7 +68,7 @@ function outputMessage(output: ModelOutputSnapshot | null): ConversationMessage 
     };
     return { type: 'unknown', provider_type: block.provider_type, value: block.value };
   });
-  return { role: output.role ?? 'assistant', content };
+  return content.length ? { role: output.role ?? 'assistant', content } : null;
 }
 
 function equal(left: unknown, right: unknown): boolean { return JSON.stringify(left) === JSON.stringify(right); }

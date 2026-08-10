@@ -98,6 +98,7 @@ test('assembles OpenAI SSE text, reasoning, parallel tool calls, choices, and us
   const chunks = [
     { id: 'chatcmpl_sse', object: 'chat.completion.chunk', model: 'openai-stream', choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: 'inspect ' }, finish_reason: null }] },
     { id: 'chatcmpl_sse', choices: [{ index: 0, delta: { reasoning_content: 'first', content: 'hello ' }, finish_reason: null }] },
+    { id: 'chatcmpl_sse', choices: [{ index: 0, delta: { vendor_delta: { trace: 'ignore' } }, finish_reason: null }] },
     { id: 'chatcmpl_sse', choices: [{ index: 0, delta: { content: 'world', tool_calls: [
       { index: 0, id: 'call_1', type: 'function', function: { name: 'read', arguments: '{"path":' } },
       { index: 1, id: 'call_2', type: 'function', function: { name: 'write', arguments: '{bad' } },
@@ -121,6 +122,7 @@ test('assembles OpenAI SSE text, reasoning, parallel tool calls, choices, and us
   ]);
   assert.equal(parsed.output?.content[4]?.type, 'unknown');
   assert.equal(parsed.output?.content[4]?.type === 'unknown' ? parsed.output.content[4].provider_type : null, 'openai_choice');
+  assert.equal(parsed.output?.content.some((block) => block.type === 'unknown' && block.provider_type === 'openai_delta_fields'), false);
 });
 
 test('supports legacy function_call and rejects malformed or unrecognized responses', () => {

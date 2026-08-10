@@ -15,7 +15,7 @@ const trace: TraceResult = {
     output: {
       adapter_id: 'anthropic', id: 'msg', model: 'demo-model', role: 'assistant', stop_reason: 'end_turn',
       usage: { input_tokens: 10, output_tokens: 2, cache_read_input_tokens: 20, cache_creation_input_tokens: 5 },
-      content: [{ type: 'reasoning', text: 'check tests' }, { type: 'text', text: 'Done' }, { type: 'tool_call', id: 'tool-2', name: 'bash', input: { command: 'pnpm test' } }],
+      content: [{ type: 'reasoning', text: 'check tests' }, { type: 'text', text: 'Done' }, { type: 'tool_call', id: 'tool-2', name: 'bash', input: { command: 'pnpm test' } }, { type: 'unknown', provider_type: 'openai_delta_fields', value: [{ vendor_field: true }] }],
     },
   }],
 };
@@ -28,6 +28,7 @@ describe('TracePanel', () => {
     expect(screen.getByText('HTTP 200')).toHaveClass('trace-http--good');
     expect(screen.getByText('Fix the endpoint')).toBeVisible();
     expect(screen.getByText('Done')).toBeVisible();
+    expect(screen.queryByText('Unknown output')).not.toBeInTheDocument();
     const summary = container.querySelector('.trace-usage')!;
     expect(summary).toHaveTextContent('Input total35');
     expect(summary).toHaveTextContent('Output2');

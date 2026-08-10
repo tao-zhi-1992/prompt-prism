@@ -242,7 +242,6 @@ function finalizedChoiceBlocks(choice: MutableChoice): ModelOutputBlock[] {
   for (const [, tool] of [...choice.tools.entries()].sort(([left], [right]) => left - right)) {
     content.push({ type: 'tool_call', id: tool.id, name: tool.name || 'Unknown tool', ...parsedArguments(tool.arguments) });
   }
-  if (choice.extras.length > 0) content.push({ type: 'unknown', provider_type: 'openai_delta_fields', value: choice.extras });
   return content;
 }
 
