@@ -39,8 +39,36 @@ describe('TracePanel', () => {
     expect(screen.getByRole('button', { name: /^Thinking$/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /Tool result/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /Tool call/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(container.querySelector('.trace-tool-result-link--missing')).toHaveTextContent('tool-1');
+    expect(screen.getByText('tool call not found')).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: /Select request capture-two/ }));
     expect(selectCapture).toHaveBeenCalledWith('capture-two');
+  });
+
+  it('links a tool result across trace calls and highlights the matching tool call', async () => {
+    const first = {
+      ...trace.calls[0]!,
+      capture_id: 'capture-one',
+      input_delta: [],
+      output: { ...trace.calls[0]!.output!, content: [{ type: 'tool_call' as const, id: 'tool-linked', name: 'read_file', input: { path: 'README.md' } }] },
+    };
+    const second = {
+      ...trace.calls[0]!,
+      capture_id: 'capture-two',
+      input_delta: [{ role: 'user', content: [{ type: 'tool_result' as const, tool_call_id: 'tool-linked', content: { text: 'done' }, is_error: false }] }],
+      output: null,
+    };
+    const { container } = render(<TracePanel trace={{ ...trace, calls: [first, second] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    const link = container.querySelector('.trace-tool-result-link') as HTMLElement;
+    const target = container.querySelector('#trace-tool-call-0-output-0') as HTMLElement;
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(target, 'scrollIntoView', { value: scrollIntoView });
+
+    expect(link).toHaveTextContent('read_file');
+    link.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+    expect(target).toHaveAttribute('data-tool-highlight');
   });
 
   it('keeps stale trace visible when a background refresh fails', () => {
