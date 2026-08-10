@@ -43,6 +43,7 @@ describe('OutputPanel', () => {
     expect(thinking).toHaveAttribute('aria-expanded', 'false');
 
     expect(screen.getByText('read')).toBeVisible();
+    expect(container.querySelector('.output-tool-name')).toHaveTextContent('read');
     expect(screen.getByRole('tree', { name: 'read tool arguments' })).toBeVisible();
     expect(screen.getAllByLabelText('Collapse JSON node').length).toBeGreaterThan(0);
 

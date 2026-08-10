@@ -47,12 +47,13 @@ function JsonBody({ value }: { value: JsonValue | null }) {
   return <pre className="trace-code">{value === null ? t('common.empty') : JSON.stringify(value, null, 2)}</pre>;
 }
 
-function Toggle({ label, detail }: { label: string; detail?: string | null }) {
-  return <Collapsible.Trigger className="trace-event-toggle ui-interactive"><strong>{label}</strong>{detail && <code>{detail}</code>}<span className="trace-chevron" aria-hidden="true" /></Collapsible.Trigger>;
+function Toggle({ label, emphasis, detail }: { label: string; emphasis?: string | null; detail?: string | null }) {
+  return <Collapsible.Trigger className="trace-event-toggle ui-interactive"><span className="trace-event-title"><strong>{label}</strong>{emphasis && <b className="trace-tool-name" title={emphasis}>{emphasis}</b>}</span>{detail && <code>{detail}</code>}<span className="trace-chevron" aria-hidden="true" /></Collapsible.Trigger>;
 }
 
-function Event({ label, detail, text, value, defaultOpen = false, tone }: {
+function Event({ label, emphasis, detail, text, value, defaultOpen = false, tone }: {
   label: string;
+  emphasis?: string | null;
   detail?: string | null;
   text?: string;
   value?: JsonValue | null;
@@ -62,7 +63,7 @@ function Event({ label, detail, text, value, defaultOpen = false, tone }: {
   const { t } = useI18n();
   return (
     <Collapsible.Root className={`trace-event${tone ? ` trace-event--${tone}` : ''}`} defaultOpen={defaultOpen}>
-      <Toggle label={label} detail={detail} />
+      <Toggle label={label} emphasis={emphasis} detail={detail} />
       <Collapsible.Panel className="trace-event-panel">
         {text !== undefined ? <pre className="trace-text">{text || t('common.empty')}</pre> : <JsonBody value={value ?? null} />}
       </Collapsible.Panel>
@@ -76,8 +77,8 @@ function conversationEvent(block: ConversationContentBlock, role: string, index:
   if (block.type === 'text') return <Event key={index} label={role === 'user' ? t('trace.user') : t('trace.roleText', { role })} text={block.text} defaultOpen />;
   if (block.type === 'reasoning') return <Event key={index} label={t('trace.thinking')} text={block.text} />;
   if (block.type === 'tool_call') return block.input_raw !== undefined
-    ? <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''} · ${t('trace.invalidJson')}`} text={block.input_raw} />
-    : <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''}`} value={block.input} />;
+    ? <Event key={index} label={t('trace.toolCall')} emphasis={block.name} detail={`${block.id ? `${block.id} · ` : ''}${t('trace.invalidJson')}`} text={block.input_raw} />
+    : <Event key={index} label={t('trace.toolCall')} emphasis={block.name} detail={block.id} value={block.input} />;
   if (block.type === 'tool_result') return <Event key={index} label={t('trace.toolResult')} detail={block.tool_call_id} value={block.content} tone={block.is_error ? 'error' : undefined} />;
   return <Event key={index} label={t('trace.unknownInput')} detail={block.provider_type} value={block.value} />;
 }
@@ -86,8 +87,8 @@ function outputEvent(block: ModelOutputBlock, index: number, t: Translate) {
   if (block.type === 'text') return <Event key={index} label={t('trace.assistantText')} text={block.text} defaultOpen />;
   if (block.type === 'reasoning') return <Event key={index} label={t('trace.thinking')} text={block.text} />;
   if (block.type === 'tool_call') return block.input_raw !== undefined
-    ? <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''} · ${t('trace.invalidJson')}`} text={block.input_raw} />
-    : <Event key={index} label={t('trace.toolCall')} detail={`${block.name}${block.id ? ` · ${block.id}` : ''}`} value={block.input} />;
+    ? <Event key={index} label={t('trace.toolCall')} emphasis={block.name} detail={`${block.id ? `${block.id} · ` : ''}${t('trace.invalidJson')}`} text={block.input_raw} />
+    : <Event key={index} label={t('trace.toolCall')} emphasis={block.name} detail={block.id} value={block.input} />;
   return <Event key={index} label={t('trace.unknownOutput')} detail={block.provider_type} value={block.value} />;
 }
 

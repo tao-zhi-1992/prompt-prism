@@ -11,9 +11,12 @@
 .output-content { display: grid; gap: 12px; min-width: 100%; padding: 14px 14px 70px; }
 .output-block { min-width: 0; border: 1px solid var(--line); background: var(--surface-1); }
 .output-block-header, .output-block-toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 38px; padding: 0 12px; color: var(--text); border: 0; border-bottom: 1px solid var(--line); background: var(--surface-2); text-align: left; }
-.output-block-header > strong, .output-block-toggle > strong { font-size: 11px; font-weight: 650; letter-spacing: 0.04em; }
+.output-block-header > strong, .output-block-header > div > strong, .output-block-toggle > strong { font-size: 11px; font-weight: 650; letter-spacing: 0.04em; }
 .output-block-header > span { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .output-block-header b { color: var(--accent); font-size: 10px; }
+.output-tool-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.output-tool-name { display: inline-flex; min-width: 0; max-width: min(280px, 36vw); padding: 4px 8px; overflow: hidden; color: var(--accent-strong) !important; border: 1px solid var(--line-strong); background: var(--green-bg); font: 600 10px/1 "DM Mono", monospace; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+.output-tool-id { margin-left: auto; overflow: hidden; color: var(--faint); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .output-block-header code, .output-block-toggle code { overflow: hidden; color: var(--faint); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .output-block-toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto 14px; cursor: pointer; }
 .output-block-toggle:hover { background: var(--surface-3); }

@@ -51,8 +51,8 @@ function ToolCall({ block }: { block: ToolCallOutputBlock }) {
   return (
     <section className="output-block output-tool-call">
       <header className="output-block-header">
-        <strong>{t('output.toolCall')}</strong>
-        <span><b>{block.name}</b>{block.id && <code>{block.id}</code>}</span>
+        <div className="output-tool-title"><strong>{t('output.toolCall')}</strong><b className="output-tool-name" title={block.name}>{block.name}</b></div>
+        {block.id && <code className="output-tool-id">{block.id}</code>}
       </header>
       <div className="output-block-body">
         {block.input_raw !== undefined

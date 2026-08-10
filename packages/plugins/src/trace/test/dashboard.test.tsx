@@ -66,6 +66,7 @@ describe('TracePanel', () => {
     expect([...container.querySelectorAll('.trace-call-index')].map((node) => node.textContent)).toEqual(['newer-ca', 'older-ca']);
     const newestEvents = container.querySelector('.trace-call .trace-events');
     expect([...newestEvents!.querySelectorAll('.trace-event-toggle strong')].map((node) => node.textContent)).toEqual(['User', 'Tool result', 'Thinking', 'Assistant text', 'Tool call']);
+    expect(newestEvents!.querySelector('.trace-tool-name')).toHaveTextContent('bash');
   });
 
   it('does not invent token or cache values when the provider omits usage', () => {
