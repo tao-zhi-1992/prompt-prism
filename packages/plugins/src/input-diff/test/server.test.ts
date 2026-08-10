@@ -98,4 +98,16 @@ describe('Input Diff server plugin', () => {
     expect(divergencePoint('The quick brown fox', 'The quick green fox')).toBe(10);
     expect(divergencePoint('你好🙂', '你好世界🙂')).toBe(2);
   });
+
+  it('handles large inputs without allocating a quadratic diff matrix', () => {
+    const left = `${'x'.repeat(100_000)}old`;
+    const right = `${'x'.repeat(100_000)}new`;
+    const parts = diffCharacters(left, right);
+
+    expect(apply(parts)).toEqual({ old: left, next: right });
+    expect(parts.slice(-2)).toEqual([
+      { type: 'delete', value: 'old' },
+      { type: 'insert', value: 'new' },
+    ]);
+  });
 });

@@ -23,7 +23,7 @@
     "prepare": "pnpm build:all",
     "prestart": "pnpm build:all",
     "pretest": "pnpm build:all",
-    "start": "node bin/pp.js start --no-open --upstream-base-url https://api.stepfun.com/step_plan --api-format openai",
+    "start": "node bin/pp.js start --no-open --upstream-base-url https://api.deepseek.com --api-format anthropic",
     "test": "pnpm typecheck && tsx --test test/unit/*.test.ts test/integration/*.test.ts test/live/*.test.ts",
     "test:unit": "pnpm typecheck && tsx --test test/unit/*.test.ts",
     "test:integration": "pnpm build:all && pnpm typecheck && tsx --test test/integration/*.test.ts",
