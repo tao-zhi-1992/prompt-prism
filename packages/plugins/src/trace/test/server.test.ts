@@ -35,8 +35,8 @@ function context(entries: CaptureIndexEntry[], captures: Capture[]): ServerPlugi
 describe('Trace server plugin', () => {
   it('groups explicit traces and removes repeated assistant output from the next input delta', async () => {
     const first = entry('first', '2026-08-09T00:00:00.000Z', 'session-1');
-    const second = entry('second', '2026-08-09T00:00:01.000Z', 'session-1');
-    const unrelated = { ...entry('other', '2026-08-09T00:00:02.000Z', 'session-1'), token_hash: 'someone-else' };
+    const second = { ...entry('second', '2026-08-09T00:00:01.000Z', 'session-1'), token_hash: 'different-token', adapter_id: 'openai-chat-completions', upstream_host: 'other.example.com' };
+    const unrelated = entry('other', '2026-08-09T00:00:02.000Z', 'other-session');
     const pluginContext = context([second, unrelated, first], [
       capture(first, [user('fix it')], output),
       capture(second, [user('fix it'), toolCall, toolResult], undefined),

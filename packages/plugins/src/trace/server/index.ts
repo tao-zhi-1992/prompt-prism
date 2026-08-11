@@ -94,10 +94,7 @@ function inputDelta(
 }
 
 export function explicitTraceEntries(selected: CaptureIndexEntry, captures: readonly CaptureIndexEntry[]): CaptureIndexEntry[] {
-  return captures.filter((entry) => entry.trace_id === selected.trace_id
-    && entry.token_hash === selected.token_hash
-    && (entry.adapter_id ?? 'anthropic') === (selected.adapter_id ?? 'anthropic')
-    && entry.upstream_host === selected.upstream_host);
+  return captures.filter((entry) => entry.trace_id === selected.trace_id);
 }
 
 export function inferredTraceEntries(selected: CaptureIndexEntry, captures: readonly CaptureIndexEntry[], getParentId: ParentLookup) {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TracePanel, type TraceResult } from '../dashboard/TracePanel.js';
@@ -103,7 +103,10 @@ describe('TracePanel', () => {
     expect(resultLink).toHaveTextContent('result →');
     expect(resultLink).toHaveAttribute('href', '#trace-tool-call-1-input-0-0');
     await userEvent.click(resultLink);
-    expect(container.querySelector('#trace-tool-call-1-input-0-0')).toHaveAttribute('data-tool-highlight');
+    const resultTarget = container.querySelector('#trace-tool-call-1-input-0-0') as HTMLElement;
+    expect(resultTarget).toHaveAttribute('data-tool-highlight');
+    expect(resultTarget.querySelector('.trace-event-toggle')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('"done"')).toBeVisible();
   });
 
   it('keeps stale trace visible when a background refresh fails', () => {
@@ -162,5 +165,25 @@ describe('TracePanel', () => {
     expect(screen.getByText(/invalid JSON/i)).toBeVisible();
     await userEvent.click(toggle);
     expect(screen.getByText('{bad')).toBeVisible();
+  });
+
+  it('opens and highlights a tool call requested by the Tools panel', async () => {
+    window.history.replaceState(null, '', '/_pp/?capture=capture-two&tab=trace&tool_call_id=tool-2');
+    const { container } = render(<TracePanel trace={trace} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    const target = container.querySelector('[data-tool-call-id="tool-2"]') as HTMLElement;
+    await waitFor(() => {
+      expect(target).toHaveAttribute('data-tool-highlight');
+      expect(target.querySelector('.trace-event-toggle')).toHaveAttribute('aria-expanded', 'true');
+    });
+    expect(screen.getByText('"pnpm test"')).toBeVisible();
+    expect(new URLSearchParams(window.location.search).get('tool_call_id')).toBeNull();
+  });
+
+  it('locates a tool call without an id by its output position', async () => {
+    window.history.replaceState(null, '', '/_pp/?capture=capture-two&tab=trace&tool_call_index=2');
+    const { container } = render(<TracePanel trace={trace} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    const target = container.querySelector('[data-tool-call-index="2"]') as HTMLElement;
+    await waitFor(() => expect(target).toHaveAttribute('data-tool-highlight'));
+    expect(target.querySelector('.trace-event-toggle')).toHaveAttribute('aria-expanded', 'true');
   });
 });

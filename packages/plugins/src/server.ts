@@ -5,12 +5,13 @@ import { createSystemPromptServerPlugin } from './system-prompt/server/index.js'
 import { createTraceServerPlugin } from './trace/server/index.js';
 import { ServerPluginRegistry } from './registry/server.js';
 import { createInsightsServerPlugin } from './insights/server/index.js';
+import { createToolsServerPlugin } from './tools/server/index.js';
 
 export function createBuiltinServerPluginRuntime() {
   const inputDiff = createInputDiffServerPlugin();
   const trace = createTraceServerPlugin({ getParentId: (id) => inputDiff.getAnalyzer().analyses.get(id)?.matched_parent_id });
   const insights = createInsightsServerPlugin({ getParentId: (id) => inputDiff.getAnalyzer().analyses.get(id)?.matched_parent_id });
-  const registry = new ServerPluginRegistry([inputDiff, createOutputServerPlugin(), trace, createRawServerPlugin(), createSystemPromptServerPlugin(), insights]);
+  const registry = new ServerPluginRegistry([inputDiff, createOutputServerPlugin(), createToolsServerPlugin(), trace, createRawServerPlugin(), createSystemPromptServerPlugin(), insights]);
   return {
     init: registry.init.bind(registry),
     onCapture: registry.onCapture.bind(registry),

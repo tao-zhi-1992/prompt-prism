@@ -49,6 +49,23 @@ describe('DetailPane plugin host', () => {
     expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/one', expect.anything());
   });
 
+  it('syncs an externally selected tab and loads the new panel', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/input-diff/')) return new Response(JSON.stringify(analysis('one')), { status: 200 });
+      if (url.includes('/trace/')) return new Response(JSON.stringify({ id: 'trace', source: 'explicit', selected_capture_id: 'one', truncated: false, calls: [] }), { status: 200 });
+      return new Response(JSON.stringify({ output: null }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const view = render(<DetailPane capture={capture('one')} initialTab="input-diff" />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/input-diff/one', expect.anything()));
+    view.rerender(<DetailPane capture={capture('one')} initialTab="trace" />);
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Trace' })).toHaveAttribute('data-active'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/trace/one', expect.anything()));
+    expect(screen.getByText('No trace calls are available.')).toBeVisible();
+  });
+
   it('retries a failed load and caches the successful result', async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new Error('temporary failure'))

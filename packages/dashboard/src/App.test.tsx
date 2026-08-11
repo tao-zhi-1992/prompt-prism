@@ -86,7 +86,7 @@ describe('App', () => {
     expect(screen.getByText('Prompt & response inspector')).toBeVisible();
     expect(screen.queryByText('Prompt cache debugger')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /newest-model/i })).toHaveAttribute('data-selected');
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Trace', 'Raw', 'System Prompt']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Tools', 'Trace', 'Raw', 'System Prompt']);
     expect(screen.getAllByText('HTTP 200')[0]).toHaveClass('status-label--good');
     expect(await screen.findByText('newest prompt')).toBeVisible();
     expect(screen.queryByText(/cache read/i)).not.toBeInTheDocument();
@@ -140,7 +140,7 @@ describe('App', () => {
 
     expect(screen.getByText('提示词与响应检查器')).toBeVisible();
     expect(screen.getByText('请求')).toBeVisible();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['输入差异', '输出', '追踪', '原始数据', '系统提示词']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['输入差异', '输出', '工具', '追踪', '原始数据', '系统提示词']);
     expect(window.localStorage.getItem('prompt-prism-locale')).toBe('zh-CN');
     expect(document.documentElement.lang).toBe('zh-CN');
 

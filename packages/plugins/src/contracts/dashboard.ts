@@ -65,7 +65,7 @@ export interface DetailTabPanelProps<Data> {
   error: string | null;
   refreshError: string | null;
   retry: () => void;
-  selectCapture: (id: string) => void;
+  selectCapture: (id: string, tab?: string) => void;
 }
 
 export interface DetailTabPluginDefinition<Data> {

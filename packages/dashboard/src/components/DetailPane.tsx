@@ -15,6 +15,10 @@ export function DetailPane({ capture, initialTab, onSelectCapture, onSelectTab }
   const key = capture && activePlugin ? `${activePlugin.id}:${capture.id}` : null;
 
   useEffect(() => {
+    if (initialTab && plugins.some((plugin) => plugin.id === initialTab) && initialTab !== tab) setTab(initialTab);
+  }, [initialTab, plugins, tab]);
+
+  useEffect(() => {
     if (!capture || !activePlugin?.load || !key) return;
     let controller: AbortController | null = null;
     let inFlight = false;

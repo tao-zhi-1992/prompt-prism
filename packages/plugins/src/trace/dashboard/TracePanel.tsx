@@ -53,6 +53,7 @@ type ToolResultLink = { target: ToolCallTarget | null; toolCallId: string | null
 type TraceEventLink = { toolCall?: ToolCallTarget; toolResult?: ToolResultLink };
 type TraceLinkIndex = Map<string, TraceEventLink>;
 type TraceEventKind = 'user' | 'thinking' | 'assistant' | 'tool-call' | 'tool-result' | 'unknown';
+type ToolCallFocus = { captureId: string; id?: string; index?: number };
 
 type EventLinkProps = {
   anchorId?: string;
@@ -141,7 +142,7 @@ function Toggle({ kind, label, emphasis, detail, toolResultLink, toolCallLink, o
   return <div className="trace-event-toggle-row" onClick={expandFromRow}><div className="trace-event-title"><Collapsible.Trigger className="trace-event-toggle ui-interactive"><TraceEventIcon kind={kind} /><strong>{label}</strong>{emphasis && <b className="trace-tool-name" title={emphasis}>{emphasis}</b>}</Collapsible.Trigger>{toolResultLink && (toolResultLink.target ? <a className="trace-tool-result-link" href={`#${toolResultLink.target.anchorId}`} onClick={(event) => linkClick(event, toolResultLink.target!.anchorId)}>{toolResultLink.label}</a> : <span className="trace-tool-result-link trace-tool-result-link--missing">{toolResultLink.label}</span>)}{toolCallLink && <a className="trace-tool-result-link" href={`#${toolCallLink.target.resultAnchorId}`} aria-label={toolCallLink.label} onClick={(event) => linkClick(event, toolCallLink.target.resultAnchorId!)}>{toolCallLink.label}</a>}{toolResultLink?.missing && <span className="trace-tool-result-status">{toolResultLink.missingLabel}</span>}</div>{detail && <code>{detail}</code>}<span className="trace-chevron" aria-hidden="true" /></div>;
 }
 
-function Event({ kind, label, emphasis, detail, text, value, tone, anchorId, highlighted, toolResultLink, toolCallLink, onNavigate, open, onOpenChange }: {
+function Event({ kind, label, emphasis, detail, text, value, tone, anchorId, highlighted, toolCallId, toolCallCaptureId, toolCallIndex, toolResultLink, toolCallLink, onNavigate, open, onOpenChange }: {
   kind: TraceEventKind;
   label: string;
   emphasis?: string | null;
@@ -151,6 +152,9 @@ function Event({ kind, label, emphasis, detail, text, value, tone, anchorId, hig
   tone?: 'error';
   anchorId?: string;
   highlighted?: boolean;
+  toolCallId?: string | null;
+  toolCallCaptureId?: string;
+  toolCallIndex?: number;
   toolResultLink?: EventLinkProps['toolResultLink'];
   toolCallLink?: EventLinkProps['toolCallLink'];
   onNavigate: (anchorId: string) => void;
@@ -159,7 +163,7 @@ function Event({ kind, label, emphasis, detail, text, value, tone, anchorId, hig
 }) {
   const { t } = useI18n();
   return (
-    <Collapsible.Root id={anchorId} className={`trace-event${tone ? ` trace-event--${tone}` : ''}`} data-tool-highlight={highlighted || undefined} open={open} onOpenChange={onOpenChange}>
+    <Collapsible.Root id={anchorId} className={`trace-event${tone ? ` trace-event--${tone}` : ''}`} data-tool-highlight={highlighted || undefined} data-tool-call-id={toolCallId || undefined} data-tool-call-capture-id={toolCallCaptureId} data-tool-call-index={toolCallIndex} open={open} onOpenChange={onOpenChange}>
       <Toggle kind={kind} label={label} emphasis={emphasis} detail={detail} toolResultLink={toolResultLink} toolCallLink={toolCallLink} onNavigate={onNavigate} />
       <Collapsible.Panel className="trace-event-panel">
         {text !== undefined ? <pre className="trace-text">{text || t('common.empty')}</pre> : <JsonBody value={value ?? null} />}
@@ -183,13 +187,13 @@ function conversationEvent(block: ConversationContentBlock, role: string, key: s
   return <Event key={key} {...linkProps} {...controls} kind="unknown" label={t('trace.unknownInput')} detail={block.provider_type} value={block.value} />;
 }
 
-function outputEvent(block: ModelOutputBlock, key: string, t: Translate, link: TraceEventLink | undefined, highlightedAnchorId: string | null, onNavigate: (anchorId: string) => void, controls: EventControls) {
+function outputEvent(block: ModelOutputBlock, key: string, captureId: string, blockIndex: number, t: Translate, link: TraceEventLink | undefined, highlightedAnchorId: string | null, onNavigate: (anchorId: string) => void, controls: EventControls) {
   const linkProps = eventLinkProps(link, t, highlightedAnchorId, onNavigate);
   if (block.type === 'text') return <Event key={key} {...linkProps} {...controls} kind="assistant" label={t('trace.assistantText')} text={block.text} />;
   if (block.type === 'reasoning') return <Event key={key} {...linkProps} {...controls} kind="thinking" label={t('trace.thinking')} text={block.text} />;
   if (block.type === 'tool_call') return block.input_raw !== undefined
-    ? <Event key={key} {...linkProps} {...controls} kind="tool-call" label={t('trace.toolCall')} emphasis={block.name} detail={`${block.id ? `${block.id} · ` : ''}${t('trace.invalidJson')}`} text={block.input_raw} />
-    : <Event key={key} {...linkProps} {...controls} kind="tool-call" label={t('trace.toolCall')} emphasis={block.name} detail={block.id} value={block.input} />;
+    ? <Event key={key} {...linkProps} {...controls} kind="tool-call" label={t('trace.toolCall')} emphasis={block.name} detail={`${block.id ? `${block.id} · ` : ''}${t('trace.invalidJson')}`} text={block.input_raw} toolCallId={block.id} toolCallCaptureId={captureId} toolCallIndex={blockIndex} />
+    : <Event key={key} {...linkProps} {...controls} kind="tool-call" label={t('trace.toolCall')} emphasis={block.name} detail={block.id} value={block.input} toolCallId={block.id} toolCallCaptureId={captureId} toolCallIndex={blockIndex} />;
   return <Event key={key} {...linkProps} {...controls} kind="unknown" label={t('trace.unknownOutput')} detail={block.provider_type} value={block.value} />;
 }
 
@@ -207,6 +211,16 @@ function captureHref(captureId: string): string {
   url.searchParams.set('capture', captureId);
   url.searchParams.set('tab', 'trace');
   return `${url.pathname}${url.search}`;
+}
+
+function toolCallFocusFromUrl(): ToolCallFocus | null {
+  const params = new URLSearchParams(window.location.search);
+  const captureId = params.get('capture');
+  const id = params.get('tool_call_id');
+  const rawIndex = params.get('tool_call_index');
+  const index = rawIndex === null ? undefined : Number(rawIndex);
+  if (!captureId || (!id && (index === undefined || !Number.isInteger(index) || index < 0))) return null;
+  return { captureId, ...(id ? { id } : { index }) };
 }
 
 type UsageSummary = {
@@ -257,13 +271,22 @@ function UsageMetrics({ usage, compact = false }: { usage: UsageSummary; compact
   return <dl className={compact ? 'trace-call-usage' : 'trace-usage'}>{metrics.map((metric) => <div key={metric.label}><dt title={metric.title}>{metric.label}</dt><dd>{metric.value}</dd></div>)}</dl>;
 }
 
-function Call({ call, callIndex, selected, links, highlightedAnchorId, onNavigate, selectCapture }: { call: TraceCall; callIndex: number; selected: boolean; links: TraceLinkIndex; highlightedAnchorId: string | null; onNavigate: (anchorId: string) => void; selectCapture?: (id: string) => void }) {
+function Call({ call, callIndex, selected, links, highlightedAnchorId, focusToolCall, onNavigate, selectCapture }: { call: TraceCall; callIndex: number; selected: boolean; links: TraceLinkIndex; highlightedAnchorId: string | null; focusToolCall: ToolCallFocus | null; onNavigate: (anchorId: string) => void; selectCapture?: (id: string) => void }) {
   const { t, locale } = useI18n();
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(() => new Set());
+  const outputBlocks = call.output?.content.map((block, index) => ({ block, index })).filter(({ block }) => visibleOutput(block)) ?? [];
   const eventKeys = [
     ...call.input_delta.flatMap((message, messageIndex) => message.content.map((_, blockIndex) => eventKey(callIndex, 'input', messageIndex, blockIndex))),
-    ...(call.output?.content.filter(visibleOutput).map((_, blockIndex) => eventKey(callIndex, 'output', 0, blockIndex)) ?? []),
+    ...outputBlocks.map((_, blockIndex) => eventKey(callIndex, 'output', 0, blockIndex)),
   ];
+  useEffect(() => {
+    if (!focusToolCall || focusToolCall.captureId !== call.capture_id) return;
+    const targetIndex = outputBlocks.findIndex(({ block, index }) => block.type === 'tool_call'
+      && (focusToolCall.id ? block.id === focusToolCall.id : index === focusToolCall.index));
+    if (targetIndex < 0) return;
+    const key = eventKey(callIndex, 'output', 0, targetIndex);
+    setExpandedEvents((current) => current.has(key) ? current : new Set(current).add(key));
+  }, [call.capture_id, callIndex, focusToolCall, outputBlocks]);
   const eventControls = (key: string): EventControls => ({
     open: expandedEvents.has(key),
     onOpenChange: (open) => setExpandedEvents((current) => {
@@ -303,11 +326,11 @@ function Call({ call, callIndex, selected, links, highlightedAnchorId, onNavigat
           return conversationEvent(block, message.role, key, t, links.get(key), highlightedAnchorId, onNavigate, eventControls(key));
         }))}
         {call.output?.error && <div className="trace-provider-error"><strong>{call.output.error.type ?? t('trace.providerError')}</strong><span>{call.output.error.message}</span></div>}
-        {call.output?.content.filter(visibleOutput).map((block, blockIndex) => {
+        {outputBlocks.map(({ block, index }, blockIndex) => {
           const key = eventKey(callIndex, 'output', 0, blockIndex);
-          return outputEvent(block, key, t, links.get(key), highlightedAnchorId, onNavigate, eventControls(key));
+          return outputEvent(block, key, call.capture_id, index, t, links.get(key), highlightedAnchorId, onNavigate, eventControls(key));
         })}
-        {!call.input_delta.length && !call.output?.content.filter(visibleOutput).length && !call.output?.error && <div className="trace-empty-event">{t('trace.noEvents')}</div>}
+        {!call.input_delta.length && !outputBlocks.length && !call.output?.error && <div className="trace-empty-event">{t('trace.noEvents')}</div>}
       </div>
     </article>
   );
@@ -345,6 +368,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
   const { t } = useI18n();
   const linkIndex = useMemo(() => buildTraceLinkIndex(trace?.calls ?? []), [trace]);
   const [highlightedAnchorId, setHighlightedAnchorId] = useState<string | null>(null);
+  const [focusToolCall, setFocusToolCall] = useState<ToolCallFocus | null>(() => toolCallFocusFromUrl());
   const highlightTimer = useRef<number | null>(null);
   useEffect(() => () => {
     if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
@@ -352,11 +376,30 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
   const navigateToToolResult = useCallback((anchorId: string) => {
     const target = document.getElementById(anchorId);
     if (!target) return;
+    const toggle = target.querySelector<HTMLButtonElement>('.trace-event-toggle');
+    if (toggle?.getAttribute('aria-expanded') !== 'true') toggle?.click();
     target.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     setHighlightedAnchorId(anchorId);
     if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
     highlightTimer.current = window.setTimeout(() => setHighlightedAnchorId(null), 1600);
   }, []);
+  useEffect(() => {
+    if (!trace || !focusToolCall) return;
+    const target = [...document.querySelectorAll<HTMLElement>('[data-tool-call-capture-id]')].find((element) => (
+      element.dataset.toolCallCaptureId === focusToolCall.captureId
+      && (focusToolCall.id ? element.dataset.toolCallId === focusToolCall.id : element.dataset.toolCallIndex === String(focusToolCall.index))
+    ));
+    if (!target) return;
+    target.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    setHighlightedAnchorId(target.id);
+    setFocusToolCall(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('tool_call_id');
+    url.searchParams.delete('tool_call_index');
+    window.history.replaceState(null, '', url);
+    if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
+    highlightTimer.current = window.setTimeout(() => setHighlightedAnchorId(null), 1600);
+  }, [focusToolCall, trace]);
   if (loading) return <div className="detail-message"><span className="spinner" />{t('trace.loading')}</div>;
   if (error) return <div className="detail-message detail-message--error"><strong>{t('trace.loadFailed')}</strong><span>{error}</span><Button onClick={onRetry}>{t('common.tryAgain')}</Button></div>;
   if (!trace) return null;
@@ -381,7 +424,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
           <ScrollArea.Content className="trace-content">
             {[...trace.calls].reverse().map((call) => {
               const callIndex = trace.calls.indexOf(call);
-              return <Call key={call.capture_id} call={call} callIndex={callIndex} selected={call.capture_id === trace.selected_capture_id} links={linkIndex} highlightedAnchorId={highlightedAnchorId} onNavigate={navigateToToolResult} selectCapture={selectCapture} />;
+              return <Call key={call.capture_id} call={call} callIndex={callIndex} selected={call.capture_id === trace.selected_capture_id} links={linkIndex} highlightedAnchorId={highlightedAnchorId} focusToolCall={focusToolCall} onNavigate={navigateToToolResult} selectCapture={selectCapture} />;
             })}
             {!trace.calls.length && <div className="trace-empty-event">{t('trace.noCalls')}</div>}
           </ScrollArea.Content>
