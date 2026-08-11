@@ -39,6 +39,10 @@ describe('TracePanel', () => {
     expect(screen.getByRole('button', { name: /^Thinking$/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /Tool result/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /Tool call/ })).toHaveAttribute('aria-expanded', 'false');
+    const icons = [...container.querySelectorAll('.trace-event-icon')];
+    expect(icons).toHaveLength(5);
+    icons.forEach((icon) => expect(icon).toHaveAttribute('aria-hidden', 'true'));
+    expect(screen.getByRole('button', { name: /^User$/ })).toHaveAccessibleName('User');
     expect([...container.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true);
     await userEvent.click(screen.getByRole('button', { name: 'Expand all' }));
     expect(screen.getByText('Fix the endpoint')).toBeVisible();
@@ -50,6 +54,15 @@ describe('TracePanel', () => {
     expect(container.querySelector('.trace-tool-result-link--missing')).toHaveTextContent('tool-1');
     expect(screen.getByText('tool call not found')).toBeVisible();
     expect(screen.getByRole('link', { name: /Select request capture-two/ })).toHaveAttribute('href', expect.stringContaining('capture=capture-two'));
+  });
+
+  it('keeps tool result error styling alongside its message kind', () => {
+    const call = trace.calls[0]!;
+    const input_delta = [{ ...call.input_delta[0]!, content: [{ type: 'tool_result' as const, tool_call_id: 'tool-error', content: { message: 'failed' }, is_error: true }] }];
+    const { container } = render(<TracePanel trace={{ ...trace, calls: [{ ...call, input_delta, output: null }] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    const event = container.querySelector('.trace-event--error');
+    expect(event).toHaveClass('trace-event--error');
+    expect(event!.querySelector('.trace-event-icon')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('links a tool result across trace calls and highlights the matching tool call', async () => {
