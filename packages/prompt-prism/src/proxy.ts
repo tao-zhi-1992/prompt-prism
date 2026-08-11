@@ -143,6 +143,11 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     }
 
     const requestPath = new URL(request.url ?? '/', 'http://prompt-prism.local').pathname;
+    if (request.method === 'GET' && requestPath.startsWith('/.well-known/')) {
+      response.writeHead(404, { 'cache-control': 'no-store' });
+      response.end();
+      return;
+    }
     resolver.consider(detectProtocolFromPath(requestPath), 'request-path');
     resolver.consider(detectProtocolFromHeaders(request.headers), 'request-headers');
     const routingProtocol = resolver.resolution.resolved ?? resolver.resolution.unsupported_protocol as DetectedProtocol | undefined ?? null;

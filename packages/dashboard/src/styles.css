@@ -283,11 +283,11 @@ button:focus-visible {
   height: 30px;
   padding: 0;
   color: var(--muted);
-  border: 1px solid var(--line);
+  border: 0;
   background: var(--surface-1);
   cursor: pointer;
 }
-.settings-trigger:hover, .settings-trigger[data-popup-open] { color: var(--text); border-color: var(--line-strong); background: var(--surface-3); }
+.settings-trigger:hover, .settings-trigger[data-popup-open] { color: var(--text); background: var(--surface-3); }
 .settings-trigger svg, .settings-option svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
 .settings-positioner { z-index: 20; outline: 0; }
 .settings-popup {

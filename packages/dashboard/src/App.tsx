@@ -115,7 +115,7 @@ function Dashboard() {
     <main className="app-shell">
       <aside className="requests-pane">
         <header className="app-header">
-          <div className="brand"><Logo /><div><h1>Prompt Prism</h1><span>{t('brand.subtitle')}</span></div></div>
+          <div className="brand"><Logo /><div><h1>Prompt Prism</h1><span>v{__PROMPT_PRISM_VERSION__}</span></div></div>
           <div className="header-actions">
             <div className="live-status"><span />{t('status.live')}</div>
             <SettingsMenu

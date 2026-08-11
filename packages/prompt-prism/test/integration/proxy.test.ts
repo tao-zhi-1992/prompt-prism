@@ -67,6 +67,11 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   const proxyPort = await listen(prism.server);
   t.after(async () => { await close(prism.server); await close(upstream); });
 
+  const devtoolsProbe = await request({ port: proxyPort, pathname: '/.well-known/appspecific/com.chrome.devtools.json?source=devtools' });
+  assert.equal(devtoolsProbe.status, 404);
+  assert.equal(seen === undefined, true);
+  assert.equal(prism.store.captures.length, 0);
+
   const body = JSON.stringify({ model: 'claude-test', messages: [{ role: 'user', content: 'hello' }] });
   const result = await request({ port: proxyPort, pathname: '/v1/messages?beta=1', headers: { 'content-type': 'application/json', 'x-api-key': 'top-secret', 'x-prompt-prism-trace-id': 'agent.session:one', 'content-length': Buffer.byteLength(body) }, body });
   assert.equal(result.status, 200);

@@ -83,7 +83,8 @@ describe('App', () => {
     expect(container.querySelector('.logo-mark')).toHaveAttribute('src', '/_pp/brand/logo-mark.png');
     expect(container.querySelector('.app-header .logo-mark')).toBeVisible();
     expect(screen.getByText('Prompt Prism')).toBeVisible();
-    expect(screen.getByText('Prompt & response inspector')).toBeVisible();
+    expect(screen.getByText('v0.1.0')).toBeVisible();
+    expect(screen.queryByText('Prompt & response inspector')).not.toBeInTheDocument();
     expect(screen.queryByText('Prompt cache debugger')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /newest-model/i })).toHaveAttribute('data-selected');
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Tools', 'Trace', 'Raw', 'System Prompt']);
@@ -138,7 +139,8 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
     await userEvent.click(await screen.findByRole('menuitemradio', { name: /中文/ }));
 
-    expect(screen.getByText('提示词与响应检查器')).toBeVisible();
+    expect(screen.getByText('v0.1.0')).toBeVisible();
+    expect(screen.queryByText('提示词与响应检查器')).not.toBeInTheDocument();
     expect(screen.getByText('请求')).toBeVisible();
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['输入差异', '输出', '工具', '追踪', '原始数据', '系统提示词']);
     expect(window.localStorage.getItem('prompt-prism-locale')).toBe('zh-CN');
