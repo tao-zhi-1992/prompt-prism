@@ -1,3 +1,5 @@
+import './dashboard.css';
+
 export type {
   CaptureSummary,
   CaptureTiming,

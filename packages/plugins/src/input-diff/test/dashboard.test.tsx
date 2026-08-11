@@ -27,6 +27,7 @@ describe('InputDiffPanel', () => {
     expect(parentLink).toHaveAttribute('href', expect.stringContaining('capture=parent-request'));
     expect(parentLink).toHaveAttribute('href', expect.stringContaining('tab=input-diff'));
     expect(parentLink).toHaveAttribute('href', expect.stringContaining('#input-diff-section-messages'));
+    expect(screen.getByRole('button', { name: /Messages/ })).toHaveClass('detail-sticky-header');
     expect(screen.getByRole('table', { name: 'Messages diff with line numbers' })).toBeVisible();
     expect(screen.getByRole('table', { name: 'System diff with line numbers' })).toBeVisible();
     expect(screen.queryByRole('table', { name: 'Tools diff with line numbers' })).not.toBeInTheDocument();

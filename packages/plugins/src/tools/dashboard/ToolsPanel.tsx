@@ -113,7 +113,7 @@ function ToolCard({ tool, index }: { tool: NormalizedTool; index: number }) {
   const value = tool.known ? tool.schema : tool.raw;
   return (
     <Collapsible.Root className="tools-card" defaultOpen={false}>
-      <Collapsible.Trigger className="tools-card-header ui-interactive">
+      <Collapsible.Trigger className="tools-card-header detail-sticky-header ui-interactive">
         <strong title={tool.name ?? undefined}>{title}</strong>
         <span className="tools-chevron" aria-hidden="true" />
       </Collapsible.Trigger>

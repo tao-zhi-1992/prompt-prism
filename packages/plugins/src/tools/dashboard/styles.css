@@ -20,7 +20,7 @@
 .tools-scroll { position: relative; height: 100%; min-width: 0; min-height: 0; border: 1px solid var(--line); background: var(--viewer-bg); }
 .tools-content { display: grid; gap: 12px; min-width: 100%; min-height: 100%; padding: 14px 14px 70px; }
 .tools-card { min-width: 0; border: 1px solid var(--line); background: var(--surface-1); }
-.tools-card-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 38px; padding: 0 14px; color: var(--text); border: 0; background: var(--surface-2); text-align: left; cursor: pointer; }
+.tools-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 38px; padding: 0 14px; color: var(--text); border: 0; background: var(--surface-2); text-align: left; cursor: pointer; }
 .tools-card-header:hover { background: var(--surface-3); }
 .tools-card-header strong { min-width: 0; overflow: hidden; color: var(--accent-strong); font: 600 11px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .tools-chevron { display: grid; flex: 0 0 auto; place-items: center; width: 14px; height: 14px; color: var(--muted); transition: transform 120ms ease; }

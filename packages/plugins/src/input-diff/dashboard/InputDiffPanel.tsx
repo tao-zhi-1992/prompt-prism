@@ -89,7 +89,7 @@ function SectionHeader({ section }: { section: InputDiffSection }) {
   const { t } = useI18n();
   const key = sectionKey(section.id);
   return (
-    <Collapsible.Trigger className="input-diff-section-header ui-interactive">
+    <Collapsible.Trigger className="input-diff-section-header detail-sticky-header ui-interactive">
       <span>{key ? t(key) : section.label}</span>
       <span className={`input-diff-section-state input-diff-section-state--${section.state}`}>{t(`diff.state.${statusLabel(section.state)}` as TranslationKey)}</span>
       <span className="input-diff-chevron" aria-hidden="true" />

@@ -305,7 +305,7 @@ function Call({ call, callIndex, selected, links, highlightedAnchorId, focusTool
   const hasUsage = Object.values(usage).some((value) => value !== null);
   return (
     <article className="trace-call" data-selected={selected || undefined}>
-      <div className="trace-call-header-row">
+      <div className="trace-call-header-row detail-sticky-header">
         <a className="trace-call-header ui-interactive" href={captureHref(call.capture_id)} aria-label={t('trace.selectRequest', { id: call.capture_id })} onClick={handleCaptureClick}>
           <span className="trace-call-index">{call.capture_id.slice(0, 8)}</span>
           <span className="trace-call-model">{call.model ?? t('common.unknownModel')}</span>

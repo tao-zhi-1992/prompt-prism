@@ -24,6 +24,8 @@ describe('TracePanel', () => {
   it('renders the agent timeline with compact defaults and capture navigation', async () => {
     const selectCapture = vi.fn();
     const { container } = render(<TracePanel trace={trace} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={selectCapture} />);
+    expect(container.querySelector('.trace-call-header-row')).toHaveClass('detail-sticky-header');
+    expect(container.querySelector('.trace-event-toggle-row')).not.toHaveClass('detail-sticky-header');
     expect(screen.getByText('Explicit')).toBeVisible();
     expect(screen.getByText('HTTP 200')).toHaveClass('trace-http--good');
     expect(container.querySelector('.trace-summary-id')).toHaveTextContent('trace:session');

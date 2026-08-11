@@ -22,6 +22,8 @@ describe('ToolsPanel', () => {
     expect(screen.getByRole('link', { name: 'Call 2 →' })).toHaveAttribute('href', expect.stringContaining('tool_call_id=call-read-2'));
     const read = screen.getByRole('button', { name: 'read' });
     const bash = screen.getByRole('button', { name: 'bash' });
+    expect(read).toHaveClass('detail-sticky-header');
+    expect(bash).toHaveClass('detail-sticky-header');
     expect(read).toHaveAttribute('aria-expanded', 'false');
     expect(bash).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Read files')).not.toBeInTheDocument();
