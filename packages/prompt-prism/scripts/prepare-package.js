@@ -11,5 +11,7 @@ await mkdir(docsDir, { recursive: true });
 await Promise.all([
   copyFile(path.join(repositoryDir, 'README.md'), path.join(packageDir, 'README.md')),
   copyFile(path.join(repositoryDir, 'LICENSE'), path.join(packageDir, 'LICENSE')),
-  copyFile(path.join(repositoryDir, 'docs/dashboard.png'), path.join(docsDir, 'dashboard.png'))
+  ...['dashboard.png', 'guide.md', 'insights.md', 'development.md'].map((file) =>
+    copyFile(path.join(repositoryDir, 'docs', file), path.join(docsDir, file))
+  )
 ]);

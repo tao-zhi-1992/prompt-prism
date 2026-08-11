@@ -68,12 +68,16 @@ function fixture() {
 describe('Insights server plugin', () => {
   it('lists stable run anchors and builds actionable statistics without raw content', async () => {
     const { second, pluginContext } = fixture();
+    second.token_hash = 'other-token';
+    second.adapter_id = 'openai-chat-completions';
+    second.upstream_host = 'other.example.com';
     const runs = listInsightRuns(pluginContext.captures, () => null);
     expect(runs).toHaveLength(1);
     expect(runs[0]).toMatchObject({ run_id: second.id, trace_id: 'trace-one', calls: 2, status: 'ok' });
     expect(runs[0]?.timing).toMatchObject({ trace_span_ms: 2200, model_duration_ms: 300, inter_call_gap_ms: 1900 });
 
     const report = await buildInsightReport(second.id, pluginContext, () => null);
+    expect(report?.run).toEqual(runs[0]);
     expect(report?.tools).toMatchObject({ calls: 3, errors: 1, invalid_arguments: 1, repeated_calls: 1 });
     expect(report?.sections.find((section) => section.id === 'system')?.changes).toBe(1);
     expect(report?.findings.map((item) => item.code)).toEqual(expect.arrayContaining([

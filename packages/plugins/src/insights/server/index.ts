@@ -251,20 +251,15 @@ function summary(entries: CaptureIndexEntry[], source: 'explicit' | 'inferred', 
   };
 }
 
-function explicitGroupKey(entry: CaptureIndexEntry): string {
-  return canonical([entry.trace_id, entry.token_hash, entry.adapter_id ?? 'anthropic', entry.upstream_host ?? '']);
-}
-
 export function listInsightRuns(captures: readonly CaptureIndexEntry[], getParentId: ParentLookup, limit = DEFAULT_LIMIT): InsightRunSummary[] {
   const runs: InsightRunSummary[] = [];
   const explicit = new Map<string, CaptureIndexEntry[]>();
   const untraced = captures.filter((entry) => !entry.trace_id);
   for (const entry of captures) {
     if (!entry.trace_id) continue;
-    const key = explicitGroupKey(entry);
-    const group = explicit.get(key) ?? [];
+    const group = explicit.get(entry.trace_id) ?? [];
     group.push(entry);
-    explicit.set(key, group);
+    explicit.set(entry.trace_id, group);
   }
   for (const entries of explicit.values()) runs.push(summary(entries, 'explicit', false));
 

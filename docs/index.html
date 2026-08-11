@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prompt Prism — Inspect exactly what your model receives</title>
+    <meta name="description" content="A zero-runtime-dependency local proxy for inspecting model requests, prompt changes, tool use, and multi-request agent traces.">
+    <meta name="theme-color" content="#050705">
+    <link rel="canonical" href="https://tao-zhi-1992.github.io/prompt-prism/">
+    <link rel="icon" href="./assets/logo-mark.png" type="image/png">
+    <link rel="stylesheet" href="./styles.css">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Prompt Prism">
+    <meta property="og:description" content="Inspect exactly what your model receives.">
+    <meta property="og:url" content="https://tao-zhi-1992.github.io/prompt-prism/">
+    <meta property="og:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
+    <meta property="og:image:width" content="2400">
+    <meta property="og:image:height" content="1260">
+    <meta property="og:image:alt" content="Prompt Prism dashboard showing a multi-request agent trace">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Prompt Prism">
+    <meta name="twitter:description" content="Inspect exactly what your model receives.">
+    <meta name="twitter:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Prompt Prism home">
+        <img src="./assets/logo-mark.png" width="38" height="38" alt="">
+        <span>Prompt Prism</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#compatibility">Compatibility</a>
+        <a href="#docs">Docs</a>
+        <a class="nav-github" href="https://github.com/tao-zhi-1992/prompt-prism">GitHub <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span> Local model inspection</p>
+          <h1 id="hero-title">See the request.<br><em>Follow the trace.</em><br>Fix the agent.</h1>
+          <p class="hero-lede">Prompt Prism is a transparent local proxy that reveals prompt changes, normalized model output, tool activity, and complete multi-request agent traces.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="https://github.com/tao-zhi-1992/prompt-prism">View on GitHub <span aria-hidden="true">↗</span></a>
+            <a class="button" href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.md">Read the guide</a>
+          </div>
+          <div class="install" aria-label="Installation command">
+            <span aria-hidden="true">$</span><code>npm install -g prompt-prism</code>
+          </div>
+          <p class="hero-note">Node.js 20+ · MIT licensed · zero runtime dependencies</p>
+        </div>
+        <div class="hero-orbit" aria-hidden="true">
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="prism-mark"><img src="./assets/logo-mark.png" width="180" height="180" alt=""></div>
+          <span class="signal signal-a">request</span>
+          <span class="signal signal-b">capture</span>
+          <span class="signal signal-c">response</span>
+        </div>
+      </section>
+
+      <section class="product-shot" aria-label="Product preview">
+        <div class="shot-bar">
+          <span><i></i> Live inspection</span>
+          <code>127.0.0.1:1028/_pp/</code>
+        </div>
+        <img src="./dashboard.png" width="1200" height="630" alt="Prompt Prism dashboard showing a multi-request agent trace">
+      </section>
+
+      <section class="section" id="features" aria-labelledby="features-title">
+        <div class="section-heading">
+          <p class="section-index">01 / Inspect</p>
+          <h2 id="features-title">The whole model loop,<br>in one place.</h2>
+          <p>Move from the request list to the exact tool arguments without reconstructing events from raw logs.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature feature-wide">
+            <span class="feature-number">01</span>
+            <h3>Trace every call</h3>
+            <p>Follow user input, reasoning, assistant text, tool calls, and tool results across captures. Jump between linked events and reveal the real parameters.</p>
+            <div class="trace-demo" aria-hidden="true">
+              <span>User</span><i></i><span>Thinking</span><i></i><span class="active">Tool call</span><i></i><span>Tool result</span>
+            </div>
+          </article>
+          <article class="feature">
+            <span class="feature-number">02</span>
+            <h3>Find the input change</h3>
+            <p>Input Diff locates inserted and removed messages, then compares System, Tools, and request options.</p>
+            <pre aria-hidden="true"><del>- old context</del>
+<ins>+ exact new message</ins></pre>
+          </article>
+          <article class="feature">
+            <span class="feature-number">03</span>
+            <h3>Understand tool use</h3>
+            <p>Browse declared schemas and parsed parameters, then jump from usage totals to each actual call in Trace.</p>
+            <div class="tool-demo" aria-hidden="true"><code>read_file</code><strong>2 calls →</strong></div>
+          </article>
+          <article class="feature">
+            <span class="feature-number">04</span>
+            <h3>Read normalized output</h3>
+            <p>Inspect text, reasoning, usage, errors, stop reasons, and provider-neutral tool arguments.</p>
+          </article>
+          <article class="feature">
+            <span class="feature-number">05</span>
+            <h3>Keep the raw truth</h3>
+            <p>Unsupported traffic still passes through and remains available as a redacted HTTP request and response.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="flow-section" aria-labelledby="flow-title">
+        <div class="section-heading compact">
+          <p class="section-index">02 / Transparent</p>
+          <h2 id="flow-title">Your traffic keeps moving.</h2>
+          <p>SSE and JSON responses are forwarded immediately. Capture and analysis happen on a side channel.</p>
+        </div>
+        <div class="flow" aria-label="Your application sends requests through Prompt Prism to the model provider while Prompt Prism stores a local redacted capture">
+          <div class="flow-node"><small>01</small><strong>Your app</strong><span>normal SDK</span></div>
+          <div class="flow-arrow"><span>request</span><i></i></div>
+          <div class="flow-node flow-node-prism"><small>02</small><strong>Prompt Prism</strong><span>localhost:1028</span></div>
+          <div class="flow-arrow"><span>SSE / JSON</span><i></i></div>
+          <div class="flow-node"><small>03</small><strong>Provider</strong><span>Anthropic / OpenAI</span></div>
+          <div class="capture-node"><i></i><span>redacted local capture</span></div>
+        </div>
+      </section>
+
+      <section class="section compatibility" id="compatibility" aria-labelledby="compatibility-title">
+        <div class="section-heading">
+          <p class="section-index">03 / Compatible</p>
+          <h2 id="compatibility-title">One proxy.<br>Two normalized protocols.</h2>
+          <p>Automatic detection resolves the first confident request and locks the protocol for the process.</p>
+        </div>
+        <div class="protocols">
+          <article>
+            <div class="protocol-head"><span>A</span><strong>Anthropic Messages</strong></div>
+            <ul><li>JSON and SSE</li><li>Thinking blocks</li><li>Tool calls and results</li><li>Prompt cache usage</li></ul>
+          </article>
+          <article>
+            <div class="protocol-head"><span>O</span><strong>OpenAI Chat Completions</strong></div>
+            <ul><li>JSON and SSE</li><li>Reasoning extensions</li><li>Function tool calls</li><li>Cached token usage</li></ul>
+          </article>
+          <article class="raw-protocol">
+            <div class="protocol-head"><span>R</span><strong>Everything else</strong></div>
+            <ul><li>Still forwarded</li><li>Redacted headers</li><li>Raw request and response</li><li>No guessed normalization</li></ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="privacy-section" aria-labelledby="privacy-title">
+        <div>
+          <p class="section-index">04 / Local by design</p>
+          <h2 id="privacy-title">The inspector stays<br>on your machine.</h2>
+        </div>
+        <div class="privacy-copy">
+          <p>Captures are stored under your local data directory. Authentication headers and cookies are redacted before storage, and the oldest captures are evicted when the configured limit is reached.</p>
+          <ul>
+            <li><span>01</span> No hosted Prompt Prism service</li>
+            <li><span>02</span> No analytics or telemetry</li>
+            <li><span>03</span> Configurable data directory and storage cap</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="quickstart" aria-labelledby="quickstart-title">
+        <div>
+          <p class="section-index">05 / Start</p>
+          <h2 id="quickstart-title">Inspect your next request.</h2>
+          <p>Install the CLI, choose the provider Base URL, and point your SDK at localhost.</p>
+        </div>
+        <pre><code><span># install</span>
+npm install -g prompt-prism
+
+<span># start with a provider Base URL</span>
+pp start --upstream-base-url https://api.anthropic.com
+
+<span># dashboard</span>
+http://127.0.0.1:1028/_pp/</code></pre>
+      </section>
+
+      <section class="section docs-section" id="docs" aria-labelledby="docs-title">
+        <div class="section-heading compact">
+          <p class="section-index">06 / Go deeper</p>
+          <h2 id="docs-title">Use it. Measure it. Extend it.</h2>
+        </div>
+        <div class="docs-grid">
+          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.md"><span>Guide</span><p>Provider setup, CLI options, protocol detection, embedding, and privacy.</p><b aria-hidden="true">↗</b></a>
+          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/insights.md"><span>Agent Insights</span><p>Compare token use, cache reuse, timing, and tool behavior across runs.</p><b aria-hidden="true">↗</b></a>
+          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/development.md"><span>Development</span><p>Run the demo, understand the monorepo, and work on Input Diff.</p><b aria-hidden="true">↗</b></a>
+        </div>
+      </section>
+
+      <section class="final-cta" aria-labelledby="cta-title">
+        <img src="./assets/logo-mark.png" width="76" height="76" alt="">
+        <p class="section-index">Open source · MIT</p>
+        <h2 id="cta-title">Stop guessing what<br>the model saw.</h2>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://www.npmjs.com/package/prompt-prism">Install from npm <span aria-hidden="true">↗</span></a>
+          <a class="button" href="https://github.com/tao-zhi-1992/prompt-prism">Explore the source</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand" href="./"><img src="./assets/logo-mark.png" width="30" height="30" alt=""><span>Prompt Prism</span></a>
+      <p>Local visibility for model-powered software.</p>
+      <div><a href="https://github.com/tao-zhi-1992/prompt-prism">GitHub</a><a href="https://www.npmjs.com/package/prompt-prism">npm</a><a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/LICENSE">MIT License</a></div>
+    </footer>
+  </body>
+</html>
