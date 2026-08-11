@@ -1,0 +1,58 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Create release and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create release pull request or release
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Check out release commit
+        if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release.outputs['packages/prompt-prism--sha'] }}
+
+      - name: Set up pnpm
+        if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+
+      - name: Set up Node.js
+        if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install dependencies
+        if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Run checks before publishing
+        if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
+        run: pnpm test
+
+      - name: Publish package to npm
+        if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
+        working-directory: packages/prompt-prism
+        run: npm publish --access public

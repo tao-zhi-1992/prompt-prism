@@ -14,7 +14,8 @@
   <a href="https://tao-zhi-1992.github.io/prompt-prism/">网站</a> ·
   <a href="docs/guide.zh-CN.md">使用指南</a> ·
   <a href="docs/insights.zh-CN.md">Agent Insights</a> ·
-  <a href="docs/development.zh-CN.md">开发指南</a>
+  <a href="docs/development.zh-CN.md">开发指南</a> ·
+  <a href="docs/releasing.zh-CN.md">发布</a>
 </p>
 
 <p align="center">
@@ -106,6 +107,7 @@ OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本�
 - [使用指南](docs/guide.zh-CN.md) — 提供商配置、CLI 选项、协议检测、嵌入式使用和本地数据。
 - [Agent Insights](docs/insights.zh-CN.md) — 在 shell 中检查并比较 Agent 运行。
 - [开发指南](docs/development.zh-CN.md) — 运行演示、在 monorepo 中开发、理解 Input Diff 匹配。
+- [发布](docs/releasing.zh-CN.md) — 配置 Trusted Publishing，并从 Conventional Commits 发布。
 
 ## 编程接口
 

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "d33bb7ec66628c5de7fdb683bd2625bf223d1f17",
+  "release-type": "node",
+  "include-component-in-tag": false,
+  "packages": {
+    "packages/prompt-prism": {
+      "changelog-path": "/CHANGELOG.md"
+    }
+  }
+}

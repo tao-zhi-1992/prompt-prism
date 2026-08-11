@@ -14,7 +14,8 @@
   <a href="https://tao-zhi-1992.github.io/prompt-prism/">Website</a> ·
   <a href="docs/guide.md">Guide</a> ·
   <a href="docs/insights.md">Agent Insights</a> ·
-  <a href="docs/development.md">Development</a>
+  <a href="docs/development.md">Development</a> ·
+  <a href="docs/releasing.md">Releasing</a>
 </p>
 
 <p align="center">
@@ -106,6 +107,7 @@ Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic
 - [Guide](docs/guide.md) — provider setup, CLI options, protocol detection, embedding, and local data.
 - [Agent Insights](docs/insights.md) — inspect and compare agent runs from the shell.
 - [Development](docs/development.md) — run the demo, work on the monorepo, and understand Input Diff matching.
+- [Releasing](docs/releasing.md) — configure Trusted Publishing and release from Conventional Commits.
 
 ## Programmatic API
 
