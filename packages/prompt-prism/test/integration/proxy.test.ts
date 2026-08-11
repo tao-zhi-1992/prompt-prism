@@ -9,6 +9,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl } from '../../src/proxy.js';
+import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
 
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
@@ -307,6 +308,91 @@ test('Prism validates and preserves complete upstream URLs', async () => {
   assert.throws(() => parseUpstreamUrl('not-a-url'), /valid absolute URL/);
   assert.throws(() => parseUpstreamUrl('ftp://provider.example.com'), /http or https/);
   assert.throws(() => parseUpstreamUrl('https://provider.example.com/v1/messages#fragment'), /fragment/);
+});
+
+test('dynamic upstream paths route each capture independently and preserve the fixed fallback', async (t) => {
+  const seen: Array<{ provider: string; url: string; host: string | undefined; body: string }> = [];
+  const provider = (name: 'openai' | 'anthropic' | 'fixed') => http.createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    req.on('end', () => {
+      seen.push({ provider: name, url: req.url ?? '', host: req.headers.host, body: Buffer.concat(chunks).toString() });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (name === 'openai') res.end(JSON.stringify({ id: 'chatcmpl_dynamic', object: 'chat.completion', choices: [{ message: { role: 'assistant', content: 'openai dynamic' } }], usage: { prompt_tokens: 3, completion_tokens: 2 } }));
+      else res.end(JSON.stringify({ id: `msg_${name}`, type: 'message', role: 'assistant', content: [{ type: 'text', text: `${name} dynamic` }], usage: { input_tokens: 4, output_tokens: 1 } }));
+    });
+  });
+  const openai = provider('openai');
+  const anthropic = provider('anthropic');
+  const fixed = provider('fixed');
+  const [openaiPort, anthropicPort, fixedPort] = await Promise.all([listen(openai), listen(anthropic), listen(fixed)]);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-dynamic-'));
+  const prism = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${fixedPort}/fixed`, dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await Promise.all([close(openai), close(anthropic), close(fixed)]); });
+
+  const generateBody = JSON.stringify({ upstream_base_url: `http://127.0.0.1:${openaiPort}/tenant/v1` });
+  const generated = await request({
+    port: proxyPort,
+    pathname: '/_pp/api/proxy-url',
+    headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(generateBody) },
+    body: generateBody,
+  });
+  assert.equal(generated.status, 200);
+  const openaiPath = JSON.parse(generated.body).path as string;
+  assert.equal(openaiPath, new URL(buildDynamicProxyBaseUrl(`http://127.0.0.1:${openaiPort}/tenant/v1`)).pathname);
+  const anthropicPath = new URL(buildDynamicProxyBaseUrl(`http://127.0.0.1:${anthropicPort}/gateway`)).pathname;
+
+  const openaiBody = JSON.stringify({ model: 'openai-dynamic', messages: [{ role: 'developer', content: 'dynamic' }] });
+  const anthropicBody = JSON.stringify({ model: 'anthropic-dynamic', messages: [{ role: 'user', content: [{ type: 'text', text: 'dynamic' }] }], tools: [{ name: 'read', input_schema: { type: 'object' } }] });
+  await request({ port: proxyPort, pathname: `${openaiPath}/chat/completions?region=cn`, headers: { authorization: 'Bearer secret', 'content-type': 'application/json', 'content-length': Buffer.byteLength(openaiBody) }, body: openaiBody });
+  await request({ port: proxyPort, pathname: `${anthropicPath}/v1/messages`, headers: { 'x-api-key': 'secret', 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'content-length': Buffer.byteLength(anthropicBody) }, body: anthropicBody });
+  await request({ port: proxyPort, pathname: '/v1/messages', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(anthropicBody) }, body: anthropicBody });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  await prism.store.pending;
+
+  assert.deepEqual(seen.map(({ provider, url }) => [provider, url]), [
+    ['openai', '/tenant/v1/chat/completions?region=cn'],
+    ['anthropic', '/gateway/v1/messages'],
+    ['fixed', '/fixed/v1/messages'],
+  ]);
+  assert.equal(seen[0]?.host, `127.0.0.1:${openaiPort}`);
+  assert.equal(seen[1]?.host, `127.0.0.1:${anthropicPort}`);
+  assert.equal(prism.store.captures.length, 3);
+  const captures = await Promise.all(prism.store.captures.map(({ id }) => prism.store.readCapture(id)));
+  assert.deepEqual(captures.map((capture) => capture?.adapter_id), ['openai-chat-completions', 'anthropic-messages', 'anthropic-messages']);
+  assert.deepEqual(captures.map((capture) => capture?.upstream_host), [`127.0.0.1:${openaiPort}`, `127.0.0.1:${anthropicPort}`, `127.0.0.1:${fixedPort}`]);
+  assert.equal(captures[0]?.request?.url, `${openaiPath}/chat/completions?region=cn`);
+  assert.equal(captures[0]?.request?.target_url, `http://127.0.0.1:${openaiPort}/tenant/v1/chat/completions?region=cn`);
+  assert.equal(captures[0]?.model_output?.content[0]?.type, 'text');
+  assert.equal(captures[1]?.prompt_input?.adapter_id, 'anthropic-messages');
+});
+
+test('dynamic upstream paths fail closed and require opt-in on non-loopback listeners', async (t) => {
+  let upstreamCalls = 0;
+  const upstream = http.createServer((req, res) => { upstreamCalls += 1; req.resume(); res.end('ok'); });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-dynamic-security-'));
+  const prism = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}`, dataDir: dir });
+  const proxyPort = await new Promise<number>((resolve) => prism.server.listen(0, '0.0.0.0', () => resolve((prism.server.address() as AddressInfo).port)));
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  const route = new URL(buildDynamicProxyBaseUrl(`http://127.0.0.1:${upstreamPort}`)).pathname;
+  assert.equal((await request({ port: proxyPort, pathname: `${route}/v1/messages` })).status, 403);
+  assert.equal((await request({ port: proxyPort, pathname: '/_pp/up/not-valid=/v1/messages' })).status, 403);
+  assert.equal(upstreamCalls, 0);
+
+  const allowedDir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-dynamic-security-allowed-'));
+  const allowed = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}`, allowRemoteDynamicUpstream: true, dataDir: allowedDir });
+  const allowedPort = await new Promise<number>((resolve) => allowed.server.listen(0, '0.0.0.0', () => resolve((allowed.server.address() as AddressInfo).port)));
+  t.after(() => close(allowed.server));
+  assert.equal((await request({ port: allowedPort, pathname: '/_pp/up/not-valid=/v1/messages' })).status, 400);
+  const invalidBody = JSON.stringify({ upstream_base_url: 'https://provider.example.com/v1?secret=value' });
+  const invalidGenerated = await request({ port: allowedPort, pathname: '/_pp/api/proxy-url', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(invalidBody) }, body: invalidBody });
+  assert.equal(invalidGenerated.status, 400);
+  assert.match(JSON.parse(invalidGenerated.body).error, /must not contain a query/);
+  assert.equal((await request({ port: allowedPort, pathname: `${route}/health` })).status, 200);
+  assert.equal(upstreamCalls, 1);
 });
 
 test('Auto detects and normalizes every capture independently in both protocol orders', async () => {

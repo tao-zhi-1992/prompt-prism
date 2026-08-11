@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
 
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
@@ -42,7 +43,21 @@ test('CLI documents base and exact upstream modes with automatic API format', as
   assert.match(stdout, /--api-format FORMAT/);
   assert.match(stdout, /available: auto, anthropic-messages, openai-chat-completions/);
   assert.match(stdout, /p2 insights/);
+  assert.match(stdout, /p2 url UPSTREAM_BASE_URL/);
   assert.doesNotMatch(stdout, /--base-url|--target|\btarget\b/i);
+});
+
+test('CLI generates copyable dynamic proxy Base URLs with a configurable proxy origin', async () => {
+  const defaultResult = await run(process.execPath, [cli, 'url', 'https://provider.example.com/v1']);
+  assert.equal(defaultResult.stdout, `${buildDynamicProxyBaseUrl('https://provider.example.com/v1')}\n`);
+  assert.equal(defaultResult.stderr, '');
+
+  const customResult = await run(process.execPath, [cli, 'url', 'https://provider.example.com/gateway', '--proxy-url', 'http://127.0.0.1:2048']);
+  assert.equal(customResult.stdout, `${buildDynamicProxyBaseUrl('https://provider.example.com/gateway', 'http://127.0.0.1:2048')}\n`);
+  await assert.rejects(
+    run(process.execPath, [cli, 'url', 'file:///tmp/provider']),
+    (error: unknown) => error instanceof Error && 'stderr' in error && /must use http or https/.test(String(error.stderr)),
+  );
 });
 
 test('Insights CLI exposes list, latest report, compare, and evidence in stable JSON', async (t) => {

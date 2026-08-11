@@ -70,6 +70,16 @@ const client = new OpenAI({
 });
 ```
 
+### Switch providers without restarting
+
+Generate a proxy Base URL from the provider's original SDK Base URL:
+
+```bash
+p2 url https://api.deepseek.com/v1
+```
+
+Paste the generated `http://127.0.0.1:1028/_pp/up/...` URL into the SDK. The Dashboard's **Proxy URL** button provides the same generator. Dynamic URLs can target different providers through one running Prism instance; requests without one continue to use the startup upstream.
+
 ## What you can inspect
 
 - **Trace** — follow model, reasoning, tool call, and tool result events across captures.
@@ -89,6 +99,8 @@ const client = new OpenAI({
 
 OpenAI Responses, Realtime, Embeddings, Images, and Audio endpoints are not normalized in this release. They are still forwarded and captured in Raw.
 
+Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic JavaScript SDKs. Some third-party clients replace rather than append the Base URL path; use `--upstream-base-url` when a client does not preserve the generated prefix.
+
 ## Documentation
 
 - [Guide](docs/guide.md) — provider setup, CLI options, protocol detection, embedding, and local data.
@@ -99,7 +111,9 @@ OpenAI Responses, Realtime, Embeddings, Images, and Audio endpoints are not norm
 
 ```js
 import {
+  buildDynamicProxyBaseUrl,
   createPromptPrism,
+  encodeUpstreamBaseUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism

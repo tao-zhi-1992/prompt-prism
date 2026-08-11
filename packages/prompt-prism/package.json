@@ -60,7 +60,9 @@
     "LICENSE"
   ],
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@types/node": "^24.0.0",
+    "openai": "^6.26.0",
     "tsx": "^4.20.0",
     "typescript": "^7.0.2"
   }

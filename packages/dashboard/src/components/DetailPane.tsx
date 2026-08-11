@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
 import { dashboardPluginRegistry, useI18n, type CaptureSummary, type DetailTabPlugin, type TranslationKey } from '@prompt-prism/plugins/dashboard';
+import { ProxyUrlDialog } from './ProxyUrlDialog';
 
 type Resource = { status: 'loading' } | { status: 'ready'; data: unknown; refreshError?: string } | { status: 'error'; error: string };
 
@@ -53,25 +54,13 @@ export function DetailPane({ capture, initialTab, onSelectCapture, onSelectTab }
     };
   }, [activePlugin, key, retryVersion]);
 
-  if (!capture) {
-    return (
-      <section className="detail-empty">
-        <span className="empty-prism empty-prism--large" aria-hidden="true">◇</span>
-        <h2>{t('detail.selectTitle')}</h2>
-        <p>{t('detail.selectDescription')}</p>
-      </section>
-    );
-  }
-
-  if (!activePlugin) return <section className="detail-empty"><h2>{t('detail.noPlugins')}</h2></section>;
-
   const resource = key ? cache.current.get(key) : undefined;
   const retry = () => {
     if (key) cache.current.delete(key);
     setRetryVersion((value) => value + 1);
   };
   const panelProps = {
-    capture,
+    capture: capture!,
     data: resource?.status === 'ready' ? resource.data : null,
     loading: Boolean(activePlugin.load) && (!resource || resource.status === 'loading'),
     error: resource?.status === 'error' ? resource.error : null,
@@ -83,11 +72,18 @@ export function DetailPane({ capture, initialTab, onSelectCapture, onSelectTab }
 
   return (
     <section className="detail-pane">
-      <Tabs.Root className="detail-tabs" value={activePlugin.id} onValueChange={changeTab}>
-        <Tabs.List className="tab-list" aria-label={t('detail.tabsLabel')}>
-          {plugins.map((plugin) => <Tabs.Tab className="tab ui-interactive" value={plugin.id} key={plugin.id}>{t(`tab.${plugin.id}` as TranslationKey)}</Tabs.Tab>)}
-        </Tabs.List>
-        {plugins.map((plugin: DetailTabPlugin) => (
+      <Tabs.Root className="detail-tabs" value={activePlugin?.id ?? ''} onValueChange={changeTab}>
+        <div className="detail-tabbar">
+          {capture && activePlugin ? <Tabs.List className="tab-list" aria-label={t('detail.tabsLabel')}>
+            {plugins.map((plugin) => <Tabs.Tab className="tab ui-interactive" value={plugin.id} key={plugin.id}>{t(`tab.${plugin.id}` as TranslationKey)}</Tabs.Tab>)}
+          </Tabs.List> : <div className="tab-list tab-list--empty" />}
+          <div className="tabbar-actions"><ProxyUrlDialog /></div>
+        </div>
+        {!capture ? <section className="detail-empty">
+          <span className="empty-prism empty-prism--large" aria-hidden="true">◇</span>
+          <h2>{t('detail.selectTitle')}</h2>
+          <p>{t('detail.selectDescription')}</p>
+        </section> : !activePlugin ? <section className="detail-empty"><h2>{t('detail.noPlugins')}</h2></section> : plugins.map((plugin: DetailTabPlugin) => (
           <Tabs.Panel className="tab-panel" value={plugin.id} key={plugin.id}>
             {plugin.id === activePlugin.id ? plugin.render(panelProps) : null}
           </Tabs.Panel>

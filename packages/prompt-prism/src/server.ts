@@ -13,6 +13,7 @@ type TraceGroupMetadata = { trace_group_id: string; trace_group_source: TraceGro
 type LogCursorPosition = { timestamp: string; id: string };
 const DEFAULT_LOG_LIMIT = 100;
 const MAX_LOG_LIMIT = 200;
+const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 export function json(response: http.ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
@@ -22,6 +23,19 @@ export function json(response: http.ServerResponse, status: number, value: unkno
     'cache-control': 'no-store'
   });
   response.end(body);
+}
+
+async function readJsonBody(request: http.IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.from(chunk);
+    size += buffer.length;
+    if (size > MAX_JSON_BODY_BYTES) throw new Error('Request body is too large');
+    chunks.push(buffer);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw new Error('Request body must be valid JSON'); }
 }
 
 function contentType(filename: string): string {
@@ -158,11 +172,15 @@ export function createAdminHandler({
   analyzer,
   plugins,
   apiFormat,
+  dynamicUpstreamAllowed,
+  proxyUrlPath,
 }: {
   store: { captures: CaptureIndexEntry[]; readCapture(id: string): Promise<Capture | null>; clear(): Promise<void> };
   analyzer: { analyses: Map<string, Analysis> };
   plugins: Pick<BuiltinPluginRuntime, 'handleApi'>;
   apiFormat: () => ApiFormatResolution;
+  dynamicUpstreamAllowed: () => boolean;
+  proxyUrlPath: (upstreamBaseUrl: string) => string;
 }): (request: http.IncomingMessage, response: http.ServerResponse) => Promise<void> {
   type LogSummary = ReturnType<typeof logSummary> & Partial<TraceGroupMetadata>;
   let cachedSignature = '';
@@ -240,6 +258,17 @@ export function createAdminHandler({
     if (url.pathname === '/_pp/api/config') {
       if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
       return json(response, 200, { api_format: apiFormat() });
+    }
+    if (url.pathname === '/_pp/api/proxy-url') {
+      if (request.method !== 'POST') return json(response, 405, { error: 'Method not allowed' });
+      if (!dynamicUpstreamAllowed()) return json(response, 403, { error: 'Dynamic upstreams are disabled for non-loopback listeners' });
+      try {
+        const body = await readJsonBody(request) as { upstream_base_url?: unknown } | null;
+        if (!body || typeof body !== 'object' || typeof body.upstream_base_url !== 'string') throw new Error('upstream_base_url must be a string');
+        return json(response, 200, { path: proxyUrlPath(body.upstream_base_url) });
+      } catch (error) {
+        return json(response, 400, { error: error instanceof Error ? error.message : 'Invalid upstream Base URL' });
+      }
     }
     if (url.pathname.startsWith('/_pp/api/')) {
       const pluginPath = url.pathname.slice('/_pp/api/'.length);

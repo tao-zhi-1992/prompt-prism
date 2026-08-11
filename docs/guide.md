@@ -60,12 +60,31 @@ const client = new OpenAI({
 
 OpenAI Chat Completions JSON and SSE responses, function tool calls/results, system and developer messages, and common `reasoning_content` and cached-token extensions are normalized. Responses, Realtime, Embeddings, Images, and Audio endpoints are forwarded and captured as Raw-only traffic.
 
+## Dynamic upstream URLs
+
+Keep one Prism process running and encode each provider's original SDK Base URL into its client configuration:
+
+```bash
+# Terminal 1
+p2 start
+
+# Terminal 2
+p2 url https://api.deepseek.com/v1
+```
+
+The second command prints a URL shaped like `http://127.0.0.1:1028/_pp/up/<token>`. Use it as the SDK Base URL. The token is unpadded Base64URL, not encryption or a credential. You can also open the Dashboard and use **Proxy URL** at the right end of the detail tabs.
+
+Dynamic routing applies only to requests containing that prefix and does not change the configured upstream. The endpoint and request query are appended to the decoded Base URL. Invalid tokens fail with 400 instead of falling back to another provider.
+
+Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests. Third-party clients are compatible only when they preserve a Base URL path prefix while adding their endpoint. If the prefix disappears, use the fixed `--upstream-base-url` mode.
+
 ## CLI reference
 
 ```text
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]
+p2 url UPSTREAM_BASE_URL [--proxy-url URL]
 ```
 
 Defaults:
@@ -107,6 +126,8 @@ Open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/) after starting Pri
 
 The Requests list initially loads the latest 100 captures, fetches older pages as you scroll, and polls incrementally for new captures. Its virtualized rendering keeps the browser workload bounded even when the data directory contains tens of thousands of captures. New captures are inserted immediately while the list is at the top; while browsing history, use the new-request banner to merge them without losing your scroll position.
 
+The **Proxy URL** action remains available before the first capture. It validates an upstream Base URL, generates a URL for the current Dashboard origin, and copies it without saving or changing server configuration.
+
 - Trace groups explicitly marked requests by `x-prompt-prism-trace-id`, or infers a group from Input Diff ancestry.
 - Input Diff compares normalized Messages, System, Tools, and request options.
 - Tools shows declared tool definitions and links actual calls to their parameters in Trace.
@@ -119,7 +140,9 @@ The package exposes its local server API for embedding and integration tests:
 
 ```js
 import {
+  buildDynamicProxyBaseUrl,
   createPromptPrism,
+  encodeUpstreamBaseUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism
@@ -127,6 +150,8 @@ import {
 ```
 
 See the generated TypeScript declarations for `PromptPrismOptions`, instance state, and capture contracts.
+
+`buildDynamicProxyBaseUrl(upstream, proxyOrigin?)` builds the complete URL; `encodeUpstreamBaseUrl(upstream)` returns only the canonical token. Embedded servers listening beyond loopback must explicitly set `allowRemoteDynamicUpstream: true` to enable dynamic routing.
 
 The local admin API keeps the legacy array response for `GET /_pp/api/logs` without query parameters. Cursor pagination is available through `GET /_pp/api/logs?limit=100`, with mutually exclusive `before` and `after` cursors; responses include `items`, `total`, both boundary cursors, and `has_older`/`has_newer`. Page size defaults to 100 and is capped at 200. `GET /_pp/api/logs/:id` retrieves one capture summary for dashboard deep links.
 
@@ -137,3 +162,5 @@ Captures live under `./data` unless `--data-dir` is provided. API keys, authoriz
 The default cap is 1 GB. When it is exceeded, the oldest capture files and their index entries are removed first. A single capture larger than the configured cap is not written.
 
 Use a dedicated `--data-dir` for sensitive projects, never commit it, and delete it when debugging is complete. Prompt Prism is a local inspection boundary, not a data-loss-prevention system.
+
+Dynamic upstreams can forward API credentials to any URL encoded by the user. They are enabled by default only on loopback listeners; non-loopback listeners return 403 unless the embedding application explicitly opts in. Do not expose an opted-in instance as a public service or paste dynamic URLs from untrusted sources.

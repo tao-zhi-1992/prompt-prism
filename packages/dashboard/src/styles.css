@@ -265,12 +265,33 @@ button:focus-visible {
 .detail-pane { width: 100%; height: 100%; min-width: 0; min-height: 0; }
 
 .detail-tabs { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 100%; height: 100%; min-width: 0; min-height: 0; }
-.tab-list { position: relative; display: flex; align-items: end; gap: 24px; height: var(--topbar-height); padding: 0 28px; border-bottom: 1px solid var(--line); background: var(--tab-bg); }
+.detail-tabbar { display: flex; align-items: stretch; min-width: 0; height: var(--topbar-height); border-bottom: 1px solid var(--line); background: var(--tab-bg); }
+.tab-list { position: relative; display: flex; flex: 1 1 auto; align-items: end; gap: 24px; min-width: 0; height: 100%; padding: 0 18px 0 28px; overflow-x: auto; scrollbar-width: none; }
+.tab-list::-webkit-scrollbar { display: none; }
+.tab-list--empty { pointer-events: none; }
 .tab { position: relative; display: flex; align-items: center; height: 100%; padding: 0 2px; color: var(--muted); border: 0; background: none; font-size: 12px; font-weight: 500; cursor: pointer; }
 .tab:hover:not([aria-disabled="true"]):not([data-active]) { color: var(--text); }
 .tab[data-active] { color: var(--text); font-weight: 700; }
 .tab-panel { height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 .tab-panel:focus-visible { outline: none; }
+.tabbar-actions { display: flex; flex: 0 0 auto; align-items: center; padding-right: 28px; background: var(--tab-bg); }
+.proxy-url-trigger { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; color: var(--muted); border: 1px solid var(--line); background: var(--surface-1); font-size: 11px; cursor: pointer; }
+.proxy-url-trigger:hover, .proxy-url-trigger[data-popup-open] { color: var(--text); border-color: var(--control-hover-border); background: var(--surface-3); }
+.proxy-url-trigger svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
+.proxy-url-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, 0.48); }
+.proxy-url-viewport { position: fixed; inset: 0; z-index: 31; display: grid; place-items: center; padding: 20px; }
+.proxy-url-dialog { width: min(560px, 100%); padding: 22px; color: var(--text); border: 1px solid var(--line-strong); background: var(--surface-1); box-shadow: var(--menu-shadow); outline: none; }
+.proxy-url-title { margin: 0; font-size: 16px; font-weight: 650; }
+.proxy-url-description { margin: 7px 0 20px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.proxy-url-label, .proxy-url-result > label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.proxy-url-input, .proxy-url-result input { width: 100%; height: 38px; padding: 0 10px; color: var(--text); border: 1px solid var(--line-strong); background: var(--surface-2); font: 11px "DM Mono", monospace; outline: none; }
+.proxy-url-input:focus, .proxy-url-result input:focus { border-color: var(--accent); }
+.proxy-url-error { margin: 8px 0 0; color: var(--red); font-size: 11px; }
+.proxy-url-result { margin-top: 18px; }
+.proxy-url-result > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.proxy-url-result .ui-button { min-width: 72px; }
+.proxy-url-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+.proxy-url-actions .ui-button { min-width: 86px; }
 
 .scrollbar { display: flex; width: 9px; padding: 2px; background: transparent; user-select: none; touch-action: none; }
 .scrollbar--horizontal { width: auto; height: 9px; }
@@ -323,7 +344,10 @@ button:focus-visible {
   .app-header { padding-inline: 16px; }
   .request-heading { padding: 12px 16px 7px; }
   .request-list-shell { padding-inline: 7px; }
-  .tab-list { padding-inline: 18px; }
+  .tab-list { padding-inline: 18px 12px; }
+  .tabbar-actions { padding-right: 18px; }
+  .proxy-url-trigger span { display: none; }
+  .proxy-url-trigger { width: 30px; padding: 0; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -142,9 +142,15 @@ importers:
 
   packages/prompt-prism:
     devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.91.1
+        version: 0.91.1(zod@4.4.3)
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
+      openai:
+        specifier: ^6.26.0
+        version: 6.26.0(ws@8.21.3)(zod@4.4.3)
       tsx:
         specifier: ^4.20.0
         version: 4.23.11

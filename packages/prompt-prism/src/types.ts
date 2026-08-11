@@ -198,6 +198,7 @@ export interface PromptPrismOptions {
   port?: number;
   host?: string;
   open?: boolean;
+  allowRemoteDynamicUpstream?: boolean;
 }
 
 export interface PromptPrismStore {

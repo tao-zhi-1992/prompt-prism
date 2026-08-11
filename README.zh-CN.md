@@ -70,6 +70,16 @@ const client = new OpenAI({
 });
 ```
 
+### 无需重启即可切换提供商
+
+用提供商原始的 SDK Base URL 生成代理地址：
+
+```bash
+p2 url https://api.deepseek.com/v1
+```
+
+将生成的 `http://127.0.0.1:1028/_pp/up/...` 地址粘贴到 SDK。仪表盘最右侧的 **代理地址** 按钮也提供相同的生成器。一个 Prism 实例可以通过不同动态地址访问多个提供商；没有使用动态地址的请求仍采用启动时的上游。
+
 ## 你可以检查什么
 
 - **Trace** — 跨捕获记录跟踪模型、推理、工具调用和工具结果事件。
@@ -89,6 +99,8 @@ const client = new OpenAI({
 
 OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本中不做规范化。它们仍会被转发并在 Raw 中捕获。
 
+动态代理地址已通过 OpenAI 和 Anthropic 官方 JavaScript SDK 的集成测试。部分第三方客户端会替换而不是追加 Base URL 路径；客户端无法保留生成的路径前缀时，请使用 `--upstream-base-url`。
+
 ## 文档
 
 - [使用指南](docs/guide.zh-CN.md) — 提供商配置、CLI 选项、协议检测、嵌入式使用和本地数据。
@@ -99,7 +111,9 @@ OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本�
 
 ```js
 import {
+  buildDynamicProxyBaseUrl,
   createPromptPrism,
+  encodeUpstreamBaseUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism
