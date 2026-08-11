@@ -257,7 +257,7 @@ function UsageMetrics({ usage, compact = false }: { usage: UsageSummary; compact
   return <dl className={compact ? 'trace-call-usage' : 'trace-usage'}>{metrics.map((metric) => <div key={metric.label}><dt title={metric.title}>{metric.label}</dt><dd>{metric.value}</dd></div>)}</dl>;
 }
 
-function Call({ call, callIndex, selected, links, highlightedAnchorId, onNavigate }: { call: TraceCall; callIndex: number; selected: boolean; links: TraceLinkIndex; highlightedAnchorId: string | null; onNavigate: (anchorId: string) => void }) {
+function Call({ call, callIndex, selected, links, highlightedAnchorId, onNavigate, selectCapture }: { call: TraceCall; callIndex: number; selected: boolean; links: TraceLinkIndex; highlightedAnchorId: string | null; onNavigate: (anchorId: string) => void; selectCapture?: (id: string) => void }) {
   const { t, locale } = useI18n();
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(() => new Set());
   const eventKeys = [
@@ -273,12 +273,17 @@ function Call({ call, callIndex, selected, links, highlightedAnchorId, onNavigat
     }),
   });
   const setAllEvents = (open: boolean) => setExpandedEvents(open ? new Set(eventKeys) : new Set());
+  const handleCaptureClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (!selectCapture || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    selectCapture(call.capture_id);
+  };
   const usage = aggregateUsage([call.output?.usage]);
   const hasUsage = Object.values(usage).some((value) => value !== null);
   return (
     <article className="trace-call" data-selected={selected || undefined}>
       <div className="trace-call-header-row">
-        <a className="trace-call-header ui-interactive" href={captureHref(call.capture_id)} aria-label={t('trace.selectRequest', { id: call.capture_id })}>
+        <a className="trace-call-header ui-interactive" href={captureHref(call.capture_id)} aria-label={t('trace.selectRequest', { id: call.capture_id })} onClick={handleCaptureClick}>
           <span className="trace-call-index">{call.capture_id.slice(0, 8)}</span>
           <span className="trace-call-model">{call.model ?? t('common.unknownModel')}</span>
           <span className="trace-call-host" title={call.upstream_host}>{call.upstream_host ?? t('common.unknownUpstream')}</span>
@@ -329,7 +334,7 @@ function TraceSource({ source }: { source: TraceResult['source'] }) {
   );
 }
 
-export function TracePanel({ trace, loading, error, refreshError, onRetry }: {
+export function TracePanel({ trace, loading, error, refreshError, onRetry, selectCapture }: {
   trace: TraceResult | null;
   loading: boolean;
   error: string | null;
@@ -376,7 +381,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry }: {
           <ScrollArea.Content className="trace-content">
             {[...trace.calls].reverse().map((call) => {
               const callIndex = trace.calls.indexOf(call);
-              return <Call key={call.capture_id} call={call} callIndex={callIndex} selected={call.capture_id === trace.selected_capture_id} links={linkIndex} highlightedAnchorId={highlightedAnchorId} onNavigate={navigateToToolResult} />;
+              return <Call key={call.capture_id} call={call} callIndex={callIndex} selected={call.capture_id === trace.selected_capture_id} links={linkIndex} highlightedAnchorId={highlightedAnchorId} onNavigate={navigateToToolResult} selectCapture={selectCapture} />;
             })}
             {!trace.calls.length && <div className="trace-empty-event">{t('trace.noCalls')}</div>}
           </ScrollArea.Content>

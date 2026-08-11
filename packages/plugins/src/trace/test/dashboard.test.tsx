@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TracePanel, type TraceResult } from '../dashboard/TracePanel.js';
@@ -53,7 +53,18 @@ describe('TracePanel', () => {
     expect([...container.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true);
     expect(container.querySelector('.trace-tool-result-link--missing')).toHaveTextContent('tool-1');
     expect(screen.getByText('tool call not found')).toBeVisible();
-    expect(screen.getByRole('link', { name: /Select request capture-two/ })).toHaveAttribute('href', expect.stringContaining('capture=capture-two'));
+    const captureLink = screen.getByRole('link', { name: /Select request capture-two/ });
+    expect(captureLink).toHaveAttribute('href', expect.stringContaining('capture=capture-two'));
+    await userEvent.click(captureLink);
+    expect(selectCapture).toHaveBeenCalledWith('capture-two');
+    selectCapture.mockClear();
+    const preventNativeNavigation = (event: MouseEvent) => event.preventDefault();
+    captureLink.addEventListener('click', preventNativeNavigation);
+    for (const modifier of ['ctrlKey', 'metaKey', 'shiftKey', 'altKey'] as const) {
+      fireEvent.click(captureLink, { [modifier]: true });
+      expect(selectCapture).not.toHaveBeenCalled();
+    }
+    captureLink.removeEventListener('click', preventNativeNavigation);
   });
 
   it('keeps tool result error styling alongside its message kind', () => {
