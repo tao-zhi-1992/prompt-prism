@@ -1,0 +1,139 @@
+# Prompt Prism 使用指南
+
+[← README](../README.zh-CN.md) · [Agent Insights](insights.zh-CN.md) · [开发指南](development.zh-CN.md)
+
+Prompt Prism 是一个透明的本地 HTTP 代理，面向模型 API。它立即转发响应，在后台保存一份脱敏副本，并在 `/_pp/` 提供检查仪表盘。
+
+## 安装
+
+Prompt Prism 需要 Node.js 20 或更高版本。
+
+```bash
+npm install -g prompt-prism
+```
+
+`p2` 和 `prompt-prism` 调用的是同一个 CLI。
+
+## Anthropic Messages
+
+用提供商 Base URL 启动 Prism：
+
+```bash
+p2 start --upstream-base-url https://api.anthropic.com
+```
+
+将 Anthropic SDK 指向 Prism，同时保留提供商 API key：
+
+```js
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  baseURL: 'http://127.0.0.1:1028'
+});
+```
+
+对于第三方 Anthropic 兼容命令，可临时覆盖其 Base URL：
+
+```bash
+ANTHROPIC_BASE_URL=http://127.0.0.1:1028 your-command
+```
+
+## OpenAI 兼容提供商
+
+把提供商文档中的 SDK `base_url` 复制到 `--upstream-base-url`：
+
+```bash
+p2 start --upstream-base-url https://api.deepseek.com
+```
+
+将 OpenAI 兼容 SDK 指向 Prism，保留其正常 token 和模型：
+
+```js
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: 'http://127.0.0.1:1028/v1'
+});
+```
+
+OpenAI Chat Completions 的 JSON 和 SSE 响应、函数工具调用/结果、system 和 developer 消息，以及常见的 `reasoning_content` 和缓存 token 扩展都会被规范化。Responses、Realtime、Embeddings、Images 和 Audio 端点会照常转发，并以 Raw-only 方式捕获。
+
+## CLI 参考
+
+```text
+p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
+         [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
+         [--open | --no-open]
+```
+
+默认值：
+
+| 选项 | 默认值 | 用途 |
+| --- | --- | --- |
+| `--upstream-base-url` | `https://api.anthropic.com` | 提供商 SDK Base URL |
+| `--api-format` | `auto` | 检测 Anthropic Messages 或 OpenAI Chat Completions |
+| `--port` | `1028` | 本地代理和仪表盘端口 |
+| `--data-dir` | `./data` | 本地捕获目录 |
+| `--max-storage` | `1GB` | 捕获存储上限 |
+| `--open` | 启用 | 启动后打开仪表盘 |
+
+推荐使用 `--upstream-base-url`。Prism 会追加由传入协议选定的端点：
+
+| 提供商 SDK Base URL | 追加的端点 |
+| --- | --- |
+| `https://api.deepseek.com` | `/chat/completions` |
+| `https://api.openai.com/v1` | `/chat/completions` |
+| `https://api.anthropic.com` | `/v1/messages` |
+| `https://api.stepfun.com/step_plan` | `/v1/messages` |
+| `https://generativelanguage.googleapis.com/v1beta/openai` | `/chat/completions` |
+
+`--upstream-url` 用于完整的端点，包括最终路径和可选 query。这是高级兜底通道，适用于端点无法从 Base URL 语义推导出的网关。两个上游选项互斥。
+
+## 自动协议检测
+
+`--api-format` 接受 `auto`、`anthropic-messages` 或 `openai-chat-completions`。更短的 `anthropic` 和 `openai` 别名仍然支持。
+
+在 auto 模式下，Prism 独立检测每条捕获记录：依次考虑请求路径、头部、协议专属请求体、提供商响应，最后是显式提供的上游 URL 或已知提供商 Base URL。每条捕获记录以第一个可信信号为准，因此一种协议不会锁定或影响后续捕获。路由只使用转发前可用的信号：请求路径、头部和上游 URL 提示。隐式的 Anthropic 默认上游仅用于转发，不作为格式提示。
+
+未知的自定义 Base URL 不会被猜测。流量模糊的捕获记录照常转发，仅以 Raw 存储，不影响后续捕获。客户端需要固定协议时，请显式使用 `--api-format`。
+
+OpenAI 将缓存提示 token 报告为 `prompt_tokens` 的子集。Prism 将其规范化为互斥值：Input 为 `prompt_tokens - cached_tokens`，Cache read 为 `cached_tokens`。Raw 保留提供商原始的 usage 结构。
+
+## 仪表盘
+
+启动 Prism 后打开 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)。
+
+请求列表初始加载最近 100 条捕获记录，滚动时获取更早的分页，并增量轮询新捕获。虚拟化渲染让浏览器负载保持有界，即使数据目录包含数万条捕获记录。列表位于顶部时新捕获立即插入；浏览历史时，使用新请求提示条合并，不丢失滚动位置。
+
+- Trace 按显式的 `x-prompt-prism-trace-id` 请求头分组，或从 Input Diff 祖先推断分组。
+- Input Diff 比较规范化后的 Messages、System、Tools 和请求选项。
+- Tools 展示声明的工具定义，并把实际调用链接到 Trace 中的参数。
+- Output 呈现提供商无关的文本、推理、用量、错误和工具调用。
+- Raw 保留脱敏后的 HTTP 请求和响应。
+
+## 编程接口
+
+包对外暴露本地服务器 API，供嵌入式使用和集成测试：
+
+```js
+import {
+  createPromptPrism,
+  parseUpstreamBaseUrl,
+  parseUpstreamUrl,
+  startPromptPrism
+} from 'prompt-prism';
+```
+
+详见生成的 TypeScript 声明：`PromptPrismOptions`、实例状态和捕获记录契约。
+
+本地管理 API 对无查询参数的 `GET /_pp/api/logs` 保留旧版数组响应。`GET /_pp/api/logs?limit=100` 提供游标分页，`before` 和 `after` 游标互斥；响应包含 `items`、`total`、两个边界游标以及 `has_older`/`has_newer`。页大小默认为 100，上限 200。`GET /_pp/api/logs/:id` 获取单条捕获记录摘要，用于仪表盘深链。
+
+## 数据与隐私
+
+除非指定 `--data-dir`，捕获记录存放在 `./data` 下。API key、授权头、代理授权、cookie 和 set-cookie 头在存储前会替换为 `[REDACTED]`。请求和响应体保留在本地，因为分析时需要它们。
+
+默认上限为 1 GB。超过后，最早捕获的文件及其索引条目先被移除。单条捕获超过配置上限时不写入。
+
+敏感项目请使用专用 `--data-dir`，切勿提交到版本库，调试完成后删除。Prompt Prism 是本地检查边界，不是防数据丢失系统。

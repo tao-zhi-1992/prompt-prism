@@ -3,23 +3,23 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Prompt Prism — 精确查看你的模型到底接收了什么</title>
-    <meta name="description" content="一个零运行时依赖的本地代理，用于检查模型请求、提示词变更、工具调用和多请求智能体轨迹。">
+    <title>Prompt Prism — 精确查看你的模型接收了什么</title>
+    <meta name="description" content="一个零运行时依赖的本地代理，用于检查模型请求、提示词变更、工具调用和多请求 Agent 轨迹。">
     <meta name="theme-color" content="#050705">
     <link rel="canonical" href="https://tao-zhi-1992.github.io/prompt-prism/">
     <link rel="icon" href="./assets/logo-mark.png" type="image/png">
     <link rel="stylesheet" href="./styles.css">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Prompt Prism">
-    <meta property="og:description" content="精确查看你的模型到底接收了什么。">
+    <meta property="og:description" content="精确查看你的模型接收了什么。">
     <meta property="og:url" content="https://tao-zhi-1992.github.io/prompt-prism/index.zh-CN.html">
     <meta property="og:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
     <meta property="og:image:width" content="2400">
     <meta property="og:image:height" content="1260">
-    <meta property="og:image:alt" content="Prompt Prism 仪表盘，显示多请求智能体轨迹">
+    <meta property="og:image:alt" content="Prompt Prism 仪表盘，显示多请求 Agent 轨迹">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Prompt Prism">
-    <meta name="twitter:description" content="精确查看你的模型到底接收了什么。">
+    <meta name="twitter:description" content="精确查看你的模型接收了什么。">
     <meta name="twitter:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
   </head>
   <body>
@@ -42,11 +42,11 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow"><span></span> 本地模型检查</p>
-          <h1 id="hero-title">看到请求。<br><em>跟踪轨迹。</em><br>修复智能体。</h1>
-          <p class="hero-lede">Prompt Prism 是一个透明的本地代理，它揭示提示词变更、规范化后的模型输出、工具活动，以及完整的多请求智能体轨迹。</p>
+          <h1 id="hero-title">看见请求。<br><em>追踪轨迹。</em><br>修复 Agent。</h1>
+          <p class="hero-lede">Prompt Prism 是一个透明的本地代理，它揭示提示词变更、规范化后的模型输出、工具活动，以及完整的多请求 Agent 轨迹。</p>
           <div class="hero-actions">
             <a class="button button-primary" href="https://github.com/tao-zhi-1992/prompt-prism">在 GitHub 上查看 <span aria-hidden="true">↗</span></a>
-            <a class="button" href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.md">阅读使用指南</a>
+            <a class="button" href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.zh-CN.md">阅读使用指南</a>
           </div>
           <div class="install" aria-label="安装命令">
             <span aria-hidden="true">$</span><code>npm install -g prompt-prism</code>
@@ -68,20 +68,20 @@
           <span><i></i> 实时检查</span>
           <code>127.0.0.1:1028/_pp/</code>
         </div>
-        <img src="./dashboard.png" width="1200" height="630" alt="Prompt Prism 仪表盘，显示多请求智能体轨迹">
+        <img src="./dashboard.png" width="1200" height="630" alt="Prompt Prism 仪表盘，显示多请求 Agent 轨迹">
       </section>
 
       <section class="section" id="features" aria-labelledby="features-title">
         <div class="section-heading">
           <p class="section-index">01 / 检查</p>
-          <h2 id="features-title">完整的模型循环，<br>尽在一处。</h2>
-          <p>无需再从原始日志中重建事件，就能从请求列表直达确切的工具参数。</p>
+          <h2 id="features-title">完整的模型循环，<br>一处看清。</h2>
+          <p>从请求列表直达确切的工具参数，无需再从原始日志中重建事件。</p>
         </div>
         <div class="feature-grid">
           <article class="feature feature-wide">
             <span class="feature-number">01</span>
-            <h3>跟踪每一次调用</h3>
-            <p>跨捕获跟踪用户输入、推理、助手文本、工具调用和工具结果。在关联事件之间跳转，揭示真实参数。</p>
+            <h3>追踪每一次调用</h3>
+            <p>跨捕获记录跟踪用户输入、推理、助手文本、工具调用和工具结果，在关联事件之间跳转，直达真实参数。</p>
             <div class="trace-demo" aria-hidden="true">
               <span>用户</span><i></i><span>思考</span><i></i><span class="active">工具调用</span><i></i><span>工具结果</span>
             </div>
@@ -89,25 +89,25 @@
           <article class="feature">
             <span class="feature-number">02</span>
             <h3>找到输入变更</h3>
-            <p>输入差异（Input Diff）定位新增和删除的消息，然后比较 System、Tools 和请求选项。</p>
+            <p>Input Diff 定位新增和删除的消息，再比较 System、Tools 和请求选项。</p>
             <pre aria-hidden="true"><del>- 旧上下文</del>
 <ins>+ 确切的新消息</ins></pre>
           </article>
           <article class="feature">
             <span class="feature-number">03</span>
             <h3>理解工具使用</h3>
-            <p>浏览声明的 schema 和解析后的参数，然后从用量汇总跳转到 Trace 中的每次实际调用。</p>
+            <p>浏览声明的 schema 和解析后的参数，从用量汇总跳转到 Trace 中的每次实际调用。</p>
             <div class="tool-demo" aria-hidden="true"><code>read_file</code><strong>2 次调用 →</strong></div>
           </article>
           <article class="feature">
             <span class="feature-number">04</span>
             <h3>阅读规范化输出</h3>
-            <p>检查文本、推理、用量、错误、停止原因以及提供商无关的工具参数。</p>
+            <p>检查文本、推理、用量、错误、停止原因和提供商无关的工具参数。</p>
           </article>
           <article class="feature">
             <span class="feature-number">05</span>
             <h3>保留原始真相</h3>
-            <p>不支持的流量仍然会通过，并以脱敏后的 HTTP 请求和响应形式保留下来。</p>
+            <p>不支持的流量照常转发，并以脱敏后的 HTTP 请求和响应形式保留。</p>
           </article>
         </div>
       </section>
@@ -115,8 +115,8 @@
       <section class="flow-section" aria-labelledby="flow-title">
         <div class="section-heading compact">
           <p class="section-index">02 / 透明</p>
-          <h2 id="flow-title">你的流量保持流动。</h2>
-          <p>SSE 和 JSON 响应会被立即转发。捕获和分析在旁路进行。</p>
+          <h2 id="flow-title">你的流量不受影响。</h2>
+          <p>SSE 和 JSON 响应立即转发，捕获与分析在旁路进行。</p>
         </div>
         <div class="flow" aria-label="你的应用通过 Prompt Prism 向模型提供商发送请求，Prompt Prism 在本地保存脱敏后的捕获">
           <div class="flow-node"><small>01</small><strong>你的应用</strong><span>标准 SDK</span></div>
@@ -131,8 +131,8 @@
       <section class="section compatibility" id="compatibility" aria-labelledby="compatibility-title">
         <div class="section-heading">
           <p class="section-index">03 / 兼容</p>
-          <h2 id="compatibility-title">一个代理。<br>两个规范化协议。</h2>
-          <p>自动检测会解析第一个可信请求，并为该进程锁定协议。</p>
+          <h2 id="compatibility-title">一个代理，<br>两种协议。</h2>
+          <p>自动检测解析第一个可信请求，并为进程锁定协议。</p>
         </div>
         <div class="protocols">
           <article>
@@ -153,10 +153,10 @@
       <section class="privacy-section" aria-labelledby="privacy-title">
         <div>
           <p class="section-index">04 / 本地设计</p>
-          <h2 id="privacy-title">检查器留在<br>你的机器上。</h2>
+          <h2 id="privacy-title">检查全程在本机。</h2>
         </div>
         <div class="privacy-copy">
-          <p>捕获内容存储在你的本地数据目录中。认证头部和 cookie 会在存储前被脱敏，达到配置的上限时最早捕获的内容会被清理。</p>
+          <p>捕获记录保存在本地数据目录中。认证头部和 cookie 会在存储前脱敏；达到配置上限时，最早捕获的记录先被清理。</p>
           <ul>
             <li><span>01</span> 无托管的 Prompt Prism 服务</li>
             <li><span>02</span> 无分析或遥测</li>
@@ -169,7 +169,7 @@
         <div>
           <p class="section-index">05 / 开始</p>
           <h2 id="quickstart-title">检查你的下一个请求。</h2>
-          <p>安装 CLI，选择提供商 Base URL，并将你的 SDK 指向 localhost。</p>
+          <p>安装 CLI，选择提供商 Base URL，把 SDK 指向 localhost。</p>
         </div>
         <pre><code><span># 安装</span>
 npm install -g prompt-prism
@@ -184,12 +184,12 @@ http://127.0.0.1:1028/_pp/</code></pre>
       <section class="section docs-section" id="docs" aria-labelledby="docs-title">
         <div class="section-heading compact">
           <p class="section-index">06 / 深入</p>
-          <h2 id="docs-title">使用它。衡量它。扩展它。</h2>
+          <h2 id="docs-title">使用，评估，扩展。</h2>
         </div>
         <div class="docs-grid">
-          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.md"><span>使用指南</span><p>提供商配置、CLI 选项、协议检测、嵌入式使用和隐私。</p><b aria-hidden="true">↗</b></a>
-          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/insights.md"><span>智能体洞察</span><p>跨运行比较 token 用量、缓存复用、耗时和工具行为。</p><b aria-hidden="true">↗</b></a>
-          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/development.md"><span>开发指南</span><p>运行演示、理解 monorepo，并参与 Input Diff 开发。</p><b aria-hidden="true">↗</b></a>
+          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.zh-CN.md"><span>使用指南</span><p>提供商配置、CLI 选项、协议检测、嵌入式使用和隐私。</p><b aria-hidden="true">↗</b></a>
+          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/insights.zh-CN.md"><span>Agent Insights</span><p>跨运行比较 token 用量、缓存复用、耗时和工具行为。</p><b aria-hidden="true">↗</b></a>
+          <a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/development.zh-CN.md"><span>开发指南</span><p>运行演示、理解 monorepo，并参与 Input Diff 开发。</p><b aria-hidden="true">↗</b></a>
         </div>
       </section>
 
@@ -206,7 +206,7 @@ http://127.0.0.1:1028/_pp/</code></pre>
 
     <footer>
       <a class="brand" href="./"><img src="./assets/logo-mark.png" width="30" height="30" alt=""><span>Prompt Prism</span></a>
-      <p>为模型驱动的软件提供本地可见性。</p>
+      <p>本地可见性，为模型驱动的软件而生。</p>
       <div><a href="https://github.com/tao-zhi-1992/prompt-prism">GitHub</a><a href="https://www.npmjs.com/package/prompt-prism">npm</a><a href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/LICENSE">MIT 许可</a></div>
     </footer>
   </body>
