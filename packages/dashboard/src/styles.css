@@ -183,7 +183,12 @@ button:focus-visible {
 .request-scroll { position: relative; min-width: 0; min-height: 0; }
 .request-scroll .scroll-viewport { overflow-y: auto; }
 .scroll-viewport { width: 100%; height: 100%; overscroll-behavior: contain; }
-.request-list { padding: 4px 10px 18px; }
+.request-list-shell { min-width: 100%; padding: 4px 10px 18px; }
+.request-list { position: relative; min-width: 0; }
+.request-virtual-row, .request-list-footer { position: absolute; top: 0; left: 0; width: 100%; }
+.request-list-footer { display: flex; align-items: center; justify-content: center; min-height: 44px; color: var(--faint); font: 10px "DM Mono", monospace; }
+.request-list-footer .ui-button { min-height: 28px; padding: 5px 9px; color: var(--muted); background: transparent; }
+.request-new-banner { position: absolute; top: 7px; left: 50%; z-index: 5; min-height: 28px; padding: 5px 10px; color: var(--accent-strong); border-color: var(--line-strong); background: var(--surface-1); box-shadow: var(--menu-shadow); transform: translateX(-50%); }
 
 .request-item {
   position: relative;
@@ -317,7 +322,7 @@ button:focus-visible {
   .requests-pane { border-right: 0; border-bottom: 1px solid var(--line); }
   .app-header { padding-inline: 16px; }
   .request-heading { padding: 12px 16px 7px; }
-  .request-list { padding-inline: 7px; }
+  .request-list-shell { padding-inline: 7px; }
   .tab-list { padding-inline: 18px; }
 }
 

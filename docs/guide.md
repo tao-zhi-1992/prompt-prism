@@ -105,6 +105,8 @@ OpenAI reports cached prompt tokens as a subset of `prompt_tokens`. Prism normal
 
 Open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/) after starting Prism.
 
+The Requests list initially loads the latest 100 captures, fetches older pages as you scroll, and polls incrementally for new captures. Its virtualized rendering keeps the browser workload bounded even when the data directory contains tens of thousands of captures. New captures are inserted immediately while the list is at the top; while browsing history, use the new-request banner to merge them without losing your scroll position.
+
 - Trace groups explicitly marked requests by `x-prompt-prism-trace-id`, or infers a group from Input Diff ancestry.
 - Input Diff compares normalized Messages, System, Tools, and request options.
 - Tools shows declared tool definitions and links actual calls to their parameters in Trace.
@@ -125,6 +127,8 @@ import {
 ```
 
 See the generated TypeScript declarations for `PromptPrismOptions`, instance state, and capture contracts.
+
+The local admin API keeps the legacy array response for `GET /_pp/api/logs` without query parameters. Cursor pagination is available through `GET /_pp/api/logs?limit=100`, with mutually exclusive `before` and `after` cursors; responses include `items`, `total`, both boundary cursors, and `has_older`/`has_newer`. Page size defaults to 100 and is capped at 200. `GET /_pp/api/logs/:id` retrieves one capture summary for dashboard deep links.
 
 ## Data and privacy
 

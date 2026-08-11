@@ -10,6 +10,9 @@ const brandDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png', 'favicon.ico']);
 type TraceGroupSource = 'explicit' | 'inferred';
 type TraceGroupMetadata = { trace_group_id: string; trace_group_source: TraceGroupSource };
+type LogCursorPosition = { timestamp: string; id: string };
+const DEFAULT_LOG_LIMIT = 100;
+const MAX_LOG_LIMIT = 200;
 
 export function json(response: http.ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
@@ -65,15 +68,26 @@ function logSummary(capture: CaptureIndexEntry, analyzer: { analyses: Map<string
   return { ...summary, analysis: analysisSummary };
 }
 
-function inferredRootId(id: string, byId: Map<string, CaptureIndexEntry>, analyses: Map<string, Analysis>): string {
+function inferredRootId(id: string, byId: Map<string, CaptureIndexEntry>, analyses: Map<string, Analysis>, roots: Map<string, string>): string {
   let current = id;
   const seen = new Set<string>();
+  const path: string[] = [];
   while (!seen.has(current)) {
+    const cached = roots.get(current);
+    if (cached) {
+      for (const item of path) roots.set(item, cached);
+      return cached;
+    }
     seen.add(current);
+    path.push(current);
     const parentId = analyses.get(current)?.matched_parent_id;
-    if (!parentId || !byId.has(parentId)) return current;
+    if (!parentId || !byId.has(parentId)) {
+      for (const item of path) roots.set(item, current);
+      return current;
+    }
     current = parentId;
   }
+  for (const item of path) roots.set(item, current);
   return current;
 }
 
@@ -83,7 +97,7 @@ function buildTraceGroupMetadata(captures: readonly CaptureIndexEntry[], analyse
   const inferredCounts = new Map<string, number>();
   for (const capture of captures) {
     if (capture.trace_id) continue;
-    const rootId = inferredRootId(capture.id, byId, analyses);
+    const rootId = inferredRootId(capture.id, byId, analyses, inferredRoots);
     inferredRoots.set(capture.id, rootId);
     inferredCounts.set(rootId, (inferredCounts.get(rootId) ?? 0) + 1);
   }
@@ -100,6 +114,45 @@ function buildTraceGroupMetadata(captures: readonly CaptureIndexEntry[], analyse
   return metadata;
 }
 
+function compareLogPosition(left: LogCursorPosition, right: LogCursorPosition): number {
+  return right.timestamp.localeCompare(left.timestamp) || right.id.localeCompare(left.id);
+}
+
+export function encodeLogCursor(position: LogCursorPosition): string {
+  return Buffer.from(JSON.stringify([position.timestamp, position.id])).toString('base64url');
+}
+
+export function decodeLogCursor(cursor: string): LogCursorPosition {
+  if (!cursor || cursor.length > 2048) throw new Error('Invalid logs cursor');
+  try {
+    const value = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as unknown;
+    if (!Array.isArray(value) || value.length !== 2 || typeof value[0] !== 'string' || Number.isNaN(Date.parse(value[0])) || typeof value[1] !== 'string' || !value[1]) throw new Error();
+    return { timestamp: value[0], id: value[1] };
+  } catch { throw new Error('Invalid logs cursor'); }
+}
+
+function firstOlderIndex(sorted: readonly CaptureIndexEntry[], cursor: LogCursorPosition): number {
+  let low = 0;
+  let high = sorted.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (compareLogPosition(sorted[middle]!, cursor) <= 0) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+function firstNotNewerIndex(sorted: readonly CaptureIndexEntry[], cursor: LogCursorPosition): number {
+  let low = 0;
+  let high = sorted.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    if (compareLogPosition(sorted[middle]!, cursor) < 0) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
 export function createAdminHandler({
   store,
   analyzer,
@@ -111,6 +164,29 @@ export function createAdminHandler({
   plugins: Pick<BuiltinPluginRuntime, 'handleApi'>;
   apiFormat: () => ApiFormatResolution;
 }): (request: http.IncomingMessage, response: http.ServerResponse) => Promise<void> {
+  type LogSummary = ReturnType<typeof logSummary> & Partial<TraceGroupMetadata>;
+  let cachedSignature = '';
+  let cachedSorted: CaptureIndexEntry[] = [];
+  let cachedSummaries = new Map<string, LogSummary>();
+  let cachedPositions = new Map<string, number>();
+
+  const logSnapshot = () => {
+    const first = store.captures[0];
+    const last = store.captures.at(-1);
+    const signature = `${store.captures.length}:${first?.id ?? ''}:${last?.id ?? ''}:${analyzer.analyses.size}`;
+    if (signature === cachedSignature) return { sorted: cachedSorted, summaries: cachedSummaries, positions: cachedPositions };
+    const traceGroups = buildTraceGroupMetadata(store.captures, analyzer.analyses);
+    cachedSorted = [...store.captures].sort(compareLogPosition);
+    cachedPositions = new Map(cachedSorted.map((capture, index) => [capture.id, index]));
+    cachedSummaries = new Map(cachedSorted.map((capture) => {
+      const summary = logSummary(capture, analyzer);
+      const group = traceGroups.get(capture.id);
+      return [capture.id, group ? { ...summary, ...group } : summary];
+    }));
+    cachedSignature = signature;
+    return { sorted: cachedSorted, summaries: cachedSummaries, positions: cachedPositions };
+  };
+
   return async function handleAdmin(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
     const url = new URL(request.url ?? '/', 'http://localhost');
 
@@ -118,17 +194,48 @@ export function createAdminHandler({
       if (request.method === 'DELETE') {
         await store.clear();
         analyzer.analyses.clear();
+        cachedSignature = '';
         return json(response, 200, { cleared: true });
       }
       if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
-      const traceGroups = buildTraceGroupMetadata(store.captures, analyzer.analyses);
-      const logs = store.captures.map((capture) => {
-        const summary = logSummary(capture, analyzer);
-        const group = traceGroups.get(capture.id);
-        return group ? { ...summary, ...group } : summary;
-      })
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      return json(response, 200, logs);
+      const { sorted, summaries, positions } = logSnapshot();
+      if (!url.search) return json(response, 200, sorted.map((capture) => summaries.get(capture.id)));
+      if (url.searchParams.has('before') && url.searchParams.has('after')) return json(response, 400, { error: 'before and after are mutually exclusive' });
+      const limitValue = url.searchParams.get('limit');
+      const limit = limitValue === null ? DEFAULT_LOG_LIMIT : Number(limitValue);
+      if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LOG_LIMIT) return json(response, 400, { error: `limit must be between 1 and ${MAX_LOG_LIMIT}` });
+      let entries: CaptureIndexEntry[];
+      try {
+        const before = url.searchParams.get('before');
+        const after = url.searchParams.get('after');
+        if (before !== null) {
+          const start = firstOlderIndex(sorted, decodeLogCursor(before));
+          entries = sorted.slice(start, start + limit);
+        } else if (after !== null) {
+          const end = firstNotNewerIndex(sorted, decodeLogCursor(after));
+          entries = sorted.slice(Math.max(0, end - limit), end);
+        } else entries = sorted.slice(0, limit);
+      } catch (error) {
+        return json(response, 400, { error: error instanceof Error ? error.message : 'Invalid logs cursor' });
+      }
+      const firstEntry = entries[0];
+      const lastEntry = entries.at(-1);
+      const firstIndex = firstEntry ? positions.get(firstEntry.id) ?? -1 : -1;
+      const lastIndex = lastEntry ? positions.get(lastEntry.id) ?? -1 : -1;
+      return json(response, 200, {
+        items: entries.map((capture) => summaries.get(capture.id)),
+        total: sorted.length,
+        oldest_cursor: lastEntry ? encodeLogCursor(lastEntry) : null,
+        newest_cursor: firstEntry ? encodeLogCursor(firstEntry) : null,
+        has_older: lastIndex >= 0 && lastIndex < sorted.length - 1,
+        has_newer: firstIndex > 0,
+      });
+    }
+    if (url.pathname.startsWith('/_pp/api/logs/')) {
+      if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
+      const id = decodeURIComponent(url.pathname.slice('/_pp/api/logs/'.length));
+      const summary = logSnapshot().summaries.get(id);
+      return summary ? json(response, 200, summary) : json(response, 404, { error: 'Capture not found' });
     }
     if (url.pathname === '/_pp/api/config') {
       if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });

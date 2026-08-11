@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InputDiffAnalysis, OutputCapture, RawCapture } from '@prompt-prism/plugins/dashboard';
@@ -19,6 +19,14 @@ const captures: CaptureSummary[] = [
     analysis: { id: 'older-capture', timestamp: '2026-08-09T06:00:00.000Z', matched_parent_id: null, matched_message_count: 0, divergence_point: 0, estimated_cacheable_tokens: 0, actual_cache_read_tokens: 0, estimated_cache_miss: 0, cache_hit_below_expected: false },
   },
 ];
+
+function capturePage(items = captures, overrides: Record<string, unknown> = {}) {
+  return { items, total: items.length, oldest_cursor: items.length ? 'oldest-cursor' : null, newest_cursor: items.length ? 'newest-cursor' : null, has_older: false, has_newer: false, ...overrides };
+}
+
+function isLogsPage(url: string) {
+  return url.startsWith('/_pp/api/logs?');
+}
 
 const details: Record<string, InputDiffAnalysis> = {
   'newest-capture': { ...(captures[0].analysis as Omit<InputDiffAnalysis, 'diff'>), diff: [{ type: 'equal', value: 'newest prompt' }] },
@@ -48,6 +56,7 @@ const outputDetails: Record<string, OutputCapture> = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   window.localStorage.removeItem('prompt-prism-locale');
   document.documentElement.lang = '';
@@ -57,7 +66,7 @@ afterEach(() => {
 describe('App', () => {
   it('loads only the capture list when no capture is present in the URL', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input) === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200 });
+      if (isLogsPage(String(input))) return new Response(JSON.stringify(capturePage()), { status: 200 });
       throw new Error(`unexpected detail request: ${String(input)}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -68,11 +77,110 @@ describe('App', () => {
     expect(new URLSearchParams(window.location.search).get('capture')).toBeNull();
   });
 
+  it('shows the server total and appends an older page independently', async () => {
+    const older = { ...captures[1], id: 'historical-capture', model: 'historical-model', timestamp: '2026-08-08T06:00:00.000Z' };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/_pp/api/logs?limit=100') return new Response(JSON.stringify(capturePage(captures.slice(0, 1), { total: 250, has_older: true, oldest_cursor: 'page-one' })));
+      if (url === '/_pp/api/logs?limit=100&before=page-one') return new Response(JSON.stringify(capturePage([older], { total: 250, newest_cursor: 'old-page-newest' })));
+      throw new Error(`unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByText('250')).toBeVisible();
+    expect(await screen.findByRole('button', { name: /historical-model/i })).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/logs?limit=100&before=page-one', expect.anything());
+  });
+
+  it('loads a deep-linked capture outside the current page by id', async () => {
+    const deep = { ...captures[1], id: 'deep-capture', model: 'deep-model' };
+    window.history.replaceState(null, '', '/_pp/?capture=deep-capture&tab=input-diff');
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage(captures.slice(0, 1), { total: 200, has_older: true })));
+      if (url === '/_pp/api/logs/deep-capture') return new Response(JSON.stringify(deep));
+      if (url === '/_pp/api/input-diff/deep-capture') return new Response(JSON.stringify({ ...details['older-capture'], id: 'deep-capture', diff: [{ type: 'equal', value: 'deep prompt' }] }));
+      throw new Error(`unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByText('deep prompt')).toBeVisible();
+    expect(new URLSearchParams(window.location.search).get('capture')).toBe('deep-capture');
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/logs/deep-capture', expect.anything());
+  });
+
+  it('stages polled captures while browsing history and merges them on demand', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const incoming = { ...captures[0], id: 'polled-capture', model: 'polled-model', timestamp: '2026-08-10T07:00:00.000Z' };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/_pp/api/logs?limit=100') return new Response(JSON.stringify(capturePage(captures.slice(0, 1))));
+      if (url === '/_pp/api/logs?limit=100&after=newest-cursor') return new Response(JSON.stringify(capturePage([incoming], { total: 2, oldest_cursor: 'polled-cursor', newest_cursor: 'polled-cursor' })));
+      throw new Error(`unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = render(<App />);
+    await screen.findByRole('button', { name: /newest-model/i });
+    const viewport = container.querySelector<HTMLElement>('.request-scroll .scroll-viewport')!;
+    viewport.scrollTop = 100;
+    fireEvent.scroll(viewport);
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(await screen.findByRole('button', { name: '1 new requests' })).toBeVisible();
+    expect(screen.queryByText('polled-model')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '1 new requests' }));
+    expect(await screen.findByText('polled-model')).toBeVisible();
+    expect(screen.getByText('2')).toBeVisible();
+    expect(viewport.scrollTop).toBe(0);
+  });
+
+  it('continues polling when the initial capture page is empty', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage([]))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage(captures.slice(0, 1)))));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    expect(await screen.findByText('No requests yet')).toBeVisible();
+
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(await screen.findByRole('button', { name: /newest-model/i })).toBeVisible();
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      '/_pp/api/logs?limit=100',
+      '/_pp/api/logs?limit=100',
+    ]);
+  });
+
+  it('keeps loaded requests and recovers after a polling error', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage(captures.slice(0, 1)))))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'temporary failure' }), { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage([], { total: 1 }))));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /newest-model/i })).toBeVisible();
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(await screen.findByText('Refresh paused · temporary failure')).toBeVisible();
+    expect(screen.getByText('newest-model')).toBeVisible();
+
+    await vi.advanceTimersByTimeAsync(3000);
+    await waitFor(() => expect(screen.queryByText(/Refresh paused/)).not.toBeInTheDocument());
+    expect(screen.getByText('newest-model')).toBeVisible();
+  });
+
   it('keeps the selected Input Diff tab when selecting a capture from the list', async () => {
     window.history.replaceState(null, '', '/_pp/?tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200 });
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage()), { status: 200 });
       if (url.includes('/input-diff/')) {
         const id = decodeURIComponent(url.split('/').at(-1)!);
         return new Response(JSON.stringify(details[id]), { status: 200 });
@@ -94,7 +202,7 @@ describe('App', () => {
     window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200 });
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage()), { status: 200 });
       if (url.includes('/input-diff/')) {
         const id = decodeURIComponent(url.split('/').at(-1)!);
         return new Response(JSON.stringify(details[id]), { status: 200 });
@@ -118,7 +226,7 @@ describe('App', () => {
     window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage()), { status: 200, headers: { 'content-type': 'application/json' } });
       const id = decodeURIComponent(url.split('/').at(-1)!);
       const value = url.includes('/raw/') ? rawDetails[id] : url.includes('/output/') ? outputDetails[id] : details[id];
       return new Response(JSON.stringify(value), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -174,7 +282,7 @@ describe('App', () => {
     window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures.slice(0, 1)), { status: 200 });
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage(captures.slice(0, 1))), { status: 200 });
       if (url.includes('/input-diff/')) return new Response(JSON.stringify(details['newest-capture']), { status: 200 });
       if (url.includes('/output/')) return new Response(JSON.stringify(outputDetails['newest-capture']), { status: 200 });
       if (url.includes('/trace/')) return new Response(JSON.stringify({ id: 'trace-1', source: 'explicit', selected_capture_id: 'newest-capture', truncated: false, calls: [] }), { status: 200 });
@@ -204,7 +312,7 @@ describe('App', () => {
   it('closes the clear confirmation when clicking outside', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures.slice(0, 1)), { status: 200 });
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage(captures.slice(0, 1))), { status: 200 });
       return new Response(JSON.stringify(details['newest-capture']), { status: 200 });
     }));
     render(<App />);
@@ -214,5 +322,31 @@ describe('App', () => {
     expect(screen.getByRole('dialog')).toBeVisible();
     await userEvent.click(document.body);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('resets pagination and selection state after clearing', async () => {
+    window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
+    let cleared = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === '/_pp/api/logs' && init?.method === 'DELETE') {
+        cleared = true;
+        return new Response(JSON.stringify({ cleared: true }));
+      }
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage(cleared ? [] : captures.slice(0, 1))));
+      if (url.includes('/input-diff/')) return new Response(JSON.stringify(details['newest-capture']));
+      throw new Error(`unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+    await screen.findByRole('button', { name: /newest-model/i });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Clear' }));
+
+    expect(await screen.findByText('No requests yet')).toBeVisible();
+    expect(new URLSearchParams(window.location.search).get('capture')).toBeNull();
+    expect(screen.getByText('0')).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/logs', { method: 'DELETE' });
   });
 });
