@@ -1,4 +1,8 @@
 <p align="center">
+  <a href="./README.zh-CN.md">简体中文</a> · English
+</p>
+
+<p align="center">
   <img src="packages/prompt-prism/assets/logo-mark.png" alt="Prompt Prism logo" width="160">
 </p>
 
