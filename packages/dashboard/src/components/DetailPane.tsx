@@ -4,10 +4,10 @@ import { dashboardPluginRegistry, useI18n, type CaptureSummary, type DetailTabPl
 
 type Resource = { status: 'loading' } | { status: 'ready'; data: unknown; refreshError?: string } | { status: 'error'; error: string };
 
-export function DetailPane({ capture, onSelectCapture }: { capture: CaptureSummary | null; onSelectCapture?: (id: string) => void }) {
+export function DetailPane({ capture, initialTab, onSelectCapture, onSelectTab }: { capture: CaptureSummary | null; initialTab?: string | null; onSelectCapture?: (id: string, tab?: string) => void; onSelectTab?: (tab: string) => void }) {
   const { t } = useI18n();
   const plugins = dashboardPluginRegistry.plugins;
-  const [tab, setTab] = useState(plugins[0]?.id ?? '');
+  const [tab, setTab] = useState(initialTab && plugins.some((plugin) => plugin.id === initialTab) ? initialTab : plugins[0]?.id ?? '');
   const cache = useRef(new Map<string, Resource>());
   const [, render] = useState(0);
   const [retryVersion, setRetryVersion] = useState(0);
@@ -75,13 +75,13 @@ export function DetailPane({ capture, onSelectCapture }: { capture: CaptureSumma
     retry,
     selectCapture: onSelectCapture ?? (() => {}),
   };
+  const changeTab = (next: string) => { setTab(next); onSelectTab?.(next); };
 
   return (
     <section className="detail-pane">
-      <Tabs.Root className="detail-tabs" value={activePlugin.id} onValueChange={setTab}>
+      <Tabs.Root className="detail-tabs" value={activePlugin.id} onValueChange={changeTab}>
         <Tabs.List className="tab-list" aria-label={t('detail.tabsLabel')}>
           {plugins.map((plugin) => <Tabs.Tab className="tab ui-interactive" value={plugin.id} key={plugin.id}>{t(`tab.${plugin.id}` as TranslationKey)}</Tabs.Tab>)}
-          <Tabs.Indicator className="tab-indicator" />
         </Tabs.List>
         {plugins.map((plugin: DetailTabPlugin) => (
           <Tabs.Panel className="tab-panel" value={plugin.id} key={plugin.id}>

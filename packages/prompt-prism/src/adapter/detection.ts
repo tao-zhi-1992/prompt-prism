@@ -77,7 +77,7 @@ export function endpointPath(protocol: DetectedProtocol): string {
 export class ApiFormatResolver {
   readonly resolution: ApiFormatResolution;
 
-  constructor(option: ApiFormatOption = 'auto', upstreamUrl?: URL, exact = false) {
+  constructor(option: ApiFormatOption = 'auto', upstreamUrl?: URL, exact = false, useUpstreamHint = true) {
     if (option !== 'auto') {
       const canonical = normalizeProviderProtocol(option);
       getProviderAdapter(canonical);
@@ -85,7 +85,7 @@ export class ApiFormatResolver {
       return;
     }
     this.resolution = { mode: 'auto', configured: 'auto', resolved: null, source: null };
-    if (upstreamUrl) this.consider(exact ? detectProtocolFromPath(upstreamUrl.pathname) : detectProtocolFromBaseUrl(upstreamUrl), exact ? 'upstream-url' : 'upstream-base-url');
+    if (upstreamUrl && useUpstreamHint) this.consider(exact ? detectProtocolFromPath(upstreamUrl.pathname) : detectProtocolFromBaseUrl(upstreamUrl), exact ? 'upstream-url' : 'upstream-base-url');
   }
 
   consider(protocol: DetectedProtocol | null, source: Exclude<ApiFormatResolutionSource, 'explicit' | null>): void {

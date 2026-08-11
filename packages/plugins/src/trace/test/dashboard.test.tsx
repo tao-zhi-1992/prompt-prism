@@ -26,8 +26,8 @@ describe('TracePanel', () => {
     const { container } = render(<TracePanel trace={trace} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={selectCapture} />);
     expect(screen.getByText('Explicit')).toBeVisible();
     expect(screen.getByText('HTTP 200')).toHaveClass('trace-http--good');
-    expect(screen.getByText('Fix the endpoint')).toBeVisible();
-    expect(screen.getByText('Done')).toBeVisible();
+    expect(screen.queryByText('Fix the endpoint')).not.toBeInTheDocument();
+    expect(screen.queryByText('Done')).not.toBeInTheDocument();
     expect(screen.queryByText('Unknown output')).not.toBeInTheDocument();
     const summary = container.querySelector('.trace-usage')!;
     expect(summary).toHaveTextContent('Input total35');
@@ -35,14 +35,21 @@ describe('TracePanel', () => {
     expect(summary).toHaveTextContent('Cache read20');
     expect(summary).toHaveTextContent('Cache write5');
     expect(summary).toHaveTextContent('Cache hit57%');
-    expect(screen.getByRole('button', { name: /^User$/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^User$/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /^Thinking$/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /Tool result/ })).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('button', { name: /Tool call/ })).toHaveAttribute('aria-expanded', 'false');
+    expect([...container.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true);
+    await userEvent.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(screen.getByText('Fix the endpoint')).toBeVisible();
+    expect(screen.getByText('Done')).toBeVisible();
+    expect([...container.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'true')).toBe(true);
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(screen.queryByText('Fix the endpoint')).not.toBeInTheDocument();
+    expect([...container.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true);
     expect(container.querySelector('.trace-tool-result-link--missing')).toHaveTextContent('tool-1');
     expect(screen.getByText('tool call not found')).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: /Select request capture-two/ }));
-    expect(selectCapture).toHaveBeenCalledWith('capture-two');
+    expect(screen.getByRole('link', { name: /Select request capture-two/ })).toHaveAttribute('href', expect.stringContaining('capture=capture-two'));
   });
 
   it('links a tool result across trace calls and highlights the matching tool call', async () => {
@@ -59,22 +66,36 @@ describe('TracePanel', () => {
       output: null,
     };
     const { container } = render(<TracePanel trace={{ ...trace, calls: [first, second] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
-    const link = container.querySelector('.trace-tool-result-link') as HTMLElement;
+    const link = container.querySelector('.trace-tool-result-link') as HTMLAnchorElement;
     const target = container.querySelector('#trace-tool-call-0-output-0') as HTMLElement;
-    const scrollIntoView = vi.fn();
-    Object.defineProperty(target, 'scrollIntoView', { value: scrollIntoView });
+    const resultLink = target.querySelector('.trace-tool-result-link') as HTMLAnchorElement;
 
     expect(link).toHaveTextContent('read_file');
-    link.focus();
-    await userEvent.keyboard('{Enter}');
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
-    expect(target).toHaveAttribute('data-tool-highlight');
+    expect(link).toHaveAttribute('href', '#trace-tool-call-0-output-0');
+    expect(link.closest('.trace-event-title')).not.toBeNull();
+    expect(resultLink).toHaveTextContent('result →');
+    expect(resultLink).toHaveAttribute('href', '#trace-tool-call-1-input-0-0');
+    await userEvent.click(resultLink);
+    expect(container.querySelector('#trace-tool-call-1-input-0-0')).toHaveAttribute('data-tool-highlight');
   });
 
   it('keeps stale trace visible when a background refresh fails', () => {
     render(<TracePanel trace={trace} loading={false} error={null} refreshError="network down" onRetry={vi.fn()} selectCapture={vi.fn()} />);
     expect(screen.getByText(/Refresh failed: network down/)).toBeVisible();
-    expect(screen.getByText('Done')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Expand all' })).toBeVisible();
+  });
+
+  it('keeps batch expansion scoped to one call', async () => {
+    const first = { ...trace.calls[0]!, capture_id: 'capture-one' };
+    const second = { ...trace.calls[0]!, capture_id: 'capture-two' };
+    const { container } = render(<TracePanel trace={{ ...trace, calls: [first, second] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    const calls = container.querySelectorAll('.trace-call');
+    const expandButtons = screen.getAllByRole('button', { name: 'Expand all' });
+    await userEvent.click(expandButtons[0]!);
+    expect([...calls[0]!.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'true')).toBe(true);
+    expect([...calls[1]!.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Collapse all' })[0]!);
+    expect([...calls[0]!.querySelectorAll('.trace-event-toggle')].every((button) => button.getAttribute('aria-expanded') === 'false')).toBe(true);
   });
 
   it('places inferred trace guidance behind an accessible help tooltip', async () => {
@@ -109,7 +130,8 @@ describe('TracePanel', () => {
     const call = trace.calls[0]!;
     const input_delta = [{ role: 'assistant', content: [{ type: 'tool_call' as const, id: 'call-bad', name: 'write', input: null, input_raw: '{bad' }] }];
     render(<TracePanel trace={{ ...trace, calls: [{ ...call, input_delta, output: null }] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
-    const toggle = screen.getByRole('button', { name: /Tool call.*write.*Invalid JSON/i });
+    const toggle = screen.getByRole('button', { name: /Tool call.*write/i });
+    expect(screen.getByText(/invalid JSON/i)).toBeVisible();
     await userEvent.click(toggle);
     expect(screen.getByText('{bad')).toBeVisible();
   });

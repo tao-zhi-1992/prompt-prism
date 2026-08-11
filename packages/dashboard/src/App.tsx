@@ -15,11 +15,16 @@ function captureFromUrl() {
   return new URLSearchParams(window.location.search).get('capture');
 }
 
+function tabFromUrl() {
+  return new URLSearchParams(window.location.search).get('tab');
+}
+
 function Dashboard() {
   const { preference, setPreference } = useTheme();
   const { locale, setLocale, t } = useI18n();
   const [captures, setCaptures] = useState<CaptureSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(captureFromUrl);
+  const [selectedTab, setSelectedTab] = useState<string | null>(tabFromUrl);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
@@ -27,10 +32,19 @@ function Dashboard() {
   const mounted = useRef(true);
   const clearActionRef = useRef<HTMLSpanElement>(null);
 
-  const select = useCallback((id: string) => {
+  const select = useCallback((id: string, tab?: string) => {
     setSelectedId(id);
+    if (tab) setSelectedTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set('capture', id);
+    if (tab) url.searchParams.set('tab', tab);
+    window.history.replaceState(null, '', url);
+  }, []);
+
+  const selectTab = useCallback((tab: string) => {
+    setSelectedTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
     window.history.replaceState(null, '', url);
   }, []);
 
@@ -42,7 +56,7 @@ function Dashboard() {
       setListError(null);
       setSelectedId((current) => {
         const available = current && next.some((item) => item.id === current);
-        const resolved = available ? current : next[0]?.id ?? null;
+        const resolved = available ? current : null;
         const url = new URL(window.location.href);
         if (resolved) url.searchParams.set('capture', resolved);
         else url.searchParams.delete('capture');
@@ -132,7 +146,7 @@ function Dashboard() {
           onRetry={() => { setListLoading(true); void refresh(); }}
         />
       </aside>
-      <DetailPane capture={selected} onSelectCapture={select} />
+      <DetailPane capture={selected} initialTab={selectedTab} onSelectCapture={select} onSelectTab={selectTab} />
     </main>
   );
 }

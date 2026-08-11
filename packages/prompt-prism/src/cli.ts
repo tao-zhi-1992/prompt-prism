@@ -66,7 +66,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid port: ${values.port}`);
   if (values['upstream-base-url'] && values['upstream-url']) throw new Error('--upstream-base-url and --upstream-url are mutually exclusive');
   await startPromptPrism({
-    upstreamBaseUrl: values['upstream-base-url'] ?? (values['upstream-url'] ? undefined : 'https://api.anthropic.com'),
+    upstreamBaseUrl: values['upstream-base-url'],
     upstreamUrl: values['upstream-url'],
     apiFormat: values['api-format'] as import('./types.js').ApiFormatOption,
     port,

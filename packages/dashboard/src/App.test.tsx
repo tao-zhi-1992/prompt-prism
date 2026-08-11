@@ -55,7 +55,21 @@ afterEach(() => {
 });
 
 describe('App', () => {
+  it('loads only the capture list when no capture is present in the URL', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200 });
+      throw new Error(`unexpected detail request: ${String(input)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+    await screen.findByRole('button', { name: /newest-model/i });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(new URLSearchParams(window.location.search).get('capture')).toBeNull();
+  });
+
   it('selects the newest capture, loads its diff, and keeps click selection in the URL', async () => {
+    window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200, headers: { 'content-type': 'application/json' } });
@@ -72,7 +86,7 @@ describe('App', () => {
     expect(screen.getByText('Prompt & response inspector')).toBeVisible();
     expect(screen.queryByText('Prompt cache debugger')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /newest-model/i })).toHaveAttribute('data-selected');
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Trace', 'Raw']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Trace', 'Raw', 'System Prompt']);
     expect(screen.getAllByText('HTTP 200')[0]).toHaveClass('status-label--good');
     expect(screen.getAllByText('api.stepfun.com')[0]).toBeVisible();
     expect(await screen.findByText('newest prompt')).toBeVisible();
@@ -110,6 +124,7 @@ describe('App', () => {
   });
 
   it('switches and persists Chinese across the shell and built-in tabs', async () => {
+    window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures.slice(0, 1)), { status: 200 });
@@ -126,7 +141,7 @@ describe('App', () => {
 
     expect(screen.getByText('提示词与响应检查器')).toBeVisible();
     expect(screen.getByText('请求')).toBeVisible();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['输入差异', '输出', '追踪', '原始数据']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['输入差异', '输出', '追踪', '原始数据', '系统提示词']);
     expect(window.localStorage.getItem('prompt-prism-locale')).toBe('zh-CN');
     expect(document.documentElement.lang).toBe('zh-CN');
 

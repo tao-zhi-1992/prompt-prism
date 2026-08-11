@@ -217,6 +217,7 @@ button:focus-visible {
 .request-line--secondary > span:not(:first-child)::before { content: "·"; margin-right: 8px; color: var(--secondary-separator); }
 .request-host { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .request-id { flex: 0 0 auto; margin-left: auto; color: var(--faint); font: 500 10px "DM Mono", monospace; }
+.trace-badge { flex: 0 0 auto; padding: 3px 5px; color: hsl(var(--trace-hue) 70% 68%); border: 1px solid hsl(var(--trace-hue) 45% 35%); background: hsl(var(--trace-hue) 45% 15%); font: 9px "DM Mono", monospace; }
 .status-label--bad { color: var(--red); }
 .status-label--good { color: var(--green); }
 
@@ -263,11 +264,8 @@ button:focus-visible {
 .detail-tabs { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 100%; height: 100%; min-width: 0; min-height: 0; }
 .tab-list { position: relative; display: flex; align-items: end; gap: 24px; height: var(--topbar-height); padding: 0 28px; border-bottom: 1px solid var(--line); background: var(--tab-bg); }
 .tab { position: relative; display: flex; align-items: center; height: 100%; padding: 0 2px; color: var(--muted); border: 0; background: none; font-size: 12px; font-weight: 500; cursor: pointer; }
-.tab::after { content: ""; position: absolute; right: 0; bottom: 0; left: 0; height: 1px; background: var(--accent); opacity: 0; transition: opacity 120ms ease; }
 .tab:hover:not([aria-disabled="true"]):not([data-active]) { color: var(--text); }
-.tab:hover:not([aria-disabled="true"]):not([data-active])::after { opacity: 0.6; }
 .tab[data-active] { color: var(--text); font-weight: 700; }
-.tab-indicator { position: absolute; bottom: -1px; left: 0; height: 2px; background: var(--accent); transition: translate 150ms ease, width 150ms ease; }
 .tab-panel { height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 .tab-panel:focus-visible { outline: none; }
 

@@ -45,6 +45,14 @@ function statusLabel(state: InputDiffSectionState): string {
   return state;
 }
 
+function diffHref(captureId: string, sectionId: string): string {
+  const url = new URL(window.location.href);
+  url.searchParams.set('capture', captureId);
+  url.searchParams.set('tab', 'input-diff');
+  url.hash = `input-diff-section-${sectionId}`;
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function sectionKey(id: string): TranslationKey | null {
   return ({ messages: 'section.messages', system: 'section.system', tools: 'section.tools', options: 'section.options' } as const)[id as 'messages'] ?? null;
 }
@@ -86,7 +94,7 @@ function SectionHeader({ section }: { section: InputDiffSection }) {
 function InputSection({ section, hasParent }: { section: InputDiffSection; hasParent: boolean }) {
   const content = <div className="input-diff-section-content"><DiffCode section={section} hasParent={hasParent} /></div>;
   return (
-    <Collapsible.Root className="input-diff-section" defaultOpen={!section.default_collapsed || section.state === 'changed'}>
+    <Collapsible.Root id={`input-diff-section-${section.id}`} className="input-diff-section" defaultOpen={!section.default_collapsed || section.state === 'changed'}>
       <SectionHeader section={section} />
       <Collapsible.Panel className="input-diff-section-panel">{content}</Collapsible.Panel>
     </Collapsible.Root>
@@ -102,7 +110,7 @@ export function InputDiffPanel({ analysis, loading, error, onRetry }: { analysis
   return (
     <div className="input-diff-panel">
       <div className="input-diff-toolbar">
-        <span>{hasParent ? t('diff.comparedWith', { id: analysis.matched_parent_id!.slice(0, 8) }) : t('diff.noRelated')}</span>
+        {hasParent ? <a className="input-diff-parent-link" href={diffHref(analysis.matched_parent_id!, 'messages')}>{t('diff.comparedWith', { id: analysis.matched_parent_id!.slice(0, 8) })}</a> : <span>{t('diff.noRelated')}</span>}
         {hasParent && <div className="diff-legend"><span className="legend-delete">{t('diff.removed')}</span><span className="legend-insert">{t('diff.added')}</span></div>}
       </div>
       <ScrollArea.Root className="input-diff-scroll">

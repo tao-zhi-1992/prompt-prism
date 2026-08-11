@@ -115,7 +115,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
   const upstreamUrl = upstreamMode === 'exact'
     ? parseUpstreamUrl(options.upstreamUrl!)
     : parseUpstreamBaseUrl(options.upstreamBaseUrl ?? 'https://api.anthropic.com');
-  const resolver = new ApiFormatResolver(options.apiFormat ?? 'auto', upstreamUrl, upstreamMode === 'exact');
+  const resolver = new ApiFormatResolver(options.apiFormat ?? 'auto', upstreamUrl, upstreamMode === 'exact', upstreamMode === 'exact' || options.upstreamBaseUrl !== undefined);
   const pathProtocol = upstreamMode === 'exact' ? detectProtocolFromPath(upstreamUrl.pathname) : null;
   if (resolver.resolution.mode === 'explicit' && pathProtocol && pathProtocol !== resolver.resolution.resolved) {
     console.warn(`[prompt-prism] API format ${resolver.resolution.resolved} conflicts with upstream endpoint ${pathProtocol}; using the explicit format.`);

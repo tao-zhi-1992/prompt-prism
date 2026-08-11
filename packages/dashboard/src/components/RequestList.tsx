@@ -9,7 +9,7 @@ type Props = {
   selectedId: string | null;
   loading: boolean;
   error: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, tab?: string) => void;
   onRetry: () => void;
 };
 

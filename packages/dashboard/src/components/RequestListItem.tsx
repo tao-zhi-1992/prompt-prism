@@ -1,12 +1,19 @@
 import type { CaptureSummary } from '../types';
+import type { CSSProperties } from 'react';
 import { formatHttpStatus, formatTime, httpStatusTone } from '../format';
 import { useI18n } from '@prompt-prism/plugins/dashboard';
 
 type Props = {
   capture: CaptureSummary;
   selected: boolean;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, tab?: string) => void;
 };
+
+function traceHue(traceId: string): number {
+  let hash = 0;
+  for (const character of traceId) hash = (hash * 31 + character.charCodeAt(0)) | 0;
+  return Math.abs(hash) % 360;
+}
 
 export function RequestListItem({ capture, selected, onSelect }: Props) {
   const { t, locale } = useI18n();
@@ -28,6 +35,7 @@ export function RequestListItem({ capture, selected, onSelect }: Props) {
         <span className="request-line request-line--secondary">
           <span className={`status-label status-label--${tone}`}>{formatHttpStatus(capture.response_status)}</span>
           <span className="request-host" title={capture.upstream_host}>{capture.upstream_host || t('common.unknownHost')}</span>
+          {capture.trace_id && <span className="trace-badge" style={{ '--trace-hue': traceHue(capture.trace_id) } as CSSProperties} title={capture.trace_id}>trace:{capture.trace_id.slice(0, 8)}</span>}
           <span className="request-id" title={capture.id}>{capture.id.slice(0, 8)}</span>
         </span>
       </span>

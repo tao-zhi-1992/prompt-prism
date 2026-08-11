@@ -23,3 +23,9 @@ test('only uses provider-specific body evidence and locks the first confident re
   assert.equal(resolver.resolution.resolved, 'openai-chat-completions');
   assert.equal(resolver.resolution.source, 'request-path');
 });
+
+test('does not use the implicit Anthropic default as an auto-format hint', () => {
+  const resolver = new ApiFormatResolver('auto', new URL('https://api.anthropic.com'), false, false);
+  assert.equal(resolver.resolution.resolved, null);
+  assert.equal(resolver.resolution.source, null);
+});
