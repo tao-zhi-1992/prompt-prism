@@ -6,9 +6,9 @@ function usage(): void {
   console.log(`Prompt Prism
 
 Usage:
-  pp start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
+  p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
            [--port NUMBER] [--data-dir PATH] [--max-storage SIZE] [--open | --no-open]
-  pp insights <list|report|compare|evidence> [OPTIONS]
+  p2 insights <list|report|compare|evidence> [OPTIONS]
 
 Defaults:
   upstream-base-url https://api.anthropic.com

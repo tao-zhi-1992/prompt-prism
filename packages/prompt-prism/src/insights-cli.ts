@@ -13,10 +13,10 @@ function usage(): void {
   console.log(`Prompt Prism Insights
 
 Usage:
-  pp insights list [--limit NUMBER] [--prism-url URL] [--json]
-  pp insights report [RUN_ID] [--prism-url URL] [--json]
-  pp insights compare BASELINE_RUN_ID CANDIDATE_RUN_ID [--prism-url URL] [--json]
-  pp insights evidence CAPTURE_ID --section SECTION [--max-bytes SIZE] [--prism-url URL] [--json]
+  p2 insights list [--limit NUMBER] [--prism-url URL] [--json]
+  p2 insights report [RUN_ID] [--prism-url URL] [--json]
+  p2 insights compare BASELINE_RUN_ID CANDIDATE_RUN_ID [--prism-url URL] [--json]
+  p2 insights evidence CAPTURE_ID --section SECTION [--max-bytes SIZE] [--prism-url URL] [--json]
 
 Environment:
   PROMPT_PRISM_URL  Prism URL (default: ${DEFAULT_PRISM_URL})`);
@@ -189,7 +189,7 @@ export async function runInsightsCli(args: string[]): Promise<void> {
     const parseError = error instanceof TypeError && 'code' in error && String(error.code).startsWith('ERR_PARSE_ARGS');
     const item = error instanceof InsightsCliError ? error : new InsightsCliError(parseError ? 'invalid_argument' : 'unexpected_error', error instanceof Error ? error.message : String(error));
     if (json) console.error(JSON.stringify({ schema_version: 1, error: { code: item.code, message: item.message } }));
-    else console.error(`pp insights: ${item.message}`);
+    else console.error(`p2 insights: ${item.message}`);
     process.exitCode = 1;
   }
 }

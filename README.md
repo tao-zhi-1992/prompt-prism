@@ -33,7 +33,7 @@ Requires Node.js 20 or later.
 
 ```bash
 npm install -g prompt-prism
-pp start --upstream-base-url https://api.anthropic.com
+p2 start --upstream-base-url https://api.anthropic.com
 ```
 
 Point your SDK at `http://127.0.0.1:1028`, keep its normal API key, and open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/). The dashboard opens automatically unless `--no-open` is used.
@@ -54,7 +54,7 @@ const client = new Anthropic({
 Start Prism with the provider's documented Base URL:
 
 ```bash
-pp start --upstream-base-url https://api.deepseek.com
+p2 start --upstream-base-url https://api.deepseek.com
 ```
 
 ```js

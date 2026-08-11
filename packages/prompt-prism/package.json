@@ -1,10 +1,10 @@
 {
   "name": "prompt-prism",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A transparent local proxy that explains prompt-cache misses.",
   "type": "module",
   "bin": {
-    "pp": "bin/pp.js",
+    "p2": "bin/pp.js",
     "prompt-prism": "bin/pp.js"
   },
   "exports": {

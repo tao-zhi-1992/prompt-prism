@@ -43,7 +43,7 @@ Start Prompt Prism, copy the environment template, and set a provider credential
 
 ```bash
 # Terminal 1
-pp start --upstream-base-url https://api.stepfun.com/step_plan
+p2 start --upstream-base-url https://api.stepfun.com/step_plan
 
 # Terminal 2
 cp example/.env.example example/.env

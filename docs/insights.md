@@ -11,8 +11,8 @@ Give every model request in one run the same `x-prompt-prism-trace-id` header. T
 ## List and inspect runs
 
 ```bash
-pp insights list --json
-pp insights report RUN_ID --json
+p2 insights list --json
+p2 insights report RUN_ID --json
 ```
 
 Omit `--json` for a concise human-readable view. Reports contain aggregate statistics, fingerprints, section names, and Capture IDs rather than prompt or tool content.
@@ -24,7 +24,7 @@ The CLI connects to `http://127.0.0.1:1028` by default. Override it with `--pris
 After changing the agent and rerunning the same task with a new Trace ID:
 
 ```bash
-pp insights compare BEFORE_RUN_ID AFTER_RUN_ID --json
+p2 insights compare BEFORE_RUN_ID AFTER_RUN_ID --json
 ```
 
 The comparison reports before/after values and deltas for token use, cache reuse, model timing, tool calls, errors, repeated calls, and result size. It also lists added, resolved, and persisting findings.
@@ -34,10 +34,10 @@ The comparison reports before/after values and deltas for token use, cache reuse
 Content is returned only when it is explicitly requested:
 
 ```bash
-pp insights evidence CAPTURE_ID --section system --json
-pp insights evidence CAPTURE_ID --section tools --json
-pp insights evidence CAPTURE_ID --section tool-events --max-bytes 128KB --json
-pp insights evidence CAPTURE_ID --section output --json
+p2 insights evidence CAPTURE_ID --section system --json
+p2 insights evidence CAPTURE_ID --section tools --json
+p2 insights evidence CAPTURE_ID --section tool-events --max-bytes 128KB --json
+p2 insights evidence CAPTURE_ID --section output --json
 ```
 
 Evidence responses identify the capture, section, returned bytes, original bytes, and whether the content was truncated.

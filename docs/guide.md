@@ -12,14 +12,14 @@ Prompt Prism requires Node.js 20 or later.
 npm install -g prompt-prism
 ```
 
-Both `pp` and `prompt-prism` invoke the same CLI.
+Both `p2` and `prompt-prism` invoke the same CLI.
 
 ## Anthropic Messages
 
 Start Prism with the provider Base URL:
 
 ```bash
-pp start --upstream-base-url https://api.anthropic.com
+p2 start --upstream-base-url https://api.anthropic.com
 ```
 
 Point the Anthropic SDK at Prism while keeping the provider API key:
@@ -44,7 +44,7 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:1028 your-command
 Copy the provider's documented SDK `base_url` into `--upstream-base-url`:
 
 ```bash
-pp start --upstream-base-url https://api.deepseek.com
+p2 start --upstream-base-url https://api.deepseek.com
 ```
 
 Point an OpenAI-compatible SDK at Prism and retain its normal token and model:
@@ -63,7 +63,7 @@ OpenAI Chat Completions JSON and SSE responses, function tool calls/results, sys
 ## CLI reference
 
 ```text
-pp start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
+p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]
 ```
