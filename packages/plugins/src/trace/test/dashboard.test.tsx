@@ -26,6 +26,9 @@ describe('TracePanel', () => {
     const { container } = render(<TracePanel trace={trace} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={selectCapture} />);
     expect(screen.getByText('Explicit')).toBeVisible();
     expect(screen.getByText('HTTP 200')).toHaveClass('trace-http--good');
+    expect(container.querySelector('.trace-summary-id')).toHaveTextContent('trace:session');
+    expect(container.querySelector('.trace-summary-id')).toHaveAttribute('title', 'session-123');
+    expect(container.querySelector('.trace-summary-id')).not.toHaveAttribute('style');
     expect(screen.queryByText('Fix the endpoint')).not.toBeInTheDocument();
     expect(screen.queryByText('Done')).not.toBeInTheDocument();
     expect(screen.queryByText('Unknown output')).not.toBeInTheDocument();
@@ -123,7 +126,8 @@ describe('TracePanel', () => {
   });
 
   it('places inferred trace guidance behind an accessible help tooltip', async () => {
-    render(<TracePanel trace={{ ...trace, source: 'inferred' }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    const { container } = render(<TracePanel trace={{ ...trace, source: 'inferred' }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    expect(container.querySelector('.trace-summary-id')).toHaveTextContent('trace:session');
     const help = screen.getByRole('button', { name: 'About inferred traces' });
     expect(help).toBeVisible();
     await userEvent.hover(help);

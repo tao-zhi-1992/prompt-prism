@@ -109,6 +109,8 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(parsedLogs[0].response_status, 200);
   assert.equal(parsedLogs[0].upstream_host, `127.0.0.1:${upstreamPort}`);
   assert.equal(parsedLogs[0].trace_id, 'agent.session:one');
+  assert.equal(parsedLogs[0].trace_group_id, 'agent.session:one');
+  assert.equal(parsedLogs[0].trace_group_source, 'explicit');
   assert.ok(parsedLogs[0].timing.duration_ms >= 80);
   assert.equal(parsedLogs[0].analysis.actual_cache_read_tokens, 4);
   assert.equal('messages' in parsedLogs[0], false, 'list responses should not repeat complete prompts');

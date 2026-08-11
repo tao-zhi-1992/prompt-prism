@@ -8,6 +8,8 @@ import type { BuiltinPluginRuntime } from './plugin-runtime.js';
 const dashboardDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/dashboard');
 const brandDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets');
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png', 'favicon.ico']);
+type TraceGroupSource = 'explicit' | 'inferred';
+type TraceGroupMetadata = { trace_group_id: string; trace_group_source: TraceGroupSource };
 
 export function json(response: http.ServerResponse, status: number, value: unknown): void {
   const body = JSON.stringify(value);
@@ -63,6 +65,41 @@ function logSummary(capture: CaptureIndexEntry, analyzer: { analyses: Map<string
   return { ...summary, analysis: analysisSummary };
 }
 
+function inferredRootId(id: string, byId: Map<string, CaptureIndexEntry>, analyses: Map<string, Analysis>): string {
+  let current = id;
+  const seen = new Set<string>();
+  while (!seen.has(current)) {
+    seen.add(current);
+    const parentId = analyses.get(current)?.matched_parent_id;
+    if (!parentId || !byId.has(parentId)) return current;
+    current = parentId;
+  }
+  return current;
+}
+
+function buildTraceGroupMetadata(captures: readonly CaptureIndexEntry[], analyses: Map<string, Analysis>): Map<string, TraceGroupMetadata> {
+  const byId = new Map(captures.map((capture) => [capture.id, capture]));
+  const inferredRoots = new Map<string, string>();
+  const inferredCounts = new Map<string, number>();
+  for (const capture of captures) {
+    if (capture.trace_id) continue;
+    const rootId = inferredRootId(capture.id, byId, analyses);
+    inferredRoots.set(capture.id, rootId);
+    inferredCounts.set(rootId, (inferredCounts.get(rootId) ?? 0) + 1);
+  }
+
+  const metadata = new Map<string, TraceGroupMetadata>();
+  for (const capture of captures) {
+    if (capture.trace_id) {
+      metadata.set(capture.id, { trace_group_id: capture.trace_id, trace_group_source: 'explicit' });
+      continue;
+    }
+    const rootId = inferredRoots.get(capture.id);
+    if (rootId && (inferredCounts.get(rootId) ?? 0) > 1) metadata.set(capture.id, { trace_group_id: rootId, trace_group_source: 'inferred' });
+  }
+  return metadata;
+}
+
 export function createAdminHandler({
   store,
   analyzer,
@@ -84,7 +121,12 @@ export function createAdminHandler({
         return json(response, 200, { cleared: true });
       }
       if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
-      const logs = store.captures.map((capture) => logSummary(capture, analyzer))
+      const traceGroups = buildTraceGroupMetadata(store.captures, analyzer.analyses);
+      const logs = store.captures.map((capture) => {
+        const summary = logSummary(capture, analyzer);
+        const group = traceGroups.get(capture.id);
+        return group ? { ...summary, ...group } : summary;
+      })
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       return json(response, 200, logs);
     }

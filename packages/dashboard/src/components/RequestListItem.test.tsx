@@ -13,6 +13,8 @@ const capture: CaptureSummary = {
   usage: { input_tokens: 100, cache_read_input_tokens: 75 },
   response_status: 200,
   upstream_host: 'api.stepfun.com',
+  trace_group_id: 'session:one',
+  trace_group_source: 'explicit',
   analysis: {
     id: 'capture-123456789',
     timestamp: '2026-08-09T06:00:00.000Z',
@@ -27,18 +29,34 @@ const capture: CaptureSummary = {
 };
 
 describe('RequestListItem', () => {
-  it('shows HTTP status and upstream host and selects without interpreting model text as HTML', async () => {
+  it('shows status, capture hash, and trace badge without interpreting model text as HTML', async () => {
     const onSelect = vi.fn();
     const { container } = render(<RequestListItem capture={capture} selected onSelect={onSelect} />);
     expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeVisible();
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByText('HTTP 200')).toHaveClass('status-label--good');
-    expect(screen.getByText('api.stepfun.com')).toHaveAttribute('title', 'api.stepfun.com');
     expect(screen.getByText('capture-')).toHaveAttribute('title', capture.id);
+    expect(screen.getByText('trace:session:')).toHaveAttribute('title', 'session:one');
+    expect(screen.getByText('trace:session:')).not.toHaveAttribute('style');
+    expect([...container.querySelector('.request-line--secondary')!.children].map((child) => child.textContent)).toEqual([
+      'HTTP 200',
+      'capture-',
+      'trace:session:',
+    ]);
+    expect(screen.queryByText('api.stepfun.com')).not.toBeInTheDocument();
     expect(screen.queryByText('Below expected')).not.toBeInTheDocument();
     expect(screen.queryByText(/cached/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button'));
     expect(onSelect).toHaveBeenCalledWith(capture.id);
+  });
+
+  it('labels inferred multi-capture groups separately from explicit traces', () => {
+    render(<RequestListItem
+      capture={{ ...capture, trace_group_id: 'root-capture', trace_group_source: 'inferred' }}
+      selected={false}
+      onSelect={vi.fn()}
+    />);
+    expect(screen.getByText('trace:root-cap')).toHaveAttribute('title', 'root-capture');
   });
 
   it.each([
@@ -54,6 +72,5 @@ describe('RequestListItem', () => {
     />);
     expect(screen.getByText(responseStatus === undefined ? 'HTTP —' : `HTTP ${responseStatus}`)).toHaveClass(`status-label--${tone}`);
     expect(container.querySelector('.status-dot')).toHaveClass(`status-dot--${tone}`);
-    expect(screen.getByText('Unknown host')).toBeVisible();
   });
 });

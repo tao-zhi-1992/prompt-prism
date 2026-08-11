@@ -365,7 +365,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
     <div className="trace-panel">
       <div className="trace-overview">
         <header className="trace-summary">
-          <div><span>{t('tab.trace')}</span><code title={trace.id}>{trace.id}</code></div>
+          <div><span>{t('tab.trace')}</span><code className="trace-summary-id" title={trace.id}>trace:{trace.id.slice(0, 8)}</code></div>
           <TraceSource source={trace.source} />
           <div><span>{t('trace.calls')}</span><b>{trace.calls.length}</b></div>
         </header>

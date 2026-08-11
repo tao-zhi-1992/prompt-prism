@@ -51,6 +51,8 @@ export interface CaptureSummary {
   response_status?: number | null;
   upstream_host?: string;
   trace_id?: string;
+  trace_group_id?: string;
+  trace_group_source?: 'explicit' | 'inferred';
   timing?: CaptureTiming;
   file_ref: string;
   analysis?: unknown;

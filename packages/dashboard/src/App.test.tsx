@@ -88,7 +88,6 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: /newest-model/i })).toHaveAttribute('data-selected');
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Trace', 'Raw', 'System Prompt']);
     expect(screen.getAllByText('HTTP 200')[0]).toHaveClass('status-label--good');
-    expect(screen.getAllByText('api.stepfun.com')[0]).toBeVisible();
     expect(await screen.findByText('newest prompt')).toBeVisible();
     expect(screen.queryByText(/cache read/i)).not.toBeInTheDocument();
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('newest-capture');

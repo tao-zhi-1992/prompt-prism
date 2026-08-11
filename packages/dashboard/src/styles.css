@@ -214,10 +214,8 @@ button:focus-visible {
 .request-line--primary strong { overflow: hidden; font: 500 12px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .request-line--primary time { flex: 0 0 auto; color: var(--faint); font: 10px "DM Mono", monospace; }
 .request-line--secondary { gap: 8px; color: var(--muted); font-size: 10px; }
-.request-line--secondary > span:not(:first-child)::before { content: "·"; margin-right: 8px; color: var(--secondary-separator); }
-.request-host { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.request-id { flex: 0 0 auto; margin-left: auto; color: var(--faint); font: 500 10px "DM Mono", monospace; }
-.trace-badge { flex: 0 0 auto; padding: 3px 5px; color: hsl(var(--trace-hue) 70% 68%); border: 1px solid hsl(var(--trace-hue) 45% 35%); background: hsl(var(--trace-hue) 45% 15%); font: 9px "DM Mono", monospace; }
+.request-id { flex: 0 0 auto; color: var(--faint); font: 500 10px "DM Mono", monospace; }
+.trace-badge { flex: 0 0 auto; margin-left: auto; padding: 3px 5px; color: var(--accent-strong); border: 1px solid var(--line-strong); background: var(--green-bg); font: 9px "DM Mono", monospace; }
 .status-label--bad { color: var(--red); }
 .status-label--good { color: var(--green); }
 

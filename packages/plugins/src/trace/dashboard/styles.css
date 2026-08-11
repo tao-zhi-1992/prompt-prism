@@ -5,6 +5,7 @@
 .trace-summary > div:last-child { border-right: 0; }
 .trace-summary span { color: var(--faint); font-size: 8px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .trace-summary code, .trace-summary b { overflow: hidden; color: var(--text); font: 10px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
+.trace-summary-id { width: max-content; max-width: 100%; padding: 3px 5px; color: var(--accent-strong) !important; border: 1px solid var(--line-strong); background: var(--green-bg); font-size: 9px !important; }
 .trace-source-value { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .trace-info-trigger { display: grid; place-items: center; width: 14px; height: 14px; padding: 0; color: var(--muted); border: 1px solid var(--line-strong); background: transparent; font: 600 9px "DM Mono", monospace; cursor: help; }
 .trace-info-trigger:hover { color: var(--text); border-color: var(--line-strong); background: var(--surface-3); }
