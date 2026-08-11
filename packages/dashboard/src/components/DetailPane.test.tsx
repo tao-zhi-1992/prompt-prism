@@ -31,6 +31,7 @@ describe('DetailPane plugin host', () => {
   it('supports keyboard tab selection and only loads the active plugin', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.includes('/trace/')) return new Response(JSON.stringify({ id: 'trace', source: 'explicit', selected_capture_id: 'one', truncated: false, calls: [] }), { status: 200 });
       if (url.includes('/input-diff/')) return new Response(JSON.stringify(analysis('one')), { status: 200 });
       if (url.includes('/output/')) return new Response(JSON.stringify({ output: null }), { status: 200 });
       return new Response(JSON.stringify({ request: null, response: null }), { status: 200 });
@@ -38,14 +39,14 @@ describe('DetailPane plugin host', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     render(<DetailPane capture={capture('one')} />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/input-diff/one', expect.anything()));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/trace/one', expect.anything()));
     expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/one', expect.anything());
 
-    const diffTab = screen.getByRole('tab', { name: 'Input Diff' });
-    diffTab.focus();
+    const traceTab = screen.getByRole('tab', { name: 'Trace' });
+    traceTab.focus();
     await userEvent.keyboard('{ArrowRight}{Enter}');
-    expect(screen.getByRole('tab', { name: 'Output' })).toHaveAttribute('data-active');
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/output/one', expect.anything()));
+    expect(screen.getByRole('tab', { name: 'Input Diff' })).toHaveAttribute('data-active');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/input-diff/one', expect.anything()));
     expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/raw/one', expect.anything());
   });
 
@@ -72,7 +73,7 @@ describe('DetailPane plugin host', () => {
       .mockResolvedValue(new Response(JSON.stringify(analysis('one')), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<DetailPane capture={capture('one')} />);
+    render(<DetailPane capture={capture('one')} initialTab="input-diff" />);
     expect(await screen.findByText('temporary failure')).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText(/"one"/)).toBeVisible();
@@ -90,7 +91,7 @@ describe('DetailPane plugin host', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { rerender } = render(<DetailPane capture={capture('one')} />);
+    const { rerender } = render(<DetailPane capture={capture('one')} initialTab="input-diff" />);
     await waitFor(() => expect(firstSignal).toBeDefined());
     rerender(<DetailPane capture={capture('two')} />);
     await waitFor(() => expect(firstSignal?.aborted).toBe(true));

@@ -68,7 +68,8 @@ describe('App', () => {
     expect(new URLSearchParams(window.location.search).get('capture')).toBeNull();
   });
 
-  it('keeps the default Input Diff tab when selecting a capture from the list', async () => {
+  it('keeps the selected Input Diff tab when selecting a capture from the list', async () => {
+    window.history.replaceState(null, '', '/_pp/?tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200 });
@@ -84,7 +85,7 @@ describe('App', () => {
     await userEvent.click(await screen.findByRole('button', { name: /older-model/i }));
 
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('older-capture');
-    expect(new URLSearchParams(window.location.search).get('tab')).toBeNull();
+    expect(new URLSearchParams(window.location.search).get('tab')).toBe('input-diff');
     expect(window.location.hash).toBe('');
     expect(await screen.findByText('older prompt')).toBeVisible();
   });
@@ -132,7 +133,7 @@ describe('App', () => {
     expect(screen.queryByText('Prompt & response inspector')).not.toBeInTheDocument();
     expect(screen.queryByText('Prompt cache debugger')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /newest-model/i })).toHaveAttribute('data-selected');
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Input Diff', 'Output', 'Tools', 'Trace', 'Raw', 'System Prompt']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Trace', 'Input Diff', 'Output', 'Tools', 'System Prompt', 'Raw']);
     expect(screen.getAllByText('HTTP 200')[0]).toHaveClass('status-label--good');
     expect(await screen.findByText('newest prompt')).toBeVisible();
     expect(screen.queryByText(/cache read/i)).not.toBeInTheDocument();
@@ -188,7 +189,7 @@ describe('App', () => {
     expect(screen.getByText('v0.1.0')).toBeVisible();
     expect(screen.queryByText('提示词与响应检查器')).not.toBeInTheDocument();
     expect(screen.getByText('请求')).toBeVisible();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['输入差异', '输出', '工具', '追踪', '原始数据', '系统提示词']);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['追踪', '输入差异', '输出', '工具', '系统提示词', '原始数据']);
     expect(window.localStorage.getItem('prompt-prism-locale')).toBe('zh-CN');
     expect(document.documentElement.lang).toBe('zh-CN');
 

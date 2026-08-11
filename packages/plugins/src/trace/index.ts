@@ -1,1 +1,1 @@
-export const tracePluginMeta = { id: 'trace', label: 'Trace', order: 30 } as const;
+export const tracePluginMeta = { id: 'trace', label: 'Trace', order: 0 } as const;

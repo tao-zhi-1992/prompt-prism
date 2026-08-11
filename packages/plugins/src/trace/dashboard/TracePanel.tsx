@@ -136,6 +136,8 @@ function Toggle({ kind, label, emphasis, detail, toolResultLink, toolCallLink, o
     event.currentTarget.querySelector<HTMLButtonElement>('button')?.click();
   };
   const linkClick = (event: ReactMouseEvent<HTMLAnchorElement>, anchorId: string) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
     event.stopPropagation();
     onNavigate(anchorId);
   };
@@ -221,6 +223,22 @@ function toolCallFocusFromUrl(): ToolCallFocus | null {
   const index = rawIndex === null ? undefined : Number(rawIndex);
   if (!captureId || (!id && (index === undefined || !Number.isInteger(index) || index < 0))) return null;
   return { captureId, ...(id ? { id } : { index }) };
+}
+
+function scrollToTraceTarget(target: HTMLElement): void {
+  const viewport = target.closest<HTMLElement>('.trace-scroll')?.querySelector<HTMLElement>('.scroll-viewport');
+  if (!viewport) {
+    target.scrollIntoView?.({ behavior: 'auto', block: 'center' });
+    return;
+  }
+  const header = target.closest<HTMLElement>('.trace-call')?.querySelector<HTMLElement>('.trace-call-header-row');
+  const top = viewport.scrollTop
+    + target.getBoundingClientRect().top
+    - viewport.getBoundingClientRect().top
+    - (header?.getBoundingClientRect().height ?? 0)
+    - 8;
+  if (viewport.scrollTo) viewport.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+  else viewport.scrollTop = Math.max(0, top);
 }
 
 type UsageSummary = {
@@ -378,7 +396,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
     if (!target) return;
     const toggle = target.querySelector<HTMLButtonElement>('.trace-event-toggle');
     if (toggle?.getAttribute('aria-expanded') !== 'true') toggle?.click();
-    target.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    scrollToTraceTarget(target);
     setHighlightedAnchorId(anchorId);
     if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
     highlightTimer.current = window.setTimeout(() => setHighlightedAnchorId(null), 1600);
@@ -390,7 +408,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
       && (focusToolCall.id ? element.dataset.toolCallId === focusToolCall.id : element.dataset.toolCallIndex === String(focusToolCall.index))
     ));
     if (!target) return;
-    target.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    scrollToTraceTarget(target);
     setHighlightedAnchorId(target.id);
     setFocusToolCall(null);
     const url = new URL(window.location.href);

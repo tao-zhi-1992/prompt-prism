@@ -94,6 +94,7 @@ describe('TracePanel', () => {
       input_delta: [{ role: 'user', content: [{ type: 'tool_result' as const, tool_call_id: 'tool-linked', content: { text: 'done' }, is_error: false }] }],
       output: null,
     };
+    window.history.replaceState(null, '', '/_pp/');
     const { container } = render(<TracePanel trace={{ ...trace, calls: [first, second] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
     const link = container.querySelector('.trace-tool-result-link') as HTMLAnchorElement;
     const target = container.querySelector('#trace-tool-call-0-output-0') as HTMLElement;
@@ -105,6 +106,7 @@ describe('TracePanel', () => {
     expect(resultLink).toHaveTextContent('result →');
     expect(resultLink).toHaveAttribute('href', '#trace-tool-call-1-input-0-0');
     await userEvent.click(resultLink);
+    expect(window.location.hash).toBe('');
     const resultTarget = container.querySelector('#trace-tool-call-1-input-0-0') as HTMLElement;
     expect(resultTarget).toHaveAttribute('data-tool-highlight');
     expect(resultTarget.querySelector('.trace-event-toggle')).toHaveAttribute('aria-expanded', 'true');
@@ -179,6 +181,29 @@ describe('TracePanel', () => {
     });
     expect(screen.getByText('"pnpm test"')).toBeVisible();
     expect(new URLSearchParams(window.location.search).get('tool_call_id')).toBeNull();
+  });
+
+  it('scrolls focused tool calls below the sticky capture header without animation', async () => {
+    const scrollTo = vi.fn();
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const rect = (top: number, height = 0) => ({ top, bottom: top + height, left: 0, right: 0, width: 0, height, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    HTMLElement.prototype.scrollTo = scrollTo;
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.classList.contains('scroll-viewport')) return rect(20, 300);
+      if (this.classList.contains('trace-call-header-row')) return rect(20, 42);
+      return rect(180, 36);
+    };
+    try {
+      window.history.replaceState(null, '', '/_pp/?capture=capture-two&tab=trace&tool_call_id=tool-2');
+      const { container } = render(<TracePanel trace={trace} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+      const target = container.querySelector('[data-tool-call-id="tool-2"]') as HTMLElement;
+      await waitFor(() => expect(target).toHaveAttribute('data-tool-highlight'));
+      expect(scrollTo).toHaveBeenCalledWith({ top: 110, behavior: 'auto' });
+    } finally {
+      HTMLElement.prototype.scrollTo = originalScrollTo;
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
   });
 
   it('locates a tool call without an id by its output position', async () => {

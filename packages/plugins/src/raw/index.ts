@@ -1,1 +1,1 @@
-export const rawPluginMeta = { id: 'raw', label: 'Raw', order: 40 } as const;
+export const rawPluginMeta = { id: 'raw', label: 'Raw', order: 60 } as const;
