@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InputDiffPanel } from '../dashboard/InputDiffPanel.js';
 
 const analysis = {
@@ -16,9 +16,17 @@ const analysis = {
 };
 
 describe('InputDiffPanel', () => {
+  afterEach(() => {
+    window.history.replaceState(null, '', '/_pp/');
+  });
+
   it('orders sections, expands changes, and collapses unchanged secondary input', async () => {
     const { container } = render(<InputDiffPanel loading={false} error={null} onRetry={vi.fn()} analysis={analysis} />);
-    expect(screen.getByText('Compared with parent-r')).toBeVisible();
+    const parentLink = screen.getByRole('link', { name: 'Compared with parent-r' });
+    expect(parentLink).toBeVisible();
+    expect(parentLink).toHaveAttribute('href', expect.stringContaining('capture=parent-request'));
+    expect(parentLink).toHaveAttribute('href', expect.stringContaining('tab=input-diff'));
+    expect(parentLink).toHaveAttribute('href', expect.stringContaining('#input-diff-section-messages'));
     expect(screen.getByRole('table', { name: 'Messages diff with line numbers' })).toBeVisible();
     expect(screen.getByRole('table', { name: 'System diff with line numbers' })).toBeVisible();
     expect(screen.queryByRole('table', { name: 'Tools diff with line numbers' })).not.toBeInTheDocument();
@@ -29,6 +37,76 @@ describe('InputDiffPanel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Tools/ }));
     expect(screen.getByRole('table', { name: 'Tools diff with line numbers' })).toBeVisible();
+  });
+
+  it('uses SPA navigation for the parent link while preserving native modified clicks', async () => {
+    const selectCapture = vi.fn();
+    render(<InputDiffPanel loading={false} error={null} onRetry={vi.fn()} analysis={analysis} selectCapture={selectCapture} />);
+    const parentLink = screen.getByRole('link', { name: 'Compared with parent-r' });
+
+    await userEvent.click(parentLink);
+    expect(selectCapture).toHaveBeenCalledWith('parent-request', 'input-diff', 'input-diff-section-messages');
+    selectCapture.mockClear();
+    const preventNativeNavigation = (event: MouseEvent) => event.preventDefault();
+    parentLink.addEventListener('click', preventNativeNavigation);
+
+    try {
+      for (const modifier of ['ctrlKey', 'metaKey', 'shiftKey', 'altKey'] as const) {
+        fireEvent.click(parentLink, { [modifier]: true });
+        expect(selectCapture).not.toHaveBeenCalled();
+      }
+    } finally {
+      parentLink.removeEventListener('click', preventNativeNavigation);
+    }
+  });
+
+  it('scrolls to the first changed row in Messages by default', async () => {
+    const changedAnalysis = {
+      ...analysis,
+      sections: analysis.sections.map((section) => section.id === 'messages' ? {
+        ...section,
+        state: 'changed' as const,
+        diff: [
+          { type: 'delete' as const, value: '{"message":"old"}' },
+          { type: 'insert' as const, value: '{"message":"new"}' },
+        ],
+      } : section),
+    };
+    const scrollTo = vi.fn();
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    const originalRect = HTMLElement.prototype.getBoundingClientRect;
+    const rect = (top: number) => ({ x: 0, y: top, top, right: 0, bottom: top, left: 0, width: 0, height: 0, toJSON: () => ({}) }) as DOMRect;
+    HTMLElement.prototype.scrollTo = scrollTo;
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.classList.contains('scroll-viewport')) return rect(20);
+      if (this.classList.contains('diff-line--delete')) return rect(120);
+      if (this.classList.contains('diff-line--insert')) return rect(180);
+      return rect(40);
+    };
+
+    try {
+      const { container } = render(<InputDiffPanel loading={false} error={null} onRetry={vi.fn()} analysis={changedAnalysis} />);
+      expect(container.querySelector('.diff-line--delete')).not.toBeNull();
+      await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 88, behavior: 'auto' }));
+    } finally {
+      HTMLElement.prototype.scrollTo = originalScrollTo;
+      HTMLElement.prototype.getBoundingClientRect = originalRect;
+    }
+  });
+
+  it('expands and scrolls to the section named by the URL hash', async () => {
+    window.history.replaceState(null, '', '/_pp/?capture=current&tab=input-diff#input-diff-section-tools');
+    const scrollTo = vi.fn();
+    const originalScrollTo = HTMLElement.prototype.scrollTo;
+    HTMLElement.prototype.scrollTo = scrollTo;
+
+    try {
+      render(<InputDiffPanel loading={false} error={null} onRetry={vi.fn()} analysis={analysis} />);
+      await waitFor(() => expect(screen.getByRole('button', { name: /Tools/ })).toHaveAttribute('aria-expanded', 'true'));
+      await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: expect.any(Number), behavior: 'auto' }));
+    } finally {
+      HTMLElement.prototype.scrollTo = originalScrollTo;
+    }
   });
 
   it('adapts legacy analysis to Messages and unavailable secondary sections', () => {

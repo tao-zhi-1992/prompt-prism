@@ -32,12 +32,13 @@ function Dashboard() {
   const mounted = useRef(true);
   const clearActionRef = useRef<HTMLSpanElement>(null);
 
-  const select = useCallback((id: string, tab?: string) => {
+  const select = useCallback((id: string, tab?: string, anchor?: string) => {
     setSelectedId(id);
     if (tab) setSelectedTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set('capture', id);
     if (tab) url.searchParams.set('tab', tab);
+    url.hash = anchor ? `#${anchor.replace(/^#/, '')}` : '';
     window.history.replaceState(null, '', url);
   }, []);
 
@@ -45,6 +46,7 @@ function Dashboard() {
     setSelectedTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
+    url.hash = '';
     window.history.replaceState(null, '', url);
   }, []);
 

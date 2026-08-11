@@ -12,5 +12,5 @@ async function readJson(response: Response): Promise<InputDiffAnalysis> {
 export const inputDiffDashboardPlugin = defineDetailTab<InputDiffAnalysis>({
   ...inputDiffPluginMeta,
   load: (capture, signal) => fetch(`/_pp/api/input-diff/${encodeURIComponent(capture.id)}`, { signal, cache: 'no-store' }).then(readJson),
-  Panel: ({ data, loading, error, retry }) => <InputDiffPanel analysis={data} loading={loading} error={error} onRetry={retry} />,
+  Panel: ({ data, loading, error, retry, selectCapture }) => <InputDiffPanel analysis={data} loading={loading} error={error} onRetry={retry} selectCapture={selectCapture} />,
 });

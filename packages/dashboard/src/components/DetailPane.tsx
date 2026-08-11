@@ -4,7 +4,7 @@ import { dashboardPluginRegistry, useI18n, type CaptureSummary, type DetailTabPl
 
 type Resource = { status: 'loading' } | { status: 'ready'; data: unknown; refreshError?: string } | { status: 'error'; error: string };
 
-export function DetailPane({ capture, initialTab, onSelectCapture, onSelectTab }: { capture: CaptureSummary | null; initialTab?: string | null; onSelectCapture?: (id: string, tab?: string) => void; onSelectTab?: (tab: string) => void }) {
+export function DetailPane({ capture, initialTab, onSelectCapture, onSelectTab }: { capture: CaptureSummary | null; initialTab?: string | null; onSelectCapture?: (id: string, tab?: string, anchor?: string) => void; onSelectTab?: (tab: string) => void }) {
   const { t } = useI18n();
   const plugins = dashboardPluginRegistry.plugins;
   const [tab, setTab] = useState(initialTab && plugins.some((plugin) => plugin.id === initialTab) ? initialTab : plugins[0]?.id ?? '');

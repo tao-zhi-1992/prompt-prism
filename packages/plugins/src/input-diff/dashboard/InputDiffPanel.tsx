@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import { buildFormattedDiff, type DiffPart } from './formattedDiff.js';
@@ -53,6 +55,10 @@ function diffHref(captureId: string, sectionId: string): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+function diffAnchor(sectionId: string): string {
+  return `input-diff-section-${sectionId}`;
+}
+
 function sectionKey(id: string): TranslationKey | null {
   return ({ messages: 'section.messages', system: 'section.system', tools: 'section.tools', options: 'section.options' } as const)[id as 'messages'] ?? null;
 }
@@ -94,23 +100,45 @@ function SectionHeader({ section }: { section: InputDiffSection }) {
 function InputSection({ section, hasParent }: { section: InputDiffSection; hasParent: boolean }) {
   const content = <div className="input-diff-section-content"><DiffCode section={section} hasParent={hasParent} /></div>;
   return (
-    <Collapsible.Root id={`input-diff-section-${section.id}`} className="input-diff-section" defaultOpen={!section.default_collapsed || section.state === 'changed'}>
+    <Collapsible.Root id={diffAnchor(section.id)} className="input-diff-section" defaultOpen={!section.default_collapsed || section.state === 'changed'}>
       <SectionHeader section={section} />
       <Collapsible.Panel className="input-diff-section-panel">{content}</Collapsible.Panel>
     </Collapsible.Root>
   );
 }
 
-export function InputDiffPanel({ analysis, loading, error, onRetry }: { analysis: InputDiffAnalysis | null; loading: boolean; error: string | null; onRetry: () => void }) {
+export function InputDiffPanel({ analysis, loading, error, onRetry, selectCapture }: { analysis: InputDiffAnalysis | null; loading: boolean; error: string | null; onRetry: () => void; selectCapture?: (id: string, tab?: string, anchor?: string) => void }) {
   const { t } = useI18n();
+  useEffect(() => {
+    if (!analysis) return;
+    const hash = window.location.hash.slice(1);
+    const section = document.getElementById(hash.startsWith('input-diff-section-') ? hash : diffAnchor('messages'));
+    if (!(section instanceof HTMLElement)) return;
+    const trigger = section.querySelector<HTMLButtonElement>('.input-diff-section-header');
+    if (trigger?.getAttribute('aria-expanded') !== 'true') trigger?.click();
+    const frame = window.requestAnimationFrame(() => {
+      const target = section.querySelector<HTMLElement>('.diff-line--insert, .diff-line--delete') ?? section;
+      const viewport = section.closest<HTMLElement>('.input-diff-scroll')?.querySelector<HTMLElement>('.scroll-viewport');
+      if (viewport) {
+        const top = viewport.scrollTop + target.getBoundingClientRect().top - viewport.getBoundingClientRect().top - 12;
+        viewport.scrollTo?.({ top: Math.max(0, top), behavior: 'auto' });
+      } else target.scrollIntoView?.({ behavior: 'auto', block: 'center' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [analysis?.id]);
   if (loading) return <div className="detail-message"><span className="spinner" />{t('diff.loading')}</div>;
   if (error) return <div className="detail-message detail-message--error"><strong>{t('diff.loadFailed')}</strong><span>{error}</span><Button onClick={onRetry}>{t('common.tryAgain')}</Button></div>;
   if (!analysis) return null;
   const hasParent = Boolean(analysis.matched_parent_id);
+  const handleParentClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (!selectCapture || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    selectCapture(analysis.matched_parent_id!, 'input-diff', diffAnchor('messages'));
+  };
   return (
     <div className="input-diff-panel">
       <div className="input-diff-toolbar">
-        {hasParent ? <a className="input-diff-parent-link" href={diffHref(analysis.matched_parent_id!, 'messages')}>{t('diff.comparedWith', { id: analysis.matched_parent_id!.slice(0, 8) })}</a> : <span>{t('diff.noRelated')}</span>}
+        {hasParent ? <a className="input-diff-parent-link" href={diffHref(analysis.matched_parent_id!, 'messages')} onClick={handleParentClick}>{t('diff.comparedWith', { id: analysis.matched_parent_id!.slice(0, 8) })}</a> : <span>{t('diff.noRelated')}</span>}
         {hasParent && <div className="diff-legend"><span className="legend-delete">{t('diff.removed')}</span><span className="legend-insert">{t('diff.added')}</span></div>}
       </div>
       <ScrollArea.Root className="input-diff-scroll">

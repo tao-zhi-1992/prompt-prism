@@ -68,7 +68,52 @@ describe('App', () => {
     expect(new URLSearchParams(window.location.search).get('capture')).toBeNull();
   });
 
-  it('selects the newest capture, loads its diff, and keeps click selection in the URL', async () => {
+  it('keeps the default Input Diff tab when selecting a capture from the list', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200 });
+      if (url.includes('/input-diff/')) {
+        const id = decodeURIComponent(url.split('/').at(-1)!);
+        return new Response(JSON.stringify(details[id]), { status: 200 });
+      }
+      throw new Error(`unexpected detail request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: /older-model/i }));
+
+    expect(new URLSearchParams(window.location.search).get('capture')).toBe('older-capture');
+    expect(new URLSearchParams(window.location.search).get('tab')).toBeNull();
+    expect(window.location.hash).toBe('');
+    expect(await screen.findByText('older prompt')).toBeVisible();
+  });
+
+  it('navigates from an Input Diff parent link without reloading and preserves its target hash', async () => {
+    window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/_pp/api/logs') return new Response(JSON.stringify(captures), { status: 200 });
+      if (url.includes('/input-diff/')) {
+        const id = decodeURIComponent(url.split('/').at(-1)!);
+        return new Response(JSON.stringify(details[id]), { status: 200 });
+      }
+      throw new Error(`unexpected detail request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+    const parentLink = await screen.findByRole('link', { name: 'Compared with older-ca' });
+    await userEvent.click(parentLink);
+
+    expect(new URLSearchParams(window.location.search).get('capture')).toBe('older-capture');
+    expect(new URLSearchParams(window.location.search).get('tab')).toBe('input-diff');
+    expect(window.location.hash).toBe('#input-diff-section-messages');
+    expect(await screen.findByRole('button', { name: /older-model/i })).toHaveAttribute('data-selected');
+    expect(await screen.findByText('No related request')).toBeVisible();
+  });
+
+  it('selects the newest capture and keeps click selection in the URL', async () => {
     window.history.replaceState(null, '', '/_pp/?capture=newest-capture&tab=input-diff');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -118,6 +163,7 @@ describe('App', () => {
     expect(new URLSearchParams(window.location.search).get('capture')).toBe('older-capture');
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/raw/older-capture', expect.anything()));
     expect(fetchMock).not.toHaveBeenCalledWith('/_pp/api/input-diff/older-capture', expect.anything());
+    expect(screen.getByRole('tab', { name: 'Raw' })).toHaveAttribute('data-active');
 
     await userEvent.click(screen.getByRole('tab', { name: 'Input Diff' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/_pp/api/input-diff/older-capture', expect.anything()));
