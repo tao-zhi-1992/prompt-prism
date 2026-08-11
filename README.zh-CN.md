@@ -1,8 +1,4 @@
 <p align="center">
-  <a href="./README.md">English</a> · 简体中文
-</p>
-
-<p align="center">
   <img src="packages/prompt-prism/assets/logo-mark.png" alt="Prompt Prism 标志" width="160">
 </p>
 
@@ -19,6 +15,10 @@
   <a href="docs/guide.zh-CN.md">使用指南</a> ·
   <a href="docs/insights.zh-CN.md">Agent Insights</a> ·
   <a href="docs/development.zh-CN.md">开发指南</a>
+</p>
+
+<p align="center">
+  <a href="./README.md">English</a> · 简体中文
 </p>
 
 ![Prompt Prism 仪表盘，显示 Agent 轨迹](docs/dashboard.png)

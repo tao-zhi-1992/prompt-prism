@@ -1,8 +1,4 @@
 <p align="center">
-  <a href="./README.zh-CN.md">简体中文</a> · English
-</p>
-
-<p align="center">
   <img src="packages/prompt-prism/assets/logo-mark.png" alt="Prompt Prism logo" width="160">
 </p>
 
@@ -19,6 +15,10 @@
   <a href="docs/guide.md">Guide</a> ·
   <a href="docs/insights.md">Agent Insights</a> ·
   <a href="docs/development.md">Development</a>
+</p>
+
+<p align="center">
+  <a href="./README.zh-CN.md">简体中文</a> · English
 </p>
 
 ![Prompt Prism dashboard showing an agent trace](docs/dashboard.png)
