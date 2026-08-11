@@ -1,9 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { ToolsPanel } from '../dashboard/ToolsPanel.js';
 
 describe('ToolsPanel', () => {
+  it('keeps collapsed tool cards at their content height', async () => {
+    const css = await readFile(path.resolve('src/tools/dashboard/styles.css'), 'utf8');
+    expect(css).toMatch(/\.tools-content\s*\{[^}]*align-content:\s*start;/);
+  });
+
   it('renders Anthropic and OpenAI tool cards', async () => {
     const { container } = render(<ToolsPanel data={{ id: 'abc', tools: [
       { name: 'read', description: 'Read files', input_schema: { type: 'object', properties: { path: { type: 'string' } } } },

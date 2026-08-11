@@ -98,11 +98,12 @@ async function queryPrismFormat(baseUrl: URL): Promise<ResolvedDemoApiFormat> {
   try { response = await fetch(configUrl, { signal: AbortSignal.timeout(2_000), headers: { accept: 'application/json' } }); }
   catch (error) { throw new Error(`Unable to query Prompt Prism API format at ${configUrl.href}. Start Prism first or set DEMO_API_FORMAT explicitly. ${error instanceof Error ? error.message : ''}`.trim()); }
   if (!response.ok) throw new Error(`Prompt Prism config returned HTTP ${response.status}. Start a compatible Prism or set DEMO_API_FORMAT explicitly.`);
-  const body = await response.json() as { api_format?: { resolved?: unknown; unsupported_protocol?: unknown } };
+  const body = await response.json() as { api_format?: { mode?: unknown; resolved?: unknown; unsupported_protocol?: unknown } };
   const resolved = body.api_format?.resolved;
   if (resolved === 'anthropic-messages' || resolved === 'openai-chat-completions') return resolved;
   const unsupported = body.api_format?.unsupported_protocol;
   if (typeof unsupported === 'string') throw new Error(`Prompt Prism detected unsupported API format ${unsupported}. Set DEMO_API_FORMAT only when the Demo supports that protocol.`);
+  if (body.api_format?.mode === 'auto') return 'anthropic-messages';
   throw new Error('Prompt Prism has not resolved its API format. Use a recognizable upstream endpoint or set DEMO_API_FORMAT explicitly.');
 }
 

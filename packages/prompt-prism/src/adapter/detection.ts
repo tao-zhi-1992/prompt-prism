@@ -1,5 +1,5 @@
 import type http from 'node:http';
-import type { ApiFormatOption, ApiFormatResolution, ApiFormatResolutionSource, ProviderProtocol } from '../types.js';
+import type { ApiFormatOption, ApiFormatResolution, ProviderProtocol } from '../types.js';
 import { getProviderAdapter, normalizeProviderProtocol } from './registry.js';
 
 export type DetectedProtocol = ProviderProtocol | 'openai-responses';
@@ -76,26 +76,24 @@ export function endpointPath(protocol: DetectedProtocol): string {
 
 export class ApiFormatResolver {
   readonly resolution: ApiFormatResolution;
+  readonly upstreamHint: DetectedProtocol | null;
 
   constructor(option: ApiFormatOption = 'auto', upstreamUrl?: URL, exact = false, useUpstreamHint = true) {
     if (option !== 'auto') {
       const canonical = normalizeProviderProtocol(option);
       getProviderAdapter(canonical);
       this.resolution = { mode: 'explicit', configured: canonical as ProviderProtocol, resolved: canonical as ProviderProtocol, source: 'explicit' };
+      this.upstreamHint = null;
       return;
     }
     this.resolution = { mode: 'auto', configured: 'auto', resolved: null, source: null };
-    if (upstreamUrl && useUpstreamHint) this.consider(exact ? detectProtocolFromPath(upstreamUrl.pathname) : detectProtocolFromBaseUrl(upstreamUrl), exact ? 'upstream-url' : 'upstream-base-url');
+    this.upstreamHint = upstreamUrl && useUpstreamHint
+      ? (exact ? detectProtocolFromPath(upstreamUrl.pathname) : detectProtocolFromBaseUrl(upstreamUrl))
+      : null;
   }
 
-  consider(protocol: DetectedProtocol | null, source: Exclude<ApiFormatResolutionSource, 'explicit' | null>): void {
-    if (!protocol || this.resolution.mode === 'explicit' || this.resolution.resolved || this.resolution.unsupported_protocol) return;
-    if (protocol === 'openai-responses') {
-      this.resolution.unsupported_protocol = protocol;
-      this.resolution.source = source;
-      return;
-    }
-    this.resolution.resolved = protocol;
-    this.resolution.source = source;
+  resolve(...evidence: Array<DetectedProtocol | null>): DetectedProtocol | null {
+    if (this.resolution.mode === 'explicit') return this.resolution.resolved;
+    return evidence.find((protocol): protocol is DetectedProtocol => protocol !== null) ?? this.upstreamHint;
   }
 }

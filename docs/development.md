@@ -60,7 +60,7 @@ Required variables:
 Optional variables:
 
 - `DEMO_BASE_URL`: defaults to `http://127.0.0.1:1028`; do not include `/v1`.
-- `DEMO_API_FORMAT`: defaults to `auto`; use `anthropic-messages` or `openai-chat-completions` only as an override.
+- `DEMO_API_FORMAT`: defaults to `auto`, which uses the Demo's Anthropic client with per-capture proxy detection; use `anthropic-messages` or `openai-chat-completions` to override the client protocol.
 - `DEMO_PORT`: defaults to `3000`.
 
 Sessions are in memory. Generated workspaces are retained under `example/.workspaces/` and recreated by **Reset workspace**.

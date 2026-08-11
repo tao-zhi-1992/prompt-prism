@@ -243,14 +243,19 @@ test('Demo defaults to local Prompt Prism and validates its base URL and require
   await assert.rejects(startDemo({ baseUrl: 'http://localhost', model: 'model', demoPort: 0 }), /Missing DEMO_MODEL_PROVIDER_TOKEN/);
   await assert.rejects(startDemo({ baseUrl: 'http://localhost', providerToken: 'token', demoPort: 0 }), /Missing DEMO_AGENT_MODEL/);
 
-  const unresolved = http.createServer((_request, response) => {
+  const perCaptureAuto = http.createServer((_request, response) => {
     const body = JSON.stringify({ api_format: { mode: 'auto', configured: 'auto', resolved: null, source: null } });
     response.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
     response.end(body);
   });
-  const unresolvedPort = await listen(unresolved);
-  t.after(() => close(unresolved));
-  await assert.rejects(startDemo({ baseUrl: `http://127.0.0.1:${unresolvedPort}`, providerToken: 'token', model: 'model', demoPort: 0 }), /has not resolved its API format/);
+  const perCaptureAutoPort = await listen(perCaptureAuto);
+  t.after(() => close(perCaptureAuto));
+  const automatic = await startDemo({
+    baseUrl: `http://127.0.0.1:${perCaptureAutoPort}`, providerToken: 'token', model: 'model', demoPort: 0,
+    workspaceRoot: await mkdtemp(path.join(tmpdir(), 'prompt-prism-auto-demo-')),
+  });
+  assert.equal(automatic.apiFormat, 'anthropic-messages');
+  await automatic.close();
 
   const explicit = await startDemo({ baseUrl: 'http://127.0.0.1:1', apiFormat: 'anthropic', providerToken: 'token', model: 'model', demoPort: 0, workspaceRoot: await mkdtemp(path.join(tmpdir(), 'prompt-prism-explicit-demo-')) });
   await explicit.close();

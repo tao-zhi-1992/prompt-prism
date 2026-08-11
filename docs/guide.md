@@ -95,9 +95,9 @@ Use `--upstream-url` for a complete endpoint, including its final path and optio
 
 `--api-format` accepts `auto`, `anthropic-messages`, or `openai-chat-completions`. The shorter `anthropic` and `openai` aliases remain supported.
 
-In auto mode, Prism considers an explicitly provided upstream URL, known provider Base URLs, request paths and headers, protocol-specific request bodies, and provider responses. The first confident result locks the protocol for the process. The implicit default Anthropic upstream is used only for forwarding and does not resolve the format before a request arrives.
+In auto mode, Prism detects every capture independently. It considers the request path, headers, protocol-specific request body, provider response, and finally an explicitly provided upstream URL or known provider Base URL. The first confident signal for that capture wins, so one protocol never locks or influences later captures. Routing uses only signals available before forwarding: the request path, headers, and upstream URL hint. The implicit default Anthropic upstream is used only for forwarding and is not a format hint.
 
-Unknown custom Base URLs are not guessed. Ambiguous traffic is forwarded and stored as Raw-only until the protocol can be resolved. Use an explicit `--api-format` when a client needs the protocol before its first request.
+Unknown custom Base URLs are not guessed. A capture with ambiguous traffic is forwarded and stored as Raw-only without affecting later captures. Use an explicit `--api-format` when a client needs a fixed protocol.
 
 OpenAI reports cached prompt tokens as a subset of `prompt_tokens`. Prism normalizes these into mutually exclusive values: Input is `prompt_tokens - cached_tokens`, while Cache read is `cached_tokens`. Raw retains the provider's original usage envelope.
 

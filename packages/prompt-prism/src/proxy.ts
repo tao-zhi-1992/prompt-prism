@@ -148,9 +148,9 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
       response.end();
       return;
     }
-    resolver.consider(detectProtocolFromPath(requestPath), 'request-path');
-    resolver.consider(detectProtocolFromHeaders(request.headers), 'request-headers');
-    const routingProtocol = resolver.resolution.resolved ?? resolver.resolution.unsupported_protocol as DetectedProtocol | undefined ?? null;
+    const pathProtocol = detectProtocolFromPath(requestPath);
+    const headerProtocol = detectProtocolFromHeaders(request.headers);
+    const routingProtocol = resolver.resolve(pathProtocol, headerProtocol);
     const targetUrl = upstreamMode === 'exact' ? upstreamUrl : joinedTarget(upstreamUrl, request.url, routingProtocol);
     const transport = targetUrl.protocol === 'https:' ? https : http;
 
@@ -179,9 +179,13 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
         const completedAt = new Date(completedMs).toISOString();
         const requestBody = Buffer.concat(requestChunks);
         const responseBody = Buffer.concat(responseChunks);
-        resolver.consider(detectProtocolFromBody(requestBody), 'request-shape');
-        resolver.consider(detectProtocolFromResponse(responseBody), 'response-shape');
-        const adapter = resolver.resolution.resolved ? getProviderAdapter(resolver.resolution.resolved) : null;
+        const captureProtocol = resolver.resolve(
+          pathProtocol,
+          headerProtocol,
+          detectProtocolFromBody(requestBody),
+          detectProtocolFromResponse(responseBody),
+        );
+        const adapter = captureProtocol && captureProtocol !== 'openai-responses' ? getProviderAdapter(captureProtocol) : null;
         let parsedRequest = null;
         let parsedResponse = null;
         if (adapter) {
@@ -241,9 +245,7 @@ export async function startPromptPrism(options: PromptPrismOptions = {}): Promis
   const address = instance.server.address();
   const port = address && typeof address === 'object' ? address.port : requestedPort;
   const dashboard = `http://127.0.0.1:${port}/_pp/`;
-  const format = instance.apiFormat.resolved
-    ? `${instance.apiFormat.mode === 'auto' ? 'Auto → ' : ''}${instance.apiFormat.resolved}${instance.apiFormat.source ? ` (${instance.apiFormat.source})` : ''}`
-    : instance.apiFormat.unsupported_protocol ? `Auto → ${instance.apiFormat.unsupported_protocol} (unsupported; Raw only)` : 'Auto · waiting for first request';
+  const format = instance.apiFormat.mode === 'auto' ? 'Auto · per capture' : instance.apiFormat.resolved;
   console.log(`\n  Prompt Prism is running\n\n  Proxy          http://127.0.0.1:${port}\n  Dashboard      ${dashboard}\n  Upstream ${instance.upstreamMode === 'base' ? 'Base' : 'URL '} ${instance.upstreamUrl.href}\n  API format     ${format}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
   if (options.open !== false) openBrowser(dashboard);
   return { ...instance, port, dashboard };

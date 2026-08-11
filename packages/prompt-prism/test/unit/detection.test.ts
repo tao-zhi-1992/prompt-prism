@@ -11,17 +11,27 @@ test('detects canonical protocols from standard endpoints and provider Base URLs
   assert.equal(detectProtocolFromBaseUrl(new URL('https://custom.example.com/gateway')), null);
 });
 
-test('only uses provider-specific body evidence and locks the first confident result', () => {
+test('only uses provider-specific body evidence and resolves each capture independently', () => {
   assert.equal(detectProtocolFromBody(JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'hello' }] })), null);
   assert.equal(detectProtocolFromBody(JSON.stringify({ model: 'm', messages: [], tools: [{ name: 'read', input_schema: { type: 'object' } }] })), 'anthropic-messages');
   assert.equal(detectProtocolFromBody(JSON.stringify({ model: 'm', messages: [], tools: [{ type: 'function', function: { name: 'read' } }] })), 'openai-chat-completions');
 
   const resolver = new ApiFormatResolver('auto', new URL('https://custom.example.com'), false);
   assert.equal(resolver.resolution.resolved, null);
-  resolver.consider('openai-chat-completions', 'request-path');
-  resolver.consider('anthropic-messages', 'request-shape');
-  assert.equal(resolver.resolution.resolved, 'openai-chat-completions');
-  assert.equal(resolver.resolution.source, 'request-path');
+  assert.equal(resolver.resolve('openai-chat-completions', 'anthropic-messages'), 'openai-chat-completions');
+  assert.equal(resolver.resolve('anthropic-messages', 'openai-chat-completions'), 'anthropic-messages');
+  assert.equal(resolver.resolve('openai-responses'), 'openai-responses');
+  assert.equal(resolver.resolve('openai-chat-completions'), 'openai-chat-completions');
+  assert.deepEqual(resolver.resolution, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+});
+
+test('uses the upstream only as the final Auto fallback and explicit format before all evidence', () => {
+  const auto = new ApiFormatResolver('auto', new URL('https://api.deepseek.com'), false);
+  assert.equal(auto.resolve(), 'openai-chat-completions');
+  assert.equal(auto.resolve('anthropic-messages'), 'anthropic-messages');
+
+  const explicit = new ApiFormatResolver('anthropic', new URL('https://api.deepseek.com'), false);
+  assert.equal(explicit.resolve('openai-chat-completions'), 'anthropic-messages');
 });
 
 test('does not use the implicit Anthropic default as an auto-format hint', () => {

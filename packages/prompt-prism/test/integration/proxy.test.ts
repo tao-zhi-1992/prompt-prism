@@ -309,7 +309,202 @@ test('Prism validates and preserves complete upstream URLs', async () => {
   assert.throws(() => parseUpstreamUrl('https://provider.example.com/v1/messages#fragment'), /fragment/);
 });
 
-test('base URL mode derives provider endpoints and Auto locks the request protocol', async (t) => {
+test('Auto detects and normalizes every capture independently in both protocol orders', async () => {
+  const openaiRequest = JSON.stringify({
+    model: 'openai-auto',
+    messages: [{ role: 'developer', content: 'Use tools carefully' }, { role: 'user', content: 'OpenAI input' }],
+    tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } }],
+  });
+  const anthropicRequest = JSON.stringify({
+    model: 'anthropic-auto', system: 'Use tools carefully',
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Anthropic input' }] }],
+    tools: [{ name: 'lookup', input_schema: { type: 'object' } }],
+  });
+  const openaiResponse = JSON.stringify({
+    id: 'chatcmpl_auto', object: 'chat.completion', model: 'openai-auto',
+    choices: [{ index: 0, message: { role: 'assistant', content: 'OpenAI output' }, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 10, completion_tokens: 4, prompt_tokens_details: { cached_tokens: 3 } },
+  });
+  const anthropicResponse = JSON.stringify({
+    id: 'msg_auto', type: 'message', role: 'assistant', model: 'anthropic-auto',
+    content: [{ type: 'text', text: 'Anthropic output' }], stop_reason: 'end_turn',
+    usage: { input_tokens: 8, output_tokens: 5, cache_read_input_tokens: 2 },
+  });
+
+  for (const order of [['openai', 'anthropic'], ['anthropic', 'openai']] as const) {
+    const upstream = http.createServer((req, res) => {
+      req.resume();
+      req.on('end', () => {
+        const body = req.url?.endsWith('/v1/messages') ? anthropicResponse : openaiResponse;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(body);
+      });
+    });
+    const upstreamPort = await listen(upstream);
+    const dir = await mkdtemp(path.join(tmpdir(), `prompt-prism-auto-${order[0]}-`));
+    const prism = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}/gateway`, dataDir: dir });
+    const proxyPort = await listen(prism.server);
+
+    try {
+      const before = JSON.parse((await request({ port: proxyPort, pathname: '/_pp/api/config' })).body);
+      assert.deepEqual(before.api_format, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+
+      for (const protocol of order) {
+        const body = protocol === 'openai' ? openaiRequest : anthropicRequest;
+        const pathname = protocol === 'openai' ? '/v1/chat/completions' : '/v1/messages';
+        const result = await request({
+          port: proxyPort, pathname,
+          headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) }, body,
+        });
+        assert.equal(result.status, 200);
+      }
+      await prism.store.pending;
+
+      assert.equal(prism.store.captures.length, 2);
+      for (let index = 0; index < order.length; index += 1) {
+        const protocol = order[index];
+        const entry = prism.store.captures[index];
+        assert.ok(entry);
+        const capture = await prism.store.readCapture(entry.id);
+        assert.ok(capture);
+        if (protocol === 'openai') {
+          assert.equal(capture.adapter_id, 'openai-chat-completions');
+          assert.equal(capture.messages[0]?.role, 'developer');
+          assert.equal(capture.prompt_input?.adapter_id, 'openai-chat-completions');
+          assert.deepEqual(capture.usage, { input_tokens: 7, output_tokens: 4, cache_read_input_tokens: 3 });
+          assert.deepEqual(capture.model_output?.content, [{ type: 'text', text: 'OpenAI output' }]);
+        } else {
+          assert.equal(capture.adapter_id, 'anthropic-messages');
+          assert.equal(capture.messages[0]?.role, 'user');
+          assert.equal(capture.prompt_input?.adapter_id, 'anthropic-messages');
+          assert.deepEqual(capture.usage, { input_tokens: 8, output_tokens: 5, cache_read_input_tokens: 2 });
+          assert.deepEqual(capture.model_output?.content, [{ type: 'text', text: 'Anthropic output' }]);
+        }
+      }
+
+      const after = JSON.parse((await request({ port: proxyPort, pathname: '/_pp/api/config' })).body);
+      assert.deepEqual(after.api_format, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+      assert.deepEqual(prism.apiFormat, after.api_format);
+    } finally {
+      await close(prism.server);
+      await close(upstream);
+    }
+  }
+});
+
+test('Auto request priority and Raw captures do not influence later captures', async (t) => {
+  const anthropicBody = JSON.stringify({
+    model: 'anthropic-conflict', messages: [{ role: 'user', content: 'hello' }],
+    tools: [{ name: 'lookup', input_schema: { type: 'object' } }],
+  });
+  const anthropicResponse = JSON.stringify({
+    id: 'msg_conflict', type: 'message', role: 'assistant', model: 'anthropic-conflict',
+    content: [{ type: 'text', text: 'anthropic response' }], stop_reason: 'end_turn', usage: { input_tokens: 3, output_tokens: 2 },
+  });
+  const openaiBody = JSON.stringify({
+    model: 'openai-after-raw', messages: [{ role: 'tool', tool_call_id: 'call_1', content: 'result' }],
+  });
+  const openaiResponse = JSON.stringify({
+    id: 'chatcmpl_after_raw', object: 'chat.completion', model: 'openai-after-raw',
+    choices: [{ index: 0, message: { role: 'assistant', content: 'still detected' }, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 4, completion_tokens: 1 },
+  });
+  const responsesBody = JSON.stringify({ model: 'responses-model', input: 'hello' });
+  const responsesResponse = JSON.stringify({ id: 'resp_1', object: 'response', output: [] });
+  const ambiguousBody = JSON.stringify({ model: 'custom-model', prompt: 'raw input' });
+
+  const upstream = http.createServer((req, res) => {
+    req.resume();
+    req.on('end', () => {
+      if (req.url === '/gateway/v1/responses') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(responsesResponse);
+      } else if (req.url === '/gateway/custom/generate') {
+        res.writeHead(200, { 'content-type': 'text/plain' });
+        res.end('raw provider extension');
+      } else if (req.url === '/gateway/v1/chat/completions') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(openaiResponse);
+      } else {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(anthropicResponse);
+      }
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-auto-isolation-'));
+  const prism = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}/gateway`, dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  for (const item of [
+    { pathname: '/conflict/chat/completions', body: anthropicBody },
+    { pathname: '/v1/messages', body: anthropicBody },
+    { pathname: '/v1/responses', body: responsesBody },
+    { pathname: '/custom/generate', body: ambiguousBody },
+    { pathname: '/v1/chat/completions', body: openaiBody },
+  ]) {
+    await request({ port: proxyPort, ...item, headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(item.body) } });
+  }
+  await prism.store.pending;
+
+  const captures = await Promise.all(prism.store.captures.map((entry) => prism.store.readCapture(entry.id)));
+  assert.equal(captures.length, 5);
+  assert.equal(captures[0]?.adapter_id, 'openai-chat-completions', 'request path must win over Anthropic body and response');
+  assert.equal(captures[0]?.prompt_input?.adapter_id, 'openai-chat-completions');
+  assert.equal(captures[1]?.adapter_id, 'anthropic-messages');
+  assert.deepEqual(captures[1]?.model_output?.content, [{ type: 'text', text: 'anthropic response' }]);
+
+  assert.equal(captures[2]?.adapter_id, 'unresolved');
+  assert.equal(captures[2]?.prompt_input, undefined);
+  assert.equal(captures[2]?.model_output, undefined);
+  assert.equal(captures[2]?.request?.body, responsesBody);
+  assert.equal(captures[2]?.response?.body, responsesResponse);
+
+  assert.equal(captures[3]?.adapter_id, 'unresolved');
+  assert.equal(captures[3]?.prompt_input, undefined);
+  assert.equal(captures[3]?.model_output, undefined);
+  assert.equal(captures[3]?.request?.body, ambiguousBody);
+  assert.equal(captures[3]?.response?.body, 'raw provider extension');
+
+  assert.equal(captures[4]?.adapter_id, 'openai-chat-completions');
+  assert.deepEqual(captures[4]?.model_output?.content, [{ type: 'text', text: 'still detected' }]);
+  assert.deepEqual(prism.apiFormat, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+});
+
+test('Auto uses an upstream hint only as fallback while explicit format overrides capture evidence', async (t) => {
+  const openaiResponse = JSON.stringify({
+    id: 'chatcmpl_hint', object: 'chat.completion', model: 'hint-model',
+    choices: [{ index: 0, message: { role: 'assistant', content: 'hint output' }, finish_reason: 'stop' }], usage: {},
+  });
+  const upstream = http.createServer((req, res) => {
+    req.resume();
+    req.on('end', () => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(openaiResponse); });
+  });
+  const upstreamPort = await listen(upstream);
+  t.after(() => close(upstream));
+
+  const autoDir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-auto-hint-'));
+  const auto = await createPromptPrism({ upstreamUrl: `http://127.0.0.1:${upstreamPort}/v1/chat/completions`, dataDir: autoDir });
+  const autoPort = await listen(auto.server);
+  t.after(() => close(auto.server));
+  const ambiguousBody = JSON.stringify({ model: 'hint-model', messages: [{ role: 'user', content: 'ambiguous' }] });
+  await request({ port: autoPort, pathname: '/custom/generate', headers: { 'content-type': 'application/json' }, body: ambiguousBody });
+  await auto.store.pending;
+  assert.equal(auto.store.captures[0]?.adapter_id, 'openai-chat-completions');
+
+  const explicitDir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-explicit-format-'));
+  const explicit = await createPromptPrism({ upstreamUrl: `http://127.0.0.1:${upstreamPort}/v1/chat/completions`, apiFormat: 'openai', dataDir: explicitDir });
+  const explicitPort = await listen(explicit.server);
+  t.after(() => close(explicit.server));
+  const anthropicBody = JSON.stringify({ model: 'forced-openai', messages: [], tools: [{ name: 'read', input_schema: { type: 'object' } }] });
+  await request({ port: explicitPort, pathname: '/v1/messages', headers: { 'content-type': 'application/json' }, body: anthropicBody });
+  await explicit.store.pending;
+  assert.equal(explicit.store.captures[0]?.adapter_id, 'openai-chat-completions');
+  assert.deepEqual(explicit.apiFormat, { mode: 'explicit', configured: 'openai-chat-completions', resolved: 'openai-chat-completions', source: 'explicit' });
+});
+
+test('base URL mode derives provider endpoints without locking the Auto configuration', async (t) => {
   const seen: string[] = [];
   const upstream = http.createServer((req, res) => {
     seen.push(req.url ?? '');
@@ -340,8 +535,9 @@ test('base URL mode derives provider endpoints and Auto locks the request protoc
   assert.deepEqual(seen, ['/tenant/v1/chat/completions?region=cn', '/tenant/chat/completions?region=legacy']);
   await prism.store.pending;
   assert.equal(prism.store.captures[0]?.adapter_id, 'openai-chat-completions');
-  assert.equal(prism.apiFormat.resolved, 'openai-chat-completions');
-  assert.equal(prism.apiFormat.source, 'request-path');
+  assert.deepEqual(prism.apiFormat, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+  const after = JSON.parse((await request({ port: proxyPort, pathname: '/_pp/api/config' })).body);
+  assert.deepEqual(after.api_format, { mode: 'auto', configured: 'auto', resolved: null, source: null });
 });
 
 test('unrecognized base routes remain transparent and create Raw-only captures', async (t) => {
