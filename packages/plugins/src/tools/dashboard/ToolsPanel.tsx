@@ -1,10 +1,10 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
-import { JsonView } from 'react-json-view-lite';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { JsonValue } from '../../contracts/dashboard.js';
 import { useI18n } from '../../i18n/index.js';
 import { Button } from '@prompt-prism/ui';
+import { StructuredContent } from '../../content/StructuredContent.js';
 
 export interface ToolsData {
   id: string;
@@ -28,17 +28,6 @@ export interface ToolUsageInvocation {
 type JsonObject = { [key: string]: JsonValue | undefined };
 type NormalizedTool = { name: string | null; description: string | null; schema?: JsonValue; raw: JsonValue; known: boolean };
 type ToolParameter = { name: string; type: string; required: boolean; description: string | null };
-
-const jsonStyles = {
-  container: 'tools-json-tree', basicChildStyle: 'tools-json-child', childFieldsContainer: 'tools-json-children',
-  label: 'tools-json-label', clickableLabel: 'tools-json-label tools-json-clickable', nullValue: 'tools-json-null',
-  undefinedValue: 'tools-json-null', stringValue: 'tools-json-string', booleanValue: 'tools-json-boolean',
-  numberValue: 'tools-json-number', otherValue: 'tools-json-other', punctuation: 'tools-json-punctuation',
-  collapseIcon: 'tools-json-expander tools-json-expander--open', expandIcon: 'tools-json-expander tools-json-expander--closed',
-  collapsedContent: 'tools-json-collapsed', quotesForFieldNames: true, stringifyStringValues: true,
-};
-
-const expandAllNodes = () => true;
 
 function asObject(value: JsonValue | undefined): JsonObject | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as JsonObject : null;
@@ -82,11 +71,7 @@ function parametersFromSchema(schema: JsonValue | undefined): ToolParameter[] {
 }
 
 function JsonValueView({ value, label }: { value: JsonValue; label: string }) {
-  const { t } = useI18n();
-  if (value !== null && typeof value === 'object') {
-    return <JsonView data={value} style={{ ...jsonStyles, ariaLables: { collapseJson: t('json.collapse'), expandJson: t('json.expand') } }} shouldExpandNode={expandAllNodes} clickToExpandNode aria-label={label} />;
-  }
-  return <pre className="tools-json-value" aria-label={label}>{JSON.stringify(value, null, 2)}</pre>;
+  return <StructuredContent value={value} mode="json" ariaLabel={label} />;
 }
 
 function ParameterList({ schema }: { schema?: JsonValue }) {
@@ -121,7 +106,7 @@ function ToolCard({ tool, index }: { tool: NormalizedTool; index: number }) {
         <div className="tools-card-body">
           <section className="tools-card-section">
             <span className="tools-card-label">{t('tools.description')}</span>
-            <p className="tools-card-description">{tool.description ?? t('tools.noDescription')}</p>
+            <StructuredContent value={tool.description ?? ''} emptyFallback={t('tools.noDescription')} />
           </section>
           <section className="tools-card-section">
             <span className="tools-card-label">{tool.known ? t('tools.parameters') : t('tools.raw')}</span>

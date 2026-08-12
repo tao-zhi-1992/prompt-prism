@@ -1,24 +1,13 @@
 import { ScrollArea } from '@base-ui/react/scroll-area';
-import { JsonView } from 'react-json-view-lite';
 import { useI18n } from '../../i18n/index.js';
 import type { JsonValue } from '../../contracts/dashboard.js';
 import { Button } from '@prompt-prism/ui';
+import { StructuredContent } from '../../content/StructuredContent.js';
 
 export interface SystemPromptData {
   id: string;
   system: JsonValue | null;
 }
-
-const jsonStyles = {
-  container: 'json-tree', basicChildStyle: 'json-child', childFieldsContainer: 'json-children',
-  label: 'json-label', clickableLabel: 'json-label json-clickable', nullValue: 'json-null',
-  undefinedValue: 'json-null', stringValue: 'json-string', booleanValue: 'json-boolean',
-  numberValue: 'json-number', otherValue: 'json-other', punctuation: 'json-punctuation',
-  collapseIcon: 'json-expander json-expander--open', expandIcon: 'json-expander json-expander--closed',
-  collapsedContent: 'json-collapsed', quotesForFieldNames: true, stringifyStringValues: true,
-};
-
-const expandAllNodes = () => true;
 
 interface SystemMessage {
   role: string;
@@ -52,25 +41,13 @@ function SystemMessageView({ message }: { message: SystemMessage }) {
 }
 
 function SystemBlock({ value }: { value: JsonValue }) {
-  const { t } = useI18n();
   if (isSystemMessage(value)) return <SystemMessageView message={value} />;
   const text = textBlock(value);
-  if (text !== null) return <pre className="system-prompt-text">{text}</pre>;
-  if (value === null || typeof value === 'number' || typeof value === 'boolean') {
-    return <pre className="system-prompt-text">{String(value)}</pre>;
-  }
-  return (
-    <JsonView
-      data={value}
-      style={{ ...jsonStyles, ariaLables: { collapseJson: t('json.collapse'), expandJson: t('json.expand') } }}
-      shouldExpandNode={expandAllNodes}
-      clickToExpandNode
-    />
-  );
+  return <StructuredContent value={text ?? value} />;
 }
 
 function SystemContent({ value }: { value: JsonValue }) {
-  if (typeof value === 'string') return <pre className="system-prompt-text">{value}</pre>;
+  if (typeof value === 'string') return <StructuredContent value={value} />;
   if (Array.isArray(value)) {
     return (
       <div className="system-prompt-blocks">

@@ -18,6 +18,21 @@ describe('RawPanel', () => {
     expect(screen.getByText(/Raw request data is unavailable/)).toBeVisible();
   });
 
+  it('copies raw headers and bodies without changing their rendering', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<RawPanel raw={{
+      request: { method: 'POST', url: '/', headers: { zebra: 'last', alpha: 'first' }, body: '# remains raw' },
+      response: null,
+    }} loading={false} error={null} onRetry={vi.fn()} />);
+    const copies = screen.getAllByRole('button', { name: 'Copy' });
+    await userEvent.click(copies[0]!);
+    await userEvent.click(copies[1]!);
+    expect(writeText).toHaveBeenNthCalledWith(1, '{\n  "alpha": "first",\n  "zebra": "last"\n}');
+    expect(writeText).toHaveBeenNthCalledWith(2, '# remains raw');
+    expect(screen.queryByRole('heading', { name: 'remains raw' })).not.toBeInTheDocument();
+  });
+
   it('shows JSON fully expanded and recognizes only objects and arrays', () => {
     render(<RawPanel raw={{
       request: { method: 'POST', url: '/', headers: {}, body: JSON.stringify({ deep: { value: true } }) },

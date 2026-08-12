@@ -1,7 +1,6 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import { Tooltip } from '@base-ui/react/tooltip';
-import { JsonView } from 'react-json-view-lite';
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type {
   ConversationContentBlock,
@@ -13,6 +12,7 @@ import type {
 } from '../../contracts/dashboard.js';
 import { useI18n, type TranslationKey } from '../../i18n/index.js';
 import { Button } from '@prompt-prism/ui';
+import { StructuredContent } from '../../content/StructuredContent.js';
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';
 export interface TraceCall {
@@ -33,19 +33,9 @@ export interface TraceResult {
   calls: TraceCall[];
 }
 
-const jsonStyles = {
-  container: 'trace-json-tree', basicChildStyle: 'trace-json-child', childFieldsContainer: 'trace-json-children',
-  label: 'trace-json-label', clickableLabel: 'trace-json-label trace-json-clickable', nullValue: 'trace-json-null',
-  undefinedValue: 'trace-json-null', stringValue: 'trace-json-string', booleanValue: 'trace-json-boolean',
-  numberValue: 'trace-json-number', otherValue: 'trace-json-other', punctuation: 'trace-json-punctuation',
-  collapseIcon: 'trace-json-expander trace-json-expander--open', expandIcon: 'trace-json-expander trace-json-expander--closed',
-  collapsedContent: 'trace-json-collapsed', quotesForFieldNames: true, stringifyStringValues: true,
-};
-
 function JsonBody({ value }: { value: JsonValue | null }) {
   const { t } = useI18n();
-  if (value !== null && typeof value === 'object') return <JsonView data={value} style={{ ...jsonStyles, ariaLables: { collapseJson: t('json.collapse'), expandJson: t('json.expand') } }} shouldExpandNode={() => true} clickToExpandNode />;
-  return <pre className="trace-code">{value === null ? t('common.empty') : JSON.stringify(value, null, 2)}</pre>;
+  return <StructuredContent value={value} mode="json" emptyFallback={t('common.empty')} />;
 }
 
 type ToolCallTarget = { anchorId: string; name: string; resultAnchorId?: string };
@@ -168,7 +158,7 @@ function Event({ kind, label, emphasis, detail, text, value, tone, anchorId, hig
     <Collapsible.Root id={anchorId} className={`trace-event${tone ? ` trace-event--${tone}` : ''}`} data-tool-highlight={highlighted || undefined} data-tool-call-id={toolCallId || undefined} data-tool-call-capture-id={toolCallCaptureId} data-tool-call-index={toolCallIndex} open={open} onOpenChange={onOpenChange}>
       <Toggle kind={kind} label={label} emphasis={emphasis} detail={detail} toolResultLink={toolResultLink} toolCallLink={toolCallLink} onNavigate={onNavigate} />
       <Collapsible.Panel className="trace-event-panel">
-        {text !== undefined ? <pre className="trace-text">{text || t('common.empty')}</pre> : <JsonBody value={value ?? null} />}
+        {text !== undefined ? <StructuredContent value={text} emptyFallback={t('common.empty')} /> : <JsonBody value={value ?? null} />}
       </Collapsible.Panel>
     </Collapsible.Root>
   );

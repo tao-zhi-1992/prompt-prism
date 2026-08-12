@@ -92,7 +92,7 @@ test('shows the Proxy URL generator before captures exist and copies a generated
   await dialog.getByLabel('Upstream URL or Base URL').fill('https://api.example.com/v1');
   await dialog.getByRole('button', { name: 'Generate' }).click();
   const result = dialog.getByLabel('Proxy Base URL');
-  await expect(result).toHaveValue(/\/\_pp\/up\//);
+  await expect(result).toHaveValue(/\/\_proxy\//);
   await dialog.getByRole('button', { name: 'Copy' }).click();
   await expect(dialog.getByRole('button', { name: 'Copied' })).toBeVisible();
   await expect(page.locator('.request-heading-actions > span').first()).toHaveText('0');

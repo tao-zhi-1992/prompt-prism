@@ -9,6 +9,7 @@
 ### Added
 
 * **cli:** add `p2 --version` and `p2 -v` version output.
+* **dashboard:** format JSON, Markdown, and code in normalized detail tabs with reusable copy and source controls.
 
 ## [0.2.0](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.1.2...v0.2.0) (2026-08-12)
 

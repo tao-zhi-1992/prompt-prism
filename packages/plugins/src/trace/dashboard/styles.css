@@ -67,26 +67,10 @@
 .trace-chevron { width: 0; height: 0; border-right: 3px solid transparent; border-left: 3px solid transparent; border-top: 4px solid var(--muted); transition: transform 120ms ease; }
 .trace-event-toggle-row:has(.trace-event-toggle:not([data-panel-open])) .trace-chevron { transform: rotate(-90deg); }
 .trace-event-panel { min-width: 0; overflow: hidden; border-top: 1px solid var(--line); }
-.trace-text, .trace-code { min-width: 100%; margin: 0; padding: 13px; color: var(--code); background: var(--surface-1); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.7 "DM Mono", monospace; }
 .trace-notice, .trace-empty-event { padding: 10px 12px; color: var(--muted); border: 1px solid var(--line); background: var(--surface-2); font-size: 10px; }
 .trace-provider-error { display: grid; gap: 5px; padding: 11px 12px; color: var(--red); border: 1px solid var(--red); background: var(--red-bg); }
 .trace-provider-error strong { font: 600 10px "DM Mono", monospace; }
 .trace-provider-error span { color: var(--text); font-size: 11px; }
-.trace-json-tree { margin: 0; padding: 13px; color: var(--code); background: var(--surface-1); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.65 "DM Mono", monospace; }
-.trace-json-child { margin: 0; padding-left: 18px; }
-.trace-json-children { margin: 0; padding: 0; list-style: none; }
-.trace-json-label { margin-right: 5px; color: var(--text); font-weight: 600; }
-.trace-json-clickable, .trace-json-expander, .trace-json-collapsed { cursor: pointer; }
-.trace-json-string { color: var(--json-string); }
-.trace-json-number { color: var(--json-number); }
-.trace-json-boolean { color: var(--json-boolean); }
-.trace-json-null { color: var(--json-null); }
-.trace-json-other { color: var(--code); }
-.trace-json-punctuation { margin-right: 5px; color: var(--muted); }
-.trace-json-expander { margin-right: 6px; color: var(--accent); }
-.trace-json-expander--closed::after { content: "▸"; }
-.trace-json-expander--open::after { content: "▾"; }
-.trace-json-collapsed::after { content: "…"; }
 .trace-scroll:hover .scrollbar-thumb { opacity: .8; }
 
 @media (max-width: 680px) {

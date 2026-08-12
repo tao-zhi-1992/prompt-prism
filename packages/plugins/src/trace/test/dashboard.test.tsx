@@ -171,6 +171,16 @@ describe('TracePanel', () => {
     expect(screen.getByText('{bad')).toBeVisible();
   });
 
+  it('formats markdown trace messages when an event is expanded', async () => {
+    const call = trace.calls[0]!;
+    const input_delta = [{ role: 'user', content: [{ type: 'text' as const, text: '# Task\n\n- Run tests' }] }];
+    render(<TracePanel trace={{ ...trace, calls: [{ ...call, input_delta, output: null }] }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'User' }));
+    expect(screen.getByRole('heading', { name: 'Task' })).toBeVisible();
+    expect(screen.getByText('Run tests')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeVisible();
+  });
+
   it('opens and highlights a tool call requested by the Tools panel', async () => {
     window.history.replaceState(null, '', '/_pp/?capture=capture-two&tab=trace&tool_call_id=tool-2');
     const { container } = render(<TracePanel trace={trace} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);

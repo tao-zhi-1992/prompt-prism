@@ -9,6 +9,14 @@ describe('SystemPromptPanel', () => {
     expect(screen.getByText('You are a helpful assistant.')).toBeVisible();
   });
 
+  it('formats markdown system prompts and exposes their source', async () => {
+    render(<SystemPromptPanel data={{ id: 'abc', system: '# Rules\n\n- Be concise' }} loading={false} error={null} onRetry={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: 'Rules' })).toBeVisible();
+    expect(screen.getByText('Be concise')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Source' }));
+    expect(screen.getByText(/# Rules/)).toBeVisible();
+  });
+
   it('renders anthropic content blocks', () => {
     render(<SystemPromptPanel data={{ id: 'abc', system: [{ type: 'text', text: 'Be concise.' }] }} loading={false} error={null} onRetry={vi.fn()} />);
     expect(screen.getByText('Be concise.')).toBeVisible();

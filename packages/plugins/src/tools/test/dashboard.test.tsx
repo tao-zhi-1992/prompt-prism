@@ -86,4 +86,12 @@ describe('ToolsPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(retry).toHaveBeenCalledOnce();
   });
+
+  it('formats markdown tool descriptions with a local source toggle', async () => {
+    render(<ToolsPanel data={{ id: 'abc', tools: [{ name: 'read', description: '## Reads\n\n- Markdown', input_schema: { type: 'object' } }], used_tools: [] }} loading={false} error={null} onRetry={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'read' }));
+    expect(screen.getByRole('heading', { name: 'Reads' })).toBeVisible();
+    expect(screen.getByText('Markdown')).toBeVisible();
+    expect(screen.getAllByRole('button', { name: 'Copy' }).length).toBeGreaterThan(0);
+  });
 });
