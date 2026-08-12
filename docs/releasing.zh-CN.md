@@ -1,39 +1,39 @@
 # 发布 Prompt Prism
 
-Prompt Prism 使用 [Release Please](https://github.com/googleapis/release-please) 将合并到 `main` 的 Conventional Commit 自动整理为发布 PR。合并该 PR 后会创建 GitHub Release 和 tag、更新包版本和变更日志，并将 `prompt-prism` 发布到 npm。
+Prompt Prism 采用手动准备和发布流程。合并到 `main` 会运行 CI，但不会自动修改包版本、创建 tag 或 GitHub Release，也不会发布到 npm。
 
-## 一次性仓库配置
+## 准备发布
 
-1. 在 GitHub 的 **Settings → Actions → General → Workflow permissions** 中选择 **Read and write permissions**。
-2. 在 npm 的 `prompt-prism` 包 **Publishing access** 设置中添加 GitHub Actions trusted publisher：
-   - Repository：`tao-zhi-1992/prompt-prism`
-   - Workflow：`release-please.yml`
-   - Environment：留空
-3. 确认 npm 包为公开包，并允许 GitHub Actions 发布。
-
-也可以使用已登录且有权限的 npm CLI 完成同一配置：
+1. 将本次发布所需的改动合并到 `main`，并拉取最新分支。
+2. 确定下一个语义化版本，更新 `packages/prompt-prism/package.json`。
+3. 在 `CHANGELOG.md` 中添加对应版本、日期和发布说明。
+4. 运行完整检查并核对包内容：
 
 ```bash
-npm trust github prompt-prism \
-  --repo tao-zhi-1992/prompt-prism \
-  --file release-please.yml \
-  --allow-publish
+pnpm install --frozen-lockfile
+pnpm test
+pnpm --dir packages/prompt-prism pack --dry-run
 ```
 
-Trusted Publishing 使用 GitHub Actions OIDC，因此 workflow 不需要 `NPM_TOKEN` secret。除非 npm 的 trusted publishing 配置需要临时兜底，否则不要添加该 secret。
+5. 使用 `chore(release): release <version>` 将版本号和变更日志一起提交，然后把该提交合并或推送到 `main`。
 
-## 日常发布流程
+普通功能开发期间不要修改版本号；版本变更只属于正式的发布准备提交。
 
-1. 用 Conventional Commit 消息将变更合入 `dev`，例如 `feat(proxy): add dynamic upstream URLs` 或 `fix(dashboard): keep selection stable`。
-2. 准备发布时，将 `dev` 合入 `main`。两个分支都会运行 CI。
-3. Release Please 会创建或更新发布 PR，写入计算出的版本和自动生成的 `CHANGELOG.md` 条目。
-4. 审核并合并该发布 PR。同一个 workflow 会创建 GitHub Release，并发布嵌套在 `packages/prompt-prism` 的 npm 包。
+## 发布
 
-第一份自动化发布从 `0.1.2` 开始；更早的提交历史会有意排除在自动生成的发布说明之外。
+在干净且已同步到发布提交的 `main` 工作区执行：
 
-## 版本规则
+```bash
+test "$(node -p "require('./packages/prompt-prism/package.json').version")" = "<version>"
+pnpm test
+cd packages/prompt-prism
+npm publish --access public
+cd ../..
+git tag -a "v<version>" -m "v<version>"
+git push origin "v<version>"
+gh release create "v<version>" --title "v<version>" --generate-notes
+```
 
-- `fix:` 产生补丁版本。
-- `feat:` 产生次版本。
-- 带有 breaking-change footer 或 `!` 的提交产生主版本。
-- `docs:`、`test:`、`chore:` 和 `refactor:` 默认不会单独触发发布，除非后续专门配置。
+执行前需要分别登录 npm 和 GitHub。只有 npm 发布成功后才创建 tag 和 GitHub Release，避免发布失败时留下已经存在的版本 tag。
+
+仓库仍要求使用 Conventional Commits，但提交类型不再自动触发发布或计算版本号。

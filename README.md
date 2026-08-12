@@ -97,7 +97,7 @@ Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic
 - [Guide](docs/guide.md) — provider setup, CLI options, protocol detection, embedding, and local data.
 - [Agent Insights](docs/insights.md) — inspect and compare agent runs from the shell.
 - [Development](docs/development.md) — run the demo, work on the monorepo, and understand Input Diff matching.
-- [Releasing](docs/releasing.md) — configure Trusted Publishing and release from Conventional Commits.
+- [Releasing](docs/releasing.md) — prepare, verify, and publish a release manually.
 
 ## Programmatic API
 

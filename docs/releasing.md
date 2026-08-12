@@ -1,39 +1,39 @@
 # Releasing Prompt Prism
 
-Prompt Prism uses [Release Please](https://github.com/googleapis/release-please) to turn Conventional Commits merged into `main` into release pull requests. Merging a generated release pull request creates the GitHub release, tag, package version, and changelog entry, then publishes `prompt-prism` to npm.
+Prompt Prism releases are prepared and published manually. Merging into `main` runs CI, but it does not change the package version, create a tag or GitHub release, or publish to npm.
 
-## One-time repository setup
+## Prepare a release
 
-1. In GitHub, set **Settings → Actions → General → Workflow permissions** to **Read and write permissions**.
-2. On npm, configure `prompt-prism` to trust this GitHub workflow. In the package's **Publishing access** settings, add a GitHub Actions trusted publisher with:
-   - Repository: `tao-zhi-1992/prompt-prism`
-   - Workflow: `release-please.yml`
-   - Environment: leave empty
-3. Ensure the npm package is public and that GitHub Actions is allowed to publish it.
-
-The same trusted publisher can be configured from an authenticated npm CLI:
+1. Merge the intended changes into `main` and check out the updated branch.
+2. Choose the next semantic version and update `packages/prompt-prism/package.json`.
+3. Add the matching version, date, and release notes to `CHANGELOG.md`.
+4. Run the complete checks and inspect the package contents:
 
 ```bash
-npm trust github prompt-prism \
-  --repo tao-zhi-1992/prompt-prism \
-  --file release-please.yml \
-  --allow-publish
+pnpm install --frozen-lockfile
+pnpm test
+pnpm --dir packages/prompt-prism pack --dry-run
 ```
 
-Trusted publishing uses GitHub Actions OIDC, so the workflow does not need an `NPM_TOKEN` secret. Do not add one unless npm's trusted-publishing setup requires a temporary fallback.
+5. Commit the version and changelog together using `chore(release): release <version>`, then merge or push that commit to `main`.
 
-## Normal release flow
+Do not update the version during ordinary feature development. The version change belongs only to the release preparation commit.
 
-1. Merge changes into `dev` using Conventional Commit messages, for example `feat(proxy): add dynamic upstream URLs` or `fix(dashboard): keep selection stable`.
-2. Merge `dev` into `main` when the release is ready. CI runs tests on both branches.
-3. Release Please opens or updates a release pull request with the calculated version and generated `CHANGELOG.md` entry.
-4. Review and merge that release pull request. The same workflow creates the GitHub release and publishes the nested `packages/prompt-prism` package to npm.
+## Publish
 
-The initial automated release starts from version `0.1.2`; earlier history is deliberately excluded from generated release notes.
+From a clean, up-to-date `main` checkout at the release commit:
 
-## Version rules
+```bash
+test "$(node -p "require('./packages/prompt-prism/package.json').version")" = "<version>"
+pnpm test
+cd packages/prompt-prism
+npm publish --access public
+cd ../..
+git tag -a "v<version>" -m "v<version>"
+git push origin "v<version>"
+gh release create "v<version>" --title "v<version>" --generate-notes
+```
 
-- `fix:` produces a patch release.
-- `feat:` produces a minor release.
-- A breaking-change footer or `!` produces a major release.
-- `docs:`, `test:`, `chore:`, and `refactor:` do not release by themselves unless explicitly configured otherwise.
+Authenticate with npm and GitHub before running these commands. Create the tag and GitHub release only after npm publishing succeeds, so a failed publish does not leave a release tag behind.
+
+Conventional Commits remain required for repository history, but they no longer trigger or calculate releases automatically.
