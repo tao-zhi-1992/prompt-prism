@@ -99,20 +99,6 @@ Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic
 - [Development](docs/development.md) — run the demo, work on the monorepo, and understand Input Diff matching.
 - [Releasing](docs/releasing.md) — prepare, verify, and publish a release manually.
 
-## Programmatic API
-
-```js
-import {
-  buildDynamicProxyBaseUrl,
-  createPromptPrism,
-  decodeUpstreamUrl,
-  encodeUpstreamUrl,
-  parseUpstreamBaseUrl,
-  parseUpstreamUrl,
-  startPromptPrism
-} from 'prompt-prism';
-```
-
 ## Data and privacy
 
 Captures stay on your machine under `./data` by default. API keys, authorization headers, and cookies are replaced with `[REDACTED]`; request and response bodies remain local because they are required for analysis. The default storage cap is 1 GB and the oldest captures are evicted first.

@@ -99,20 +99,6 @@ OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本�
 - [开发指南](docs/development.zh-CN.md) — 运行演示、在 monorepo 中开发、理解 Input Diff 匹配。
 - [发布](docs/releasing.zh-CN.md) — 手动准备、验证并发布新版本。
 
-## 编程接口
-
-```js
-import {
-  buildDynamicProxyBaseUrl,
-  createPromptPrism,
-  decodeUpstreamUrl,
-  encodeUpstreamUrl,
-  parseUpstreamBaseUrl,
-  parseUpstreamUrl,
-  startPromptPrism
-} from 'prompt-prism';
-```
-
 ## 数据与隐私
 
 捕获记录默认保存在你本机的 `./data` 目录下。API key、授权头和 cookie 会在存储前被替换为 `[REDACTED]`；请求和响应体保留在本地，因为分析时需要它们。默认存储上限为 1 GB，最早捕获的记录会被优先清理。
