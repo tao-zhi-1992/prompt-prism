@@ -74,7 +74,7 @@ p2 url https://api.deepseek.com/v1
 
 The second command prints a URL shaped like `http://127.0.0.1:1028/_pp/up/<token>`. Use it as the SDK Base URL. The token is unpadded Base64URL, not encryption or a credential. You can also open the Dashboard and use **Proxy URL** at the right end of the detail tabs.
 
-Dynamic routing applies only to requests containing that prefix and does not change the configured upstream. The endpoint and request query are appended to the decoded Base URL. Invalid tokens fail with 400 instead of falling back to another provider.
+Dynamic routing applies only to requests containing that prefix and does not change the configured upstream. The decoded URL is used directly when the dynamic request has no suffix; an explicit request suffix and query are appended when present. Invalid tokens fail with 400 instead of falling back to another provider.
 
 Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests. Third-party clients are compatible only when they preserve a Base URL path prefix while adding their endpoint. If the prefix disappears, use the fixed `--upstream-base-url` mode.
 
@@ -84,7 +84,7 @@ Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests. 
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]
-p2 url UPSTREAM_BASE_URL [--proxy-url URL]
+p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 ```
 
 Defaults:
@@ -99,6 +99,8 @@ Defaults:
 | `--open` | enabled | Open the dashboard after startup |
 
 `--upstream-base-url` is recommended. Prism appends the endpoint selected by the incoming protocol:
+
+`p2 url` and the Dashboard Proxy URL generator accept either a provider Base URL or a complete endpoint. A complete endpoint is encoded unchanged; a dynamic request with no suffix is forwarded directly to it. A request suffix is appended to either kind of decoded URL.
 
 If neither `--upstream-base-url` nor `--upstream-url` is supplied, Prism still starts so you can use generated dynamic URLs. Ordinary proxy requests return `503` until they use a `/_pp/up/<token>` URL or a fixed upstream is configured.
 

@@ -75,7 +75,7 @@ const client = new OpenAI({
 
 ### Switch providers without restarting
 
-Generate a proxy Base URL from the provider's original SDK Base URL:
+Generate a proxy URL from the provider's original SDK Base URL or complete endpoint:
 
 ```bash
 p2 url https://api.deepseek.com/v1

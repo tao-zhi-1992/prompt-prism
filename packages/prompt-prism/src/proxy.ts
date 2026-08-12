@@ -80,6 +80,20 @@ function joinedTarget(baseUrl: URL, requestUrl: string | undefined, protocol: De
   return target;
 }
 
+function directTarget(baseUrl: URL, requestUrl: string): URL {
+  const target = new URL(baseUrl);
+  target.search = new URL(requestUrl, 'http://prompt-prism.local').search;
+  return target;
+}
+
+function joinedDynamicTarget(baseUrl: URL, requestUrl: string): URL {
+  const incoming = new URL(requestUrl, 'http://prompt-prism.local');
+  const target = new URL(baseUrl);
+  target.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/${incoming.pathname.replace(/^\/+/, '')}`;
+  target.search = incoming.search;
+  return target;
+}
+
 function isLoopbackListener(server: http.Server): boolean {
   const address = server.address();
   if (!address || typeof address === 'string') return false;
@@ -170,7 +184,9 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
       : resolver.upstreamHint;
     const routingProtocol = resolver.resolveWithUpstreamHint(requestUpstreamHint, pathProtocol, headerProtocol);
     const targetUrl = dynamicRoute
-      ? joinedTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl, routingProtocol)
+      ? dynamicRoute.requestSuffix === null
+        ? directTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl)
+        : joinedDynamicTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl)
       : upstreamMode === 'exact' ? upstreamUrl! : joinedTarget(upstreamUrl!, request.url, routingProtocol);
     const transport = targetUrl.protocol === 'https:' ? https : http;
 

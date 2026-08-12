@@ -369,6 +369,49 @@ test('dynamic upstream paths route each capture independently and preserve the f
   assert.equal(captures[1]?.prompt_input?.adapter_id, 'anthropic-messages');
 });
 
+test('dynamic complete upstream URLs forward directly without inferred endpoint paths', async (t) => {
+  const seen: string[] = [];
+  const upstream = http.createServer((request, response) => {
+    seen.push(request.url ?? '');
+    request.resume();
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ id: 'chatcmpl_exact', object: 'chat.completion', choices: [{ message: { role: 'assistant', content: 'exact' } }], usage: { prompt_tokens: 1, completion_tokens: 1 } }));
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-dynamic-exact-'));
+  const prism = await createPromptPrism({ dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  const upstreamUrl = `http://127.0.0.1:${upstreamPort}/tenant/v1/chat/completions`;
+  const body = JSON.stringify({ model: 'exact', messages: [{ role: 'user', content: 'hello' }] });
+  const generated = await request({
+    port: proxyPort,
+    pathname: '/_pp/api/proxy-url',
+    headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(JSON.stringify({ upstream_base_url: upstreamUrl })) },
+    body: JSON.stringify({ upstream_base_url: upstreamUrl }),
+  });
+  assert.equal(generated.status, 200);
+  const dynamicPath = JSON.parse(generated.body).path as string;
+  const result = await request({
+    port: proxyPort,
+    pathname: dynamicPath,
+    headers: { authorization: 'Bearer secret', 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
+    body,
+  });
+  assert.equal(result.status, 200);
+
+  const fragmentPath = new URL(buildDynamicProxyBaseUrl(`http://127.0.0.1:${upstreamPort}/anthropic/gateway`, `http://127.0.0.1:${proxyPort}`)).pathname;
+  const fragmentResult = await request({
+    port: proxyPort,
+    pathname: `${fragmentPath}/custom/generate`,
+    headers: { authorization: 'Bearer secret', 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
+    body,
+  });
+  assert.equal(fragmentResult.status, 200);
+  assert.deepEqual(seen, ['/tenant/v1/chat/completions', '/anthropic/gateway/custom/generate']);
+});
+
 test('dynamic upstream paths fail closed and require opt-in on non-loopback listeners', async (t) => {
   let upstreamCalls = 0;
   const upstream = http.createServer((req, res) => { upstreamCalls += 1; req.resume(); res.end('ok'); });

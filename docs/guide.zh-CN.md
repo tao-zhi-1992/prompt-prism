@@ -74,7 +74,7 @@ p2 url https://api.deepseek.com/v1
 
 第二条命令输出形如 `http://127.0.0.1:1028/_pp/up/<token>` 的地址，将它作为 SDK Base URL。Token 是无填充的 Base64URL，不是加密内容或凭证。也可以打开仪表盘，使用详情 Tab 最右侧的 **代理地址** 生成器。
 
-动态路由只作用于带该前缀的请求，不修改已配置的上游。接口路径和请求 query 会追加到解码后的 Base URL。无效 token 返回 400，不会回退到其他提供商。
+动态路由只作用于带该前缀的请求，不修改已配置的上游。动态请求没有后缀时直接使用解码后的 URL；明确提供了请求后缀时，才将后缀和 query 追加到解码后的 URL。无效 token 返回 400，不会回退到其他提供商。
 
 OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试。第三方客户端只有在追加接口路径时保留 Base URL 路径前缀才兼容；如果前缀消失，请改用固定的 `--upstream-base-url` 模式。
 
@@ -84,7 +84,7 @@ OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试。第三方客�
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]
-p2 url UPSTREAM_BASE_URL [--proxy-url URL]
+p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 ```
 
 默认值：
@@ -99,6 +99,8 @@ p2 url UPSTREAM_BASE_URL [--proxy-url URL]
 | `--open` | 启用 | 启动后打开仪表盘 |
 
 推荐使用 `--upstream-base-url`。Prism 会追加由传入协议选定的端点：
+
+`p2 url` 和仪表盘的代理地址生成器同时接受提供商 Base URL 或完整 endpoint。完整 endpoint 会原样编码；动态请求没有后缀时直接转发到该地址。无论输入哪种 URL，只有请求带后缀时才会追加该后缀。
 
 如果没有提供 `--upstream-base-url` 或 `--upstream-url`，Prism 仍会启动，以便使用生成的动态地址。普通代理请求会返回 `503`，直到请求使用 `/_pp/up/<token>` 地址，或启动时配置固定上游。
 

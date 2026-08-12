@@ -23,7 +23,18 @@ test('builds a dynamic proxy Base URL and separates its endpoint and query', () 
   assert.equal(route?.baseUrl.href, 'https://provider.example.com/gateway/v1');
   assert.equal(route?.requestPath, '/chat/completions');
   assert.equal(route?.requestUrl, '/chat/completions?region=cn');
+  assert.equal(route?.requestSuffix, '/chat/completions');
   assert.equal(parseDynamicUpstreamRoute('/v1/messages'), null);
+});
+
+test('encodes complete dynamic upstream URLs without rewriting them', () => {
+  const upstream = 'https://api.stepfun.com/step_plan/v1/chat/completions';
+  const proxyUrl = buildDynamicProxyBaseUrl(upstream, 'http://127.0.0.1:2048');
+  const route = parseDynamicUpstreamRoute(new URL(proxyUrl).pathname);
+  assert.equal(route?.baseUrl.href, upstream);
+  assert.equal(route?.requestSuffix, null);
+  assert.equal(route?.requestPath, '/');
+  assert.equal(route?.requestUrl, '/');
 });
 
 test('rejects unsafe, endpoint, oversized, and non-canonical dynamic upstream values', () => {

@@ -7,7 +7,7 @@ import { ProxyUrlDialog } from './ProxyUrlDialog';
 afterEach(() => vi.unstubAllGlobals());
 
 describe('ProxyUrlDialog', () => {
-  it('generates and copies a validated proxy Base URL', async () => {
+  it('generates and copies a validated proxy URL', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ path: '/_pp/up/encoded' }), { status: 200 }));
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('fetch', fetchMock);
@@ -15,7 +15,7 @@ describe('ProxyUrlDialog', () => {
     render(<I18nProvider><ProxyUrlDialog /></I18nProvider>);
 
     await userEvent.click(screen.getByRole('button', { name: 'Proxy URL' }));
-    await userEvent.type(screen.getByLabelText('Upstream Base URL'), 'https://provider.example.com/v1');
+    await userEvent.type(screen.getByLabelText('Upstream URL or Base URL'), 'https://provider.example.com/v1');
     await userEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
     const result = await screen.findByLabelText('Proxy Base URL');
@@ -30,10 +30,10 @@ describe('ProxyUrlDialog', () => {
     render(<I18nProvider><ProxyUrlDialog /></I18nProvider>);
 
     await userEvent.click(screen.getByRole('button', { name: 'Proxy URL' }));
-    await userEvent.type(screen.getByLabelText('Upstream Base URL'), 'https://provider.example.com/v1?key=value');
+    await userEvent.type(screen.getByLabelText('Upstream URL or Base URL'), 'https://provider.example.com/v1?key=value');
     await userEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Enter a valid HTTP(S) provider Base URL');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter a valid HTTP(S) provider URL');
     expect(screen.queryByLabelText('Proxy Base URL')).not.toBeInTheDocument();
   });
 });

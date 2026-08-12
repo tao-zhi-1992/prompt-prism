@@ -75,7 +75,7 @@ const client = new OpenAI({
 
 ### 无需重启即可切换提供商
 
-用提供商原始的 SDK Base URL 生成代理地址：
+用提供商原始的 SDK Base URL 或完整 endpoint 生成代理地址：
 
 ```bash
 p2 url https://api.deepseek.com/v1

@@ -45,17 +45,19 @@ test('CLI documents base and exact upstream modes with automatic API format', as
   assert.match(stdout, /upstream\s+dynamic-only/);
   assert.doesNotMatch(stdout, /upstream-base-url https:\/\/api\.anthropic\.com/);
   assert.match(stdout, /p2 insights/);
-  assert.match(stdout, /p2 url UPSTREAM_BASE_URL/);
+  assert.match(stdout, /p2 url UPSTREAM_URL_OR_BASE_URL/);
   assert.doesNotMatch(stdout, /--base-url|--target|\btarget\b/i);
 });
 
-test('CLI generates copyable dynamic proxy Base URLs with a configurable proxy origin', async () => {
+test('CLI generates copyable dynamic proxy URLs with a configurable proxy origin', async () => {
   const defaultResult = await run(process.execPath, [cli, 'url', 'https://provider.example.com/v1']);
   assert.equal(defaultResult.stdout, `${buildDynamicProxyBaseUrl('https://provider.example.com/v1')}\n`);
   assert.equal(defaultResult.stderr, '');
 
   const customResult = await run(process.execPath, [cli, 'url', 'https://provider.example.com/gateway', '--proxy-url', 'http://127.0.0.1:2048']);
   assert.equal(customResult.stdout, `${buildDynamicProxyBaseUrl('https://provider.example.com/gateway', 'http://127.0.0.1:2048')}\n`);
+  const completeResult = await run(process.execPath, [cli, 'url', 'https://api.stepfun.com/step_plan/v1/chat/completions']);
+  assert.equal(completeResult.stdout, `${buildDynamicProxyBaseUrl('https://api.stepfun.com/step_plan/v1/chat/completions')}\n`);
   await assert.rejects(
     run(process.execPath, [cli, 'url', 'file:///tmp/provider']),
     (error: unknown) => error instanceof Error && 'stderr' in error && /must use http or https/.test(String(error.stderr)),
