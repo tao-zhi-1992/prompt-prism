@@ -51,6 +51,7 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
+          always-auth: true
 
       - name: Install dependencies
         if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
@@ -63,6 +64,8 @@ jobs:
       - name: Publish package to npm
         if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
         working-directory: packages/prompt-prism
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
 
   publish-existing:
@@ -86,6 +89,7 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
+          always-auth: true
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -101,4 +105,6 @@ jobs:
 
       - name: Publish package to npm
         working-directory: packages/prompt-prism
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
