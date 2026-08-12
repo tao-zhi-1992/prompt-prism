@@ -85,11 +85,11 @@ test('shows the Proxy URL generator before captures exist and copies a generated
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Upstream Base URL').fill('https://user:secret@example.com/v1');
+  await dialog.getByLabel('Upstream URL or Base URL').fill('https://user:secret@example.com/v1');
   await dialog.getByRole('button', { name: 'Generate' }).click();
   await expect(dialog.getByRole('alert')).toContainText('valid HTTP(S)');
 
-  await dialog.getByLabel('Upstream Base URL').fill('https://api.example.com/v1');
+  await dialog.getByLabel('Upstream URL or Base URL').fill('https://api.example.com/v1');
   await dialog.getByRole('button', { name: 'Generate' }).click();
   const result = dialog.getByLabel('Proxy Base URL');
   await expect(result).toHaveValue(/\/\_pp\/up\//);
