@@ -2,6 +2,11 @@
   "name": "prompt-prism-monorepo",
   "private": true,
   "packageManager": "pnpm@10.28.0",
+  "pnpm": {
+    "overrides": {
+      "@earendil-works/pi-coding-agent>undici": "7.29.0"
+    }
+  },
   "scripts": {
     "build": "pnpm --filter @prompt-prism/plugins typecheck && pnpm --filter prompt-prism build && pnpm --filter @prompt-prism/dashboard build && pnpm --filter @prompt-prism/example build",
     "start": "pnpm --filter prompt-prism start",
