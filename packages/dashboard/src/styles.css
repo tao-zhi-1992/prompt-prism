@@ -192,9 +192,7 @@ button:focus-visible {
 
 .request-item {
   position: relative;
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr);
-  gap: 10px;
+  display: block;
   width: 100%;
   padding: 13px 12px;
   color: var(--text);
@@ -209,16 +207,17 @@ button:focus-visible {
 .request-item[data-selected] { background: var(--selected-bg); border-color: var(--selected-border); }
 .request-item[data-selected]::before { content: ""; position: absolute; inset: 9px auto 9px -1px; width: 2px; background: var(--accent); }
 
-.status-dot { width: 6px; height: 6px; margin-top: 6px; background: var(--faint); }
+.status-dot { width: 6px; height: 6px; background: var(--faint); }
 .status-dot--good { background: var(--green); }
 .status-dot--bad { background: var(--red); box-shadow: 0 0 0 3px rgba(255, 38, 0, 0.1); }
 
-.request-copy { display: grid; gap: 7px; min-width: 0; }
+.request-copy { display: grid; gap: 6px; min-width: 0; }
 .request-line { display: flex; align-items: center; min-width: 0; }
-.request-line--primary { justify-content: space-between; gap: 12px; }
+.request-line--primary { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
 .request-line--primary strong { overflow: hidden; font: 500 12px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .request-line--primary time { flex: 0 0 auto; color: var(--faint); font: 10px "DM Mono", monospace; }
-.request-line--secondary { gap: 8px; color: var(--muted); font-size: 10px; }
+.request-line--host { min-height: 12px; padding-left: 18px; overflow: hidden; color: var(--faint); font: 10px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
+.request-line--secondary { gap: 8px; padding-left: 18px; color: var(--muted); font-size: 10px; }
 .request-id { flex: 0 0 auto; color: var(--faint); font: 500 10px "DM Mono", monospace; }
 .trace-badge { flex: 0 0 auto; margin-left: auto; padding: 3px 5px; color: var(--accent-strong); border: 1px solid var(--line-strong); background: var(--green-bg); font: 9px "DM Mono", monospace; }
 .status-label--bad { color: var(--red); }

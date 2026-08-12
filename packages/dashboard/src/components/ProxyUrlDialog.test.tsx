@@ -8,7 +8,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('ProxyUrlDialog', () => {
   it('generates and copies a validated proxy URL', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ path: '/_pp/up/encoded' }), { status: 200 }));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ path: '/_proxy/encoded' }), { status: 200 }));
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('fetch', fetchMock);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
@@ -19,9 +19,9 @@ describe('ProxyUrlDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
     const result = await screen.findByLabelText('Proxy Base URL');
-    expect(result).toHaveValue(`${window.location.origin}/_pp/up/encoded`);
+    expect(result).toHaveValue(`${window.location.origin}/_proxy/encoded`);
     await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/_pp/up/encoded`);
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/_proxy/encoded`);
     expect(screen.getByRole('button', { name: 'Copied' })).toBeVisible();
   });
 

@@ -28,7 +28,7 @@ export function RequestList({ captures, selectedId, loading, error, hasOlder, ol
   const virtualizer = useVirtualizer({
     count: captures.length > 0 ? captures.length + 1 : 0,
     getScrollElement: () => viewportRef.current,
-    estimateSize: (index) => index === captures.length ? 44 : 64,
+    estimateSize: (index) => index === captures.length ? 44 : 82,
     overscan: 8,
     initialRect: { width: 356, height: 800 },
   });
@@ -69,7 +69,7 @@ export function RequestList({ captures, selectedId, loading, error, hasOlder, ol
               <span>{t('requests.emptyDescription')}</span>
             </div>
           )}
-          {captures.length > 0 && <div className="request-list" role="list" aria-label={t('requests.listLabel')} style={{ height: Math.max(virtualizer.getTotalSize(), captures.length * 64 + 44) }}>
+          {captures.length > 0 && <div className="request-list" role="list" aria-label={t('requests.listLabel')} style={{ height: Math.max(virtualizer.getTotalSize(), captures.length * 82 + 44) }}>
             {virtualItems.map((virtualItem) => {
               const capture = captures[virtualItem.index];
               return <div

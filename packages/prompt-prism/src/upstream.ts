@@ -1,7 +1,7 @@
 import { TextDecoder } from 'node:util';
 import { detectProtocolFromPath } from './adapter/detection.js';
 
-export const DYNAMIC_UPSTREAM_PREFIX = '/_pp/up/';
+export const DYNAMIC_UPSTREAM_PREFIX = '/_proxy/';
 const MAX_UPSTREAM_BYTES = 4096;
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
@@ -32,40 +32,24 @@ function parseDynamicUpstreamUrl(value: string | URL): URL {
   return upstreamUrl;
 }
 
-export function encodeUpstreamBaseUrl(value: string | URL): string {
-  return Buffer.from(parseUpstreamBaseUrl(value).href, 'utf8').toString('base64url');
-}
-
-export function decodeUpstreamBaseUrl(token: string): URL {
-  if (!token || !BASE64URL.test(token) || token.length > Math.ceil(MAX_UPSTREAM_BYTES * 4 / 3)) throw new Error('Invalid dynamic upstream token');
-  let bytes: Buffer;
-  let decoded: string;
-  try {
-    bytes = Buffer.from(token, 'base64url');
-    if (bytes.length > MAX_UPSTREAM_BYTES || bytes.toString('base64url') !== token) throw new Error();
-    decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch { throw new Error('Invalid dynamic upstream token'); }
-  const upstream = parseUpstreamBaseUrl(decoded);
-  if (encodeUpstreamBaseUrl(upstream) !== token) throw new Error('Invalid dynamic upstream token');
-  return upstream;
-}
-
-function encodeDynamicUpstreamUrl(value: string | URL): string {
+export function encodeUpstreamUrl(value: string | URL): string {
   return Buffer.from(parseDynamicUpstreamUrl(value).href, 'utf8').toString('base64url');
 }
 
-function decodeDynamicUpstreamUrl(token: string): URL {
-  if (!token || !BASE64URL.test(token) || token.length > Math.ceil(MAX_UPSTREAM_BYTES * 4 / 3)) throw new Error('Invalid dynamic upstream token');
+export function decodeUpstreamUrl(encodedUpstream: string): URL {
+  if (!encodedUpstream || !BASE64URL.test(encodedUpstream) || encodedUpstream.length > Math.ceil(MAX_UPSTREAM_BYTES * 4 / 3)) throw new Error('Invalid encoded upstream value');
   let bytes: Buffer;
   let decoded: string;
   try {
-    bytes = Buffer.from(token, 'base64url');
-    if (bytes.length > MAX_UPSTREAM_BYTES || bytes.toString('base64url') !== token) throw new Error();
+    bytes = Buffer.from(encodedUpstream, 'base64url');
+    if (bytes.length > MAX_UPSTREAM_BYTES || bytes.toString('base64url') !== encodedUpstream) throw new Error();
     decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch { throw new Error('Invalid dynamic upstream token'); }
-  const upstream = parseDynamicUpstreamUrl(decoded);
-  if (encodeDynamicUpstreamUrl(upstream) !== token) throw new Error('Invalid dynamic upstream token');
-  return upstream;
+  } catch { throw new Error('Invalid encoded upstream value'); }
+  try {
+    const upstream = parseDynamicUpstreamUrl(decoded);
+    if (encodeUpstreamUrl(upstream) !== encodedUpstream) throw new Error();
+    return upstream;
+  } catch { throw new Error('Invalid encoded upstream value'); }
 }
 
 function parseProxyBaseUrl(value: string | URL): URL {
@@ -82,7 +66,7 @@ function parseProxyBaseUrl(value: string | URL): URL {
 
 export function buildDynamicProxyBaseUrl(upstreamBaseUrl: string | URL, proxyBaseUrl: string | URL = 'http://127.0.0.1:1028'): string {
   const proxyUrl = parseProxyBaseUrl(proxyBaseUrl);
-  proxyUrl.pathname = `${DYNAMIC_UPSTREAM_PREFIX}${encodeDynamicUpstreamUrl(upstreamBaseUrl)}`;
+  proxyUrl.pathname = `${DYNAMIC_UPSTREAM_PREFIX}${encodeUpstreamUrl(upstreamBaseUrl)}`;
   return proxyUrl.href;
 }
 
@@ -98,11 +82,11 @@ export function parseDynamicUpstreamRoute(requestUrl: string | undefined): Dynam
   if (!incoming.pathname.startsWith(DYNAMIC_UPSTREAM_PREFIX)) return null;
   const encodedAndSuffix = incoming.pathname.slice(DYNAMIC_UPSTREAM_PREFIX.length);
   const separator = encodedAndSuffix.indexOf('/');
-  const token = separator === -1 ? encodedAndSuffix : encodedAndSuffix.slice(0, separator);
+  const encodedUpstream = separator === -1 ? encodedAndSuffix : encodedAndSuffix.slice(0, separator);
   const requestSuffix = separator === -1 ? null : encodedAndSuffix.slice(separator);
   const requestPath = requestSuffix ?? '/';
   return {
-    baseUrl: decodeDynamicUpstreamUrl(token),
+    baseUrl: decodeUpstreamUrl(encodedUpstream),
     requestUrl: `${requestPath}${incoming.search}`,
     requestPath,
     requestSuffix,

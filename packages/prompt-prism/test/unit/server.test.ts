@@ -46,7 +46,7 @@ async function adminRequest(url: string, captures: CaptureIndexEntry[], analyses
     plugins: { handleApi: async () => false },
     apiFormat,
     dynamicUpstreamAllowed: () => true,
-    proxyUrlPath: () => '/_pp/up/test',
+    proxyUrlPath: () => '/_proxy/test',
   });
   await handler({ method: 'GET', url } as http.IncomingMessage, response);
   return { status, body };

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -9,9 +8,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { createPromptPrism } from '../../src/proxy.js';
 import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
-
-const listen = (server: http.Server): Promise<number> => new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve((server.address() as AddressInfo).port)));
-const close = (server: http.Server): Promise<void> => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+import { close, listen } from './helpers/http.js';
 
 test('official OpenAI and Anthropic JavaScript SDKs preserve dynamic upstream path prefixes', async (t) => {
   const seen: string[] = [];

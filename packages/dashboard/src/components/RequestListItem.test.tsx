@@ -29,13 +29,14 @@ const capture: CaptureSummary = {
 };
 
 describe('RequestListItem', () => {
-  it('shows status, capture hash, and trace badge without interpreting model text as HTML', async () => {
+  it('shows host, status, capture hash, and trace badge without interpreting model text as HTML', async () => {
     const onSelect = vi.fn();
     const { container } = render(<RequestListItem capture={capture} selected onSelect={onSelect} />);
     expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeVisible();
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByText('HTTP 200')).toHaveClass('status-label--good');
     expect(screen.getByText('capture-')).toHaveAttribute('title', capture.id);
+    expect(screen.getByText('api.stepfun.com')).toHaveAttribute('title', 'api.stepfun.com');
     expect(screen.getByText('trace:session:')).toHaveAttribute('title', 'session:one');
     expect(screen.getByText('trace:session:')).not.toHaveAttribute('style');
     expect([...container.querySelector('.request-line--secondary')!.children].map((child) => child.textContent)).toEqual([
@@ -43,7 +44,6 @@ describe('RequestListItem', () => {
       'capture-',
       'trace:session:',
     ]);
-    expect(screen.queryByText('api.stepfun.com')).not.toBeInTheDocument();
     expect(screen.queryByText('Below expected')).not.toBeInTheDocument();
     expect(screen.queryByText(/cached/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button'));
@@ -66,7 +66,7 @@ describe('RequestListItem', () => {
     [undefined, 'neutral'],
   ] as const)('uses HTTP-only status coloring for %s', (responseStatus, tone) => {
     const { container } = render(<RequestListItem
-      capture={{ ...capture, response_status: responseStatus, upstream_host: undefined }}
+      capture={{ ...capture, response_status: responseStatus }}
       selected={false}
       onSelect={vi.fn()}
     />);

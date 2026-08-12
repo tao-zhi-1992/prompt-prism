@@ -38,12 +38,12 @@ Requires Node.js 20 or later.
 
 ```bash
 npm install -g prompt-prism
-p2 start --upstream-base-url https://api.anthropic.com
+p2 start
 ```
 
-Point your SDK at `http://127.0.0.1:1028`, keep its normal API key, and open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/). The dashboard opens automatically unless `--no-open` is used.
+Open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/) (it opens automatically unless `--no-open` is used), click **Proxy URL**, enter your provider's Base URL, and copy the generated URL into your SDK's `baseURL`. Keep using the provider's normal API key.
 
-To start without choosing a provider, run `p2 start` with no upstream option. This dynamic-only mode accepts generated `/_pp/up/...` URLs; ordinary proxy requests return a configuration error until you provide a fixed upstream.
+The generated URL looks like `http://127.0.0.1:1028/_proxy/<encoded-upstream>`. It selects the upstream for that request, so one Prism instance can connect to different providers without restarting.
 
 ### Anthropic
 
@@ -52,36 +52,24 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: 'http://127.0.0.1:1028'
+  baseURL: 'http://127.0.0.1:1028/_proxy/<encoded-upstream>'
 });
 ```
 
 ### OpenAI-compatible
-
-Start Prism with the provider's documented Base URL:
-
-```bash
-p2 start --upstream-base-url https://api.deepseek.com
-```
 
 ```js
 import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'http://127.0.0.1:1028/v1'
+  baseURL: 'http://127.0.0.1:1028/_proxy/<encoded-upstream>'
 });
 ```
 
-### Switch providers without restarting
+For scripts, `p2 url https://api.deepseek.com/v1` prints the same kind of URL as the Dashboard generator. It is an alternative to clicking **Proxy URL**, not an extra startup step.
 
-Generate a proxy URL from the provider's original SDK Base URL or complete endpoint:
-
-```bash
-p2 url https://api.deepseek.com/v1
-```
-
-Paste the generated `http://127.0.0.1:1028/_pp/up/...` URL into the SDK. The Dashboard's **Proxy URL** button provides the same generator. Dynamic URLs can target different providers through one running Prism instance; requests without one continue to use the startup upstream.
+If an SDK replaces the Base URL instead of preserving its path prefix, use the fixed `--upstream-base-url` compatibility mode described in the Guide.
 
 ## What you can inspect
 
@@ -117,7 +105,8 @@ Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic
 import {
   buildDynamicProxyBaseUrl,
   createPromptPrism,
-  encodeUpstreamBaseUrl,
+  decodeUpstreamUrl,
+  encodeUpstreamUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism

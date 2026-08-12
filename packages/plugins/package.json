@@ -16,7 +16,10 @@
     "@base-ui/react": "^1.7.0",
     "@prompt-prism/ui": "workspace:*",
     "diff": "8.0.4",
-    "react-json-view-lite": "2.5.0"
+    "react-json-view-lite": "2.5.0",
+    "react-markdown": "10.1.0",
+    "rehype-highlight": "7.0.2",
+    "remark-gfm": "4.0.1"
   },
   "peerDependencies": {
     "react": "^19.2.8"

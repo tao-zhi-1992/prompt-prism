@@ -1,0 +1,7 @@
+interface:
+  display_name: "Dashboard Screenshot"
+  short_description: "重新生成并校验高分辨率 Dashboard 产品截图"
+  default_prompt: "Use $dashboard-screenshot to regenerate and validate the Dashboard product screenshot."
+
+policy:
+  allow_implicit_invocation: true

@@ -14,15 +14,42 @@ npm install -g prompt-prism
 
 Both `p2` and `prompt-prism` invoke the same CLI.
 
-## Anthropic Messages
+## Dynamic upstream URLs
 
-Start Prism with the provider Base URL:
+Start Prism without an upstream. This dynamic-only mode is ready for generated Proxy URLs:
+
+```bash
+# Terminal 1
+p2 start
+```
+
+Open the Dashboard at [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/), click **Proxy URL**, enter the provider's Base URL or complete endpoint, and copy the generated URL into the SDK's `baseURL`:
+
+```text
+http://127.0.0.1:1028/_proxy/<encoded-upstream>
+```
+
+For scripts and automation, `p2 url UPSTREAM_URL_OR_BASE_URL` prints the same URL as the Dashboard generator:
+
+```bash
+p2 url https://api.deepseek.com/v1
+```
+
+This is an alternative to using the Dashboard button, not a second startup command. One Prism process can route different requests to different providers without restarting.
+
+Dynamic routing applies only to requests containing that prefix and does not change a fixed upstream. The decoded URL is used directly when the dynamic request has no suffix; an explicit request suffix and query are appended when present. Invalid encoded upstream values fail with 400 instead of falling back to another provider.
+
+Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests. Third-party clients are compatible only when they preserve a Base URL path prefix while adding their endpoint. If the prefix disappears, use the fixed-upstream compatibility mode below.
+
+## Fixed-upstream compatibility mode
+
+Use a fixed upstream when an SDK replaces the Base URL instead of preserving its path prefix, or when every request should use one provider:
+
+### Anthropic Messages
 
 ```bash
 p2 start --upstream-base-url https://api.anthropic.com
 ```
-
-Point the Anthropic SDK at Prism while keeping the provider API key:
 
 ```js
 import Anthropic from '@anthropic-ai/sdk';
@@ -39,7 +66,7 @@ For a third-party Anthropic-compatible command, temporarily override its Base UR
 ANTHROPIC_BASE_URL=http://127.0.0.1:1028 your-command
 ```
 
-## OpenAI-compatible providers
+### OpenAI-compatible providers
 
 Copy the provider's documented SDK `base_url` into `--upstream-base-url`:
 
@@ -60,27 +87,11 @@ const client = new OpenAI({
 
 OpenAI Chat Completions JSON and SSE responses, function tool calls/results, system and developer messages, and common `reasoning_content` and cached-token extensions are normalized. Responses, Realtime, Embeddings, Images, and Audio endpoints are forwarded and captured as Raw-only traffic.
 
-## Dynamic upstream URLs
-
-Keep one Prism process running and encode each provider's original SDK Base URL into its client configuration:
-
-```bash
-# Terminal 1
-p2 start
-
-# Terminal 2
-p2 url https://api.deepseek.com/v1
-```
-
-The second command prints a URL shaped like `http://127.0.0.1:1028/_pp/up/<token>`. Use it as the SDK Base URL. The token is unpadded Base64URL, not encryption or a credential. You can also open the Dashboard and use **Proxy URL** at the right end of the detail tabs.
-
-Dynamic routing applies only to requests containing that prefix and does not change the configured upstream. The decoded URL is used directly when the dynamic request has no suffix; an explicit request suffix and query are appended when present. Invalid tokens fail with 400 instead of falling back to another provider.
-
-Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests. Third-party clients are compatible only when they preserve a Base URL path prefix while adding their endpoint. If the prefix disappears, use the fixed `--upstream-base-url` mode.
-
 ## CLI reference
 
 ```text
+p2 --version
+p2 -v
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]
@@ -98,11 +109,11 @@ Defaults:
 | `--max-storage` | `1GB` | Capture storage cap |
 | `--open` | enabled | Open the dashboard after startup |
 
-`--upstream-base-url` is recommended. Prism appends the endpoint selected by the incoming protocol:
+`--upstream-base-url` enables fixed-upstream compatibility mode. Prism appends the endpoint selected by the incoming protocol:
 
 `p2 url` and the Dashboard Proxy URL generator accept either a provider Base URL or a complete endpoint. A complete endpoint is encoded unchanged; a dynamic request with no suffix is forwarded directly to it. A request suffix is appended to either kind of decoded URL.
 
-If neither `--upstream-base-url` nor `--upstream-url` is supplied, Prism still starts so you can use generated dynamic URLs. Ordinary proxy requests return `503` until they use a `/_pp/up/<token>` URL or a fixed upstream is configured.
+If neither `--upstream-base-url` nor `--upstream-url` is supplied, Prism starts in dynamic-only mode. Ordinary unencoded proxy requests return `503` until they use a `/_proxy/<encoded-upstream>` URL or a fixed upstream is configured.
 
 | Provider SDK Base URL | Appended endpoint |
 | --- | --- |
@@ -146,7 +157,8 @@ The package exposes its local server API for embedding and integration tests:
 import {
   buildDynamicProxyBaseUrl,
   createPromptPrism,
-  encodeUpstreamBaseUrl,
+  decodeUpstreamUrl,
+  encodeUpstreamUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism
@@ -155,7 +167,7 @@ import {
 
 See the generated TypeScript declarations for `PromptPrismOptions`, instance state, and capture contracts.
 
-`buildDynamicProxyBaseUrl(upstream, proxyOrigin?)` builds the complete URL; `encodeUpstreamBaseUrl(upstream)` returns only the canonical token. Embedded servers listening beyond loopback must explicitly set `allowRemoteDynamicUpstream: true` to enable dynamic routing.
+`buildDynamicProxyBaseUrl(upstream, proxyOrigin?)` builds the complete URL; `encodeUpstreamUrl(upstream)` returns the encoded upstream value. Embedded servers listening beyond loopback must explicitly set `allowRemoteDynamicUpstream: true` to enable dynamic routing.
 
 The local admin API keeps the legacy array response for `GET /_pp/api/logs` without query parameters. Cursor pagination is available through `GET /_pp/api/logs?limit=100`, with mutually exclusive `before` and `after` cursors; responses include `items`, `total`, both boundary cursors, and `has_older`/`has_newer`. Page size defaults to 100 and is capped at 200. `GET /_pp/api/logs/:id` retrieves one capture summary for dashboard deep links.
 

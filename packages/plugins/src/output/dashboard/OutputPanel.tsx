@@ -1,6 +1,5 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
-import { JsonView } from 'react-json-view-lite';
 import type {
   JsonValue,
   ModelOutputBlock,
@@ -11,29 +10,13 @@ import type {
 } from '../../contracts/dashboard.js';
 import { useI18n, type TranslationKey } from '../../i18n/index.js';
 import { Button } from '@prompt-prism/ui';
+import { StructuredContent } from '../../content/StructuredContent.js';
 
 export type OutputCapture = { output: ModelOutputSnapshot | null };
 
-const jsonStyles = {
-  container: 'output-json-tree', basicChildStyle: 'output-json-child', childFieldsContainer: 'output-json-children',
-  label: 'output-json-label', clickableLabel: 'output-json-label output-json-clickable', nullValue: 'output-json-null',
-  undefinedValue: 'output-json-null', stringValue: 'output-json-string', booleanValue: 'output-json-boolean',
-  numberValue: 'output-json-number', otherValue: 'output-json-other', punctuation: 'output-json-punctuation',
-  collapseIcon: 'output-json-expander output-json-expander--open', expandIcon: 'output-json-expander output-json-expander--closed',
-  collapsedContent: 'output-json-collapsed', quotesForFieldNames: true, stringifyStringValues: true,
-};
-
-const expandAllNodes = () => true;
-
-function isContainer(value: JsonValue | null): value is { [key: string]: JsonValue } | JsonValue[] {
-  return value !== null && typeof value === 'object';
-}
-
 function JsonBody({ value, label }: { value: JsonValue | null; label: string }) {
   const { t } = useI18n();
-  if (isContainer(value)) return <JsonView data={value} style={{ ...jsonStyles, ariaLables: { collapseJson: t('json.collapse'), expandJson: t('json.expand') } }} shouldExpandNode={expandAllNodes} clickToExpandNode aria-label={label} />;
-  if (value === null) return <pre className="output-code output-code--empty">{t('output.noArguments')}</pre>;
-  return <pre className="output-code">{JSON.stringify(value, null, 2)}</pre>;
+  return <StructuredContent value={value} mode="json" ariaLabel={label} emptyFallback={t('output.noArguments')} />;
 }
 
 function ToggleHeader({ label, detail }: { label: string; detail?: string }) {
@@ -56,7 +39,7 @@ function ToolCall({ block }: { block: ToolCallOutputBlock }) {
       </header>
       <div className="output-block-body">
         {block.input_raw !== undefined
-          ? <><span className="output-invalid-label">{t('output.invalidJsonArguments')}</span><pre className="output-code">{block.input_raw}</pre></>
+          ? <><span className="output-invalid-label">{t('output.invalidJsonArguments')}</span><StructuredContent value={block.input_raw} mode="text" /></>
           : <JsonBody value={block.input} label={t('output.toolArguments', { name: block.name })} />}
       </div>
     </section>
@@ -81,7 +64,7 @@ function ContentBlock({ block, index }: { block: ModelOutputBlock; index: number
     return (
       <Collapsible.Root className="output-block" defaultOpen>
         <ToggleHeader label={t('output.text')} />
-        <Collapsible.Panel className="output-collapsible-panel"><pre className="output-text">{block.text}</pre></Collapsible.Panel>
+        <Collapsible.Panel className="output-collapsible-panel"><StructuredContent value={block.text} /></Collapsible.Panel>
       </Collapsible.Root>
     );
   }
@@ -89,7 +72,7 @@ function ContentBlock({ block, index }: { block: ModelOutputBlock; index: number
     return (
       <Collapsible.Root className="output-block" defaultOpen>
         <ToggleHeader label={t('output.thinking')} />
-        <Collapsible.Panel className="output-collapsible-panel"><pre className="output-text output-thinking">{block.text}</pre></Collapsible.Panel>
+        <Collapsible.Panel className="output-collapsible-panel"><StructuredContent value={block.text} className="output-thinking" /></Collapsible.Panel>
       </Collapsible.Root>
     );
   }

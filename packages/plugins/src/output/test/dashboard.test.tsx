@@ -78,4 +78,14 @@ describe('OutputPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(retry).toHaveBeenCalledOnce();
   });
+
+  it('formats markdown and fenced code output with copy controls', () => {
+    const { container } = render(<OutputPanel result={{ output: {
+      adapter_id: 'anthropic', id: 'msg', model: 'model', role: 'assistant', stop_reason: 'end_turn', usage: {},
+      content: [{ type: 'text', text: '## Result\n\n```ts\nconst value: number = 1;\n```' }],
+    } }} loading={false} error={null} onRetry={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: 'Result' })).toBeVisible();
+    expect(container.querySelector('.hljs-keyword')).toHaveTextContent('const');
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeVisible();
+  });
 });

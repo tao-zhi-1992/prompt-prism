@@ -22,7 +22,7 @@ if (!window.ResizeObserver) {
 Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => 356 });
 Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
   configurable: true,
-  get() { return this.classList.contains('scroll-viewport') ? 800 : this.classList.contains('request-list-footer') ? 44 : 64; },
+  get() { return this.classList.contains('scroll-viewport') ? 800 : this.classList.contains('request-list-footer') ? 44 : 82; },
 });
 
 if (!Element.prototype.getAnimations) {

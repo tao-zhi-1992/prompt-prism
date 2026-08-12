@@ -14,15 +14,42 @@ npm install -g prompt-prism
 
 `p2` 和 `prompt-prism` 调用的是同一个 CLI。
 
-## Anthropic Messages
+## 动态上游地址
 
-用提供商 Base URL 启动 Prism：
+不带 upstream 启动 Prism。此时是等待生成代理地址的仅动态模式：
+
+```bash
+# 终端 1
+p2 start
+```
+
+打开仪表盘 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)，点击 **代理地址**，输入提供商 Base URL 或完整 endpoint，然后把生成的地址复制到 SDK 的 `baseURL`：
+
+```text
+http://127.0.0.1:1028/_proxy/<encoded-upstream>
+```
+
+对于脚本和自动化任务，`p2 url UPSTREAM_URL_OR_BASE_URL` 会输出与仪表盘生成器相同的地址：
+
+```bash
+p2 url https://api.deepseek.com/v1
+```
+
+这是仪表盘按钮的替代方式，不是第二个启动命令。一个 Prism 实例无需重启就能把不同请求转发到不同提供商。
+
+动态路由只作用于带该前缀的请求，不修改固定上游。动态请求没有后缀时直接使用解码后的 URL；明确提供请求后缀和 query 时才会追加。无效的 encoded upstream 值返回 400，不会回退到其他提供商。
+
+OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试。第三方客户端只有在追加接口路径时保留 Base URL 路径前缀才兼容；如果前缀消失，请使用下面的固定上游兼容模式。
+
+## 固定上游兼容模式
+
+如果 SDK 会替换 Base URL 而不是保留路径前缀，或者所有请求都应该使用同一个提供商，请使用固定 upstream：
+
+### Anthropic Messages
 
 ```bash
 p2 start --upstream-base-url https://api.anthropic.com
 ```
-
-将 Anthropic SDK 指向 Prism，同时保留提供商 API key：
 
 ```js
 import Anthropic from '@anthropic-ai/sdk';
@@ -39,7 +66,7 @@ const client = new Anthropic({
 ANTHROPIC_BASE_URL=http://127.0.0.1:1028 your-command
 ```
 
-## OpenAI 兼容提供商
+### OpenAI 兼容提供商
 
 把提供商文档中的 SDK `base_url` 复制到 `--upstream-base-url`：
 
@@ -60,27 +87,11 @@ const client = new OpenAI({
 
 OpenAI Chat Completions 的 JSON 和 SSE 响应、函数工具调用/结果、system 和 developer 消息，以及常见的 `reasoning_content` 和缓存 token 扩展都会被规范化。Responses、Realtime、Embeddings、Images 和 Audio 端点会照常转发，并以 Raw-only 方式捕获。
 
-## 动态上游地址
-
-保持一个 Prism 进程运行，将每个提供商原始的 SDK Base URL 编码到客户端配置中：
-
-```bash
-# 终端 1
-p2 start
-
-# 终端 2
-p2 url https://api.deepseek.com/v1
-```
-
-第二条命令输出形如 `http://127.0.0.1:1028/_pp/up/<token>` 的地址，将它作为 SDK Base URL。Token 是无填充的 Base64URL，不是加密内容或凭证。也可以打开仪表盘，使用详情 Tab 最右侧的 **代理地址** 生成器。
-
-动态路由只作用于带该前缀的请求，不修改已配置的上游。动态请求没有后缀时直接使用解码后的 URL；明确提供了请求后缀时，才将后缀和 query 追加到解码后的 URL。无效 token 返回 400，不会回退到其他提供商。
-
-OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试。第三方客户端只有在追加接口路径时保留 Base URL 路径前缀才兼容；如果前缀消失，请改用固定的 `--upstream-base-url` 模式。
-
 ## CLI 参考
 
 ```text
+p2 --version
+p2 -v
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]
@@ -98,11 +109,11 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 | `--max-storage` | `1GB` | 捕获存储上限 |
 | `--open` | 启用 | 启动后打开仪表盘 |
 
-推荐使用 `--upstream-base-url`。Prism 会追加由传入协议选定的端点：
+`--upstream-base-url` 启用固定上游兼容模式。Prism 会追加由传入协议选定的端点：
 
 `p2 url` 和仪表盘的代理地址生成器同时接受提供商 Base URL 或完整 endpoint。完整 endpoint 会原样编码；动态请求没有后缀时直接转发到该地址。无论输入哪种 URL，只有请求带后缀时才会追加该后缀。
 
-如果没有提供 `--upstream-base-url` 或 `--upstream-url`，Prism 仍会启动，以便使用生成的动态地址。普通代理请求会返回 `503`，直到请求使用 `/_pp/up/<token>` 地址，或启动时配置固定上游。
+如果没有提供 `--upstream-base-url` 或 `--upstream-url`，Prism 会以仅动态模式启动。普通未编码的代理请求会返回 `503`，直到请求使用 `/_proxy/<encoded-upstream>` 地址，或启动时配置固定上游。
 
 | 提供商 SDK Base URL | 追加的端点 |
 | --- | --- |
@@ -146,7 +157,8 @@ OpenAI 将缓存提示 token 报告为 `prompt_tokens` 的子集。Prism 将其�
 import {
   buildDynamicProxyBaseUrl,
   createPromptPrism,
-  encodeUpstreamBaseUrl,
+  decodeUpstreamUrl,
+  encodeUpstreamUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism
@@ -155,7 +167,7 @@ import {
 
 详见生成的 TypeScript 声明：`PromptPrismOptions`、实例状态和捕获记录契约。
 
-`buildDynamicProxyBaseUrl(upstream, proxyOrigin?)` 构造完整地址；`encodeUpstreamBaseUrl(upstream)` 只返回规范 token。嵌入式服务器监听 loopback 以外的地址时，必须显式设置 `allowRemoteDynamicUpstream: true` 才能启用动态路由。
+`buildDynamicProxyBaseUrl(upstream, proxyOrigin?)` 构造完整地址；`encodeUpstreamUrl(upstream)` 返回编码后的上游值。嵌入式服务器监听 loopback 以外的地址时，必须显式设置 `allowRemoteDynamicUpstream: true` 才能启用动态路由。
 
 本地管理 API 对无查询参数的 `GET /_pp/api/logs` 保留旧版数组响应。`GET /_pp/api/logs?limit=100` 提供游标分页，`before` 和 `after` 游标互斥；响应包含 `items`、`total`、两个边界游标以及 `has_older`/`has_newer`。页大小默认为 100，上限 200。`GET /_pp/api/logs/:id` 获取单条捕获记录摘要，用于仪表盘深链。
 

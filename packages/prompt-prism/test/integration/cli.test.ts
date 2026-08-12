@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
+import packageJson from '../../package.json' with { type: 'json' };
 
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
@@ -47,6 +48,16 @@ test('CLI documents base and exact upstream modes with automatic API format', as
   assert.match(stdout, /p2 insights/);
   assert.match(stdout, /p2 url UPSTREAM_URL_OR_BASE_URL/);
   assert.doesNotMatch(stdout, /--base-url|--target|\btarget\b/i);
+});
+
+test('CLI prints the package version without starting the proxy', async () => {
+  const version = await run(process.execPath, [cli, '--version']);
+  assert.equal(version.stdout, `${packageJson.version}\n`);
+  assert.equal(version.stderr, '');
+
+  const shortVersion = await run(process.execPath, [cli, '-v']);
+  assert.equal(shortVersion.stdout, `${packageJson.version}\n`);
+  assert.equal(shortVersion.stderr, '');
 });
 
 test('CLI generates copyable dynamic proxy URLs with a configurable proxy origin', async () => {

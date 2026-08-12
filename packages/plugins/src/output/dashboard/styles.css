@@ -10,7 +10,8 @@
 .output-scroll { position: relative; min-width: 0; min-height: 0; border: 1px solid var(--line); background: var(--viewer-bg); }
 .output-content { display: grid; gap: 12px; min-width: 100%; padding: 14px 14px 70px; }
 .output-block { min-width: 0; border: 1px solid var(--line); background: var(--surface-1); }
-.output-block-header, .output-block-toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 38px; padding: 0 12px; color: var(--text); border: 0; border-bottom: 1px solid var(--line); background: var(--surface-2); text-align: left; }
+.output-block-header, .output-block-toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; min-height: 38px; padding: 0 12px; color: var(--text); border: 0; background: var(--surface-2); text-align: left; }
+.output-block-header { border-bottom: 1px solid var(--line); }
 .output-block-header > strong, .output-block-header > div > strong, .output-block-toggle > strong { font-size: 11px; font-weight: 650; letter-spacing: 0.04em; }
 .output-block-header > span { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .output-block-header b { color: var(--accent); font-size: 10px; }
@@ -23,35 +24,16 @@
 .output-chevron { display: grid; place-items: center; width: 14px; height: 14px; color: var(--muted); transition: transform 120ms ease; }
 .output-chevron::before { content: ""; width: 0; height: 0; border-right: 3px solid transparent; border-left: 3px solid transparent; border-top: 4px solid currentColor; }
 .output-block-toggle:not([data-panel-open]) .output-chevron { transform: rotate(-90deg); }
-.output-collapsible-panel { min-width: 0; overflow: hidden; }
-.output-text, .output-code { min-width: 100%; margin: 0; padding: 14px; color: var(--code); background: var(--surface-1); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.7 "DM Mono", monospace; tab-size: 2; }
+.output-collapsible-panel { min-width: 0; overflow: hidden; border-top: 1px solid var(--line); }
+.output-collapsible-panel > .structured-content { border: 0; }
 .output-thinking { color: var(--muted); }
 .output-block-body { display: grid; gap: 8px; min-width: 0; padding: 12px; }
 .output-invalid-label { color: var(--red); font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
-.output-code { border: 1px solid var(--line); }
-.output-code--empty, .output-empty { color: var(--faint); }
+.output-empty { color: var(--faint); }
 .output-empty { padding: 28px 14px; border: 1px solid var(--line); text-align: center; font: 10px "DM Mono", monospace; }
 .output-provider-error { display: grid; gap: 7px; padding: 13px 14px; color: var(--red); border: 1px solid var(--red); background: var(--red-bg); }
 .output-provider-error strong { font: 600 10px "DM Mono", monospace; text-transform: uppercase; }
 .output-provider-error span { color: var(--text); font-size: 11px; }
-.output-json-tree { margin: 0; padding: 13px 14px; color: var(--code); border: 1px solid var(--line); background: var(--surface-1); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.65 "DM Mono", monospace; }
-.output-json-child { margin: 0; padding-left: 18px; }
-.output-json-children { margin: 0; padding: 0; list-style: none; }
-.output-json-label { margin-right: 5px; color: var(--text); font-weight: 600; }
-.output-json-clickable, .output-json-expander, .output-json-collapsed { cursor: pointer; }
-.output-json-string { color: var(--json-string); }
-.output-json-number { color: var(--json-number); }
-.output-json-boolean { color: var(--json-boolean); }
-.output-json-null { color: var(--json-null); }
-.output-json-other { color: var(--code); }
-.output-json-punctuation { margin-right: 5px; color: var(--muted); font-weight: 600; }
-.output-json-punctuation + .output-json-punctuation { margin-left: -5px; }
-.output-json-expander { margin-right: 6px; color: var(--accent); font-size: 1.1em; user-select: none; }
-.output-json-expander--closed::after { content: "▸"; }
-.output-json-expander--open::after { content: "▾"; }
-.output-json-collapsed { margin-right: 5px; color: var(--faint); }
-.output-json-collapsed::after { content: "…"; }
-.output-json-tree [role="treeitem"]:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 
 @media (max-width: 680px) {
   .output-panel { padding: 16px 14px 18px; }

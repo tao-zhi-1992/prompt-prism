@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { JsonView } from 'react-json-view-lite';
 import { useI18n } from '../../i18n/index.js';
 import { Button } from '@prompt-prism/ui';
+import { ContentCopyButton } from '../../content/StructuredContent.js';
 
 export type RawHeaders = Record<string, string | string[] | undefined>;
 export type RawCapture = {
@@ -41,6 +42,11 @@ function Headers({ headers }: { headers: RawHeaders }) {
   return <dl className="raw-headers">{entries.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{Array.isArray(value) ? value.join('\n') : value ?? ''}</dd></div>)}</dl>;
 }
 
+function serializedHeaders(headers: RawHeaders): string {
+  const sorted = Object.fromEntries(Object.entries(headers ?? {}).sort(([left], [right]) => left.localeCompare(right)));
+  return JSON.stringify(sorted, null, 2);
+}
+
 function Body({ body, label }: { body: string; label: string }) {
   const { t } = useI18n();
   const json = parseJsonObject(body);
@@ -58,8 +64,8 @@ function RawSection({ kind, meta, headers, body }: { kind: 'request' | 'response
       <ScrollArea.Root className="raw-scroll">
         <ScrollArea.Viewport className="scroll-viewport">
           <ScrollArea.Content className="raw-content">
-            <div className="raw-block"><span className="raw-block-label">{t('raw.headers')}</span><Headers headers={headers} /></div>
-            <div className="raw-block"><span className="raw-block-label">{t('raw.body')}</span><Body body={body} label={label} /></div>
+            <div className="raw-block"><div className="raw-block-heading"><span className="raw-block-label">{t('raw.headers')}</span><ContentCopyButton value={serializedHeaders(headers)} /></div><Headers headers={headers} /></div>
+            <div className="raw-block"><div className="raw-block-heading"><span className="raw-block-label">{t('raw.body')}</span><ContentCopyButton value={body} /></div><Body body={body} label={label} /></div>
           </ScrollArea.Content>
         </ScrollArea.Viewport>
         <ScrollArea.Scrollbar className="scrollbar"><ScrollArea.Thumb className="scrollbar-thumb" /></ScrollArea.Scrollbar>

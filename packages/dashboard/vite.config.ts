@@ -11,6 +11,15 @@ export default defineConfig({
   build: {
     outDir: '../prompt-prism/public/dashboard',
     emptyOutDir: true,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'markdown', test: /node_modules\/(?:react-markdown|remark-|rehype-|unified|micromark|mdast-|hast-|lowlight|highlight\.js|property-information|space-separated-tokens|comma-separated-tokens|vfile|unist-)/ },
+          ],
+        },
+      },
+    },
   },
   test: {
     environment: 'jsdom',
