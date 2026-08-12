@@ -38,12 +38,12 @@ Prompt Prism 位于你的应用和模型提供商之间。响应（包括 SSE �
 
 ```bash
 npm install -g prompt-prism
-p2 start --upstream-base-url https://api.anthropic.com
+p2 start
 ```
 
-将你的 SDK 指向 `http://127.0.0.1:1028`，保留原有 API key，然后打开仪表盘 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)。除非使用 `--no-open`，仪表盘会自动打开。
+打开 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)（除非使用 `--no-open`，仪表盘会自动打开），点击 **代理地址**，输入提供商 Base URL，然后将生成的地址复制到 SDK 的 `baseURL`。继续使用提供商原有的 API key。
 
-如果暂时不选择提供商，可以直接运行不带 upstream 选项的 `p2 start`。此时是仅动态模式，只接受生成的 `/_pp/up/...` 地址；普通代理请求会返回配置错误，直到你提供固定 upstream。
+生成的地址形如 `http://127.0.0.1:1028/_pp/up/<token>`。它只对当前请求选择上游，因此一个 Prism 实例无需重启就能连接不同的提供商。
 
 ### Anthropic
 
@@ -52,36 +52,24 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: 'http://127.0.0.1:1028'
+  baseURL: 'http://127.0.0.1:1028/_pp/up/<token>'
 });
 ```
 
 ### OpenAI 兼容
-
-使用提供商文档中的 Base URL 启动 Prism：
-
-```bash
-p2 start --upstream-base-url https://api.deepseek.com
-```
 
 ```js
 import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'http://127.0.0.1:1028/v1'
+  baseURL: 'http://127.0.0.1:1028/_pp/up/<token>'
 });
 ```
 
-### 无需重启即可切换提供商
+对于脚本，可以运行 `p2 url https://api.deepseek.com/v1`，它会输出与仪表盘生成器相同类型的地址。这是点击 **代理地址** 的替代方式，不是额外的启动步骤。
 
-用提供商原始的 SDK Base URL 或完整 endpoint 生成代理地址：
-
-```bash
-p2 url https://api.deepseek.com/v1
-```
-
-将生成的 `http://127.0.0.1:1028/_pp/up/...` 地址粘贴到 SDK。仪表盘最右侧的 **代理地址** 按钮也提供相同的生成器。一个 Prism 实例可以通过不同动态地址访问多个提供商；没有使用动态地址的请求仍采用启动时的上游。
+如果 SDK 会替换 Base URL 而不是保留其中的路径前缀，请使用指南中介绍的固定 `--upstream-base-url` 兼容模式。
 
 ## 你可以检查什么
 
