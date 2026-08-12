@@ -97,7 +97,7 @@ OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本�
 - [使用指南](docs/guide.zh-CN.md) — 提供商配置、CLI 选项、协议检测、嵌入式使用和本地数据。
 - [Agent Insights](docs/insights.zh-CN.md) — 在 shell 中检查并比较 Agent 运行。
 - [开发指南](docs/development.zh-CN.md) — 运行演示、在 monorepo 中开发、理解 Input Diff 匹配。
-- [发布](docs/releasing.zh-CN.md) — 配置 Trusted Publishing，并从 Conventional Commits 发布。
+- [发布](docs/releasing.zh-CN.md) — 手动准备、验证并发布新版本。
 
 ## 编程接口
 
