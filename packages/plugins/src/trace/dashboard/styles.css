@@ -64,8 +64,8 @@
 .trace-tool-result-link:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .trace-tool-result-link--missing { color: var(--red); text-decoration: none; cursor: default; }
 .trace-tool-result-status { color: var(--red); font-size: 9px; white-space: nowrap; }
-.trace-event-toggle-row > code { overflow: hidden; color: var(--muted); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
-.trace-chevron { width: 0; height: 0; border-right: 3px solid transparent; border-left: 3px solid transparent; border-top: 4px solid var(--muted); transition: transform 120ms ease; }
+.trace-event-toggle-row > code { grid-column: 2; overflow: hidden; color: var(--muted); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
+.trace-chevron { grid-column: 3; width: 0; height: 0; border-right: 3px solid transparent; border-left: 3px solid transparent; border-top: 4px solid var(--muted); transition: transform 120ms ease; }
 .trace-event-toggle-row:has(.trace-event-toggle:not([data-panel-open])) .trace-chevron { transform: rotate(-90deg); }
 .trace-event-panel { min-width: 0; overflow: hidden; }
 .trace-event-panel > .structured-content { border: 0; }

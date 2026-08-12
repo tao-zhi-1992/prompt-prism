@@ -134,6 +134,19 @@ test('renders expanded structured trace content with a single outer border', asy
   }
 });
 
+test('keeps Trace chevrons aligned to the right edge without event detail', async ({ page }) => {
+  await sendCapture('e2e-tool-call');
+  await page.goto('./');
+  await page.getByRole('button', { name: /e2e-tool-call/ }).click();
+
+  const event = page.locator('.trace-event').first();
+  const chevron = event.locator('.trace-chevron');
+  const [eventBox, chevronBox] = await Promise.all([event.boundingBox(), chevron.boundingBox()]);
+  expect(eventBox).not.toBeNull();
+  expect(chevronBox).not.toBeNull();
+  expect(eventBox!.x + eventBox!.width - (chevronBox!.x + chevronBox!.width)).toBeCloseTo(21, 0);
+});
+
 test('keeps Output tool call content inset with its own border', async ({ page }) => {
   await sendCapture('e2e-tool-call');
   await page.goto('./');
@@ -150,6 +163,31 @@ test('keeps Output tool call content inset with its own border', async ({ page }
   expect(contentBox!.x - headerBox!.x).toBeCloseTo(12, 0);
   expect(headerBox!.width - contentBox!.width).toBeCloseTo(24, 0);
   await expect(content).toHaveCSS('border-left-width', '1px');
+});
+
+test('keeps Output collapsible header height stable while toggling', async ({ page }) => {
+  await sendCapture('e2e-model');
+  await page.goto('./');
+  await page.getByRole('button', { name: /e2e-model/ }).click();
+  await page.getByRole('tab', { name: 'Output' }).click();
+
+  const toggle = page.getByRole('button', { name: 'Text' });
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  const expanded = await toggle.boundingBox();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  const collapsed = await toggle.boundingBox();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  await expect(toggle.locator('xpath=following-sibling::*[contains(concat(" ", normalize-space(@class), " "), " output-collapsible-panel ")]')).toHaveCSS('border-top-width', '1px');
+  const reexpanded = await toggle.boundingBox();
+  expect(expanded).not.toBeNull();
+  expect(collapsed).not.toBeNull();
+  expect(reexpanded).not.toBeNull();
+  expect(collapsed!.height).toBeCloseTo(expanded!.height, 4);
+  expect(reexpanded!.height).toBeCloseTo(expanded!.height, 4);
 });
 
 test('keeps Tools structured content inset with a single content border', async ({ page }) => {
