@@ -1,21 +1,20 @@
 import http from 'node:http';
 import https from 'node:https';
-import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CaptureStore } from './store.js';
 import { getProviderAdapter } from './adapter/registry.js';
-import { ApiFormatResolver, detectProtocolFromBody, detectProtocolFromHeaders, detectProtocolFromPath, detectProtocolFromResponse, endpointPath, type DetectedProtocol } from './adapter/detection.js';
+import { ApiFormatResolver, detectProtocolFromPath } from './adapter/detection.js';
 import { createAdminHandler, json } from './server.js';
 import { loadBuiltinPluginRuntime } from './plugin-runtime.js';
 import { buildDynamicProxyBaseUrl, DYNAMIC_UPSTREAM_PREFIX, parseDynamicUpstreamRoute, parseUpstreamBaseUrl, parseUpstreamUrl } from './upstream.js';
-import type { Capture, PromptPrismInstance, PromptPrismOptions, RawHeaders, StartedPromptPrism } from './types.js';
+import { buildCapture } from './capture.js';
+import { isLoopbackListener, resolveProxyTarget } from './proxy-target.js';
+import type { PromptPrismInstance, PromptPrismOptions, StartedPromptPrism } from './types.js';
 
 const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
 const INTERNAL_HEADERS = new Set(['x-prompt-prism-trace-id']);
-const SENSITIVE = /^(authorization|proxy-authorization|x-api-key|api-key|cookie|set-cookie)$/i;
-const TRACE_ID = /^[A-Za-z0-9._:-]{1,128}$/;
 const rootBrandFiles = new Map([
   ['/favicon.ico', { file: 'favicon.ico', contentType: 'image/x-icon' }],
   ['/apple-touch-icon.png', { file: 'apple-touch-icon.png', contentType: 'image/png' }]
@@ -54,59 +53,7 @@ function responseHeaders(headers: http.IncomingHttpHeaders): http.OutgoingHttpHe
   return result;
 }
 
-function redactedHeaders(headers: http.IncomingHttpHeaders): RawHeaders {
-  return Object.fromEntries(Object.entries(headers).map(([name, value]) => [name, SENSITIVE.test(name) ? '[REDACTED]' : value]));
-}
-
-function tokenIdentity(headers: http.IncomingHttpHeaders): string {
-  const secret = headers['x-api-key'] || headers.authorization || headers['api-key'] || 'anonymous';
-  return crypto.createHash('sha256').update(String(secret)).digest('hex').slice(0, 16);
-}
-
-function traceIdentity(headers: http.IncomingHttpHeaders): string | undefined {
-  const value = headers['x-prompt-prism-trace-id'];
-  const candidate = Array.isArray(value) ? value[0] : value;
-  return typeof candidate === 'string' && TRACE_ID.test(candidate) ? candidate : undefined;
-}
-
 export { parseUpstreamBaseUrl, parseUpstreamUrl } from './upstream.js';
-
-function joinedTarget(baseUrl: URL, requestUrl: string | undefined, protocol: DetectedProtocol | null): URL {
-  const incoming = new URL(requestUrl ?? '/', 'http://prompt-prism.local');
-  const target = new URL(baseUrl);
-  const suffix = detectProtocolFromPath(incoming.pathname) ? incoming.pathname : protocol ? endpointPath(protocol) : incoming.pathname;
-  target.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/${suffix.replace(/^\/+/, '')}`;
-  target.search = incoming.search;
-  return target;
-}
-
-function directTarget(baseUrl: URL, requestUrl: string): URL {
-  const target = new URL(baseUrl);
-  target.search = new URL(requestUrl, 'http://prompt-prism.local').search;
-  return target;
-}
-
-function joinedDynamicTarget(baseUrl: URL, requestUrl: string): URL {
-  const incoming = new URL(requestUrl, 'http://prompt-prism.local');
-  const target = new URL(baseUrl);
-  target.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/${incoming.pathname.replace(/^\/+/, '')}`;
-  target.search = incoming.search;
-  return target;
-}
-
-function isLoopbackListener(server: http.Server): boolean {
-  const address = server.address();
-  if (!address || typeof address === 'string') return false;
-  const value = address.address.toLowerCase();
-  return value === '::1' || /^127(?:\.\d{1,3}){3}$/.test(value) || /^::ffff:127(?:\.\d{1,3}){3}$/.test(value);
-}
-
-function shallowModel(body: Buffer): string | null {
-  try {
-    const value = JSON.parse(body.toString('utf8')) as { model?: unknown };
-    return typeof value?.model === 'string' ? value.model : null;
-  } catch { return null; }
-}
 
 function openBrowser(url: string): void {
   const [command, args] = process.platform === 'darwin' ? ['open', [url]]
@@ -177,17 +124,14 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
         detail: 'Use a dynamic upstream URL under /_proxy/<encoded-upstream> or configure --upstream-base-url/--upstream-url',
       });
     }
-    const pathProtocol = detectProtocolFromPath(requestPath);
-    const headerProtocol = detectProtocolFromHeaders(request.headers);
-    const requestUpstreamHint = dynamicRoute
-      ? new ApiFormatResolver('auto', dynamicRoute.baseUrl).upstreamHint
-      : resolver.upstreamHint;
-    const routingProtocol = resolver.resolveWithUpstreamHint(requestUpstreamHint, pathProtocol, headerProtocol);
-    const targetUrl = dynamicRoute
-      ? dynamicRoute.requestSuffix === null
-        ? directTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl)
-        : joinedDynamicTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl)
-      : upstreamMode === 'exact' ? upstreamUrl! : joinedTarget(upstreamUrl!, request.url, routingProtocol);
+    const { pathProtocol, headerProtocol, upstreamHint: requestUpstreamHint, targetUrl } = resolveProxyTarget({
+      requestUrl: request.url,
+      headers: request.headers,
+      dynamicRoute,
+      upstreamMode,
+      upstreamUrl,
+      resolver,
+    });
     const transport = targetUrl.protocol === 'https:' ? https : http;
 
     const startedMs = Date.now();
@@ -215,45 +159,20 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
         const completedAt = new Date(completedMs).toISOString();
         const requestBody = Buffer.concat(requestChunks);
         const responseBody = Buffer.concat(responseChunks);
-        const captureProtocol = resolver.resolveWithUpstreamHint(
-          requestUpstreamHint,
+        const capture = buildCapture({
+          request,
+          targetUrl,
+          requestBody,
+          responseBody,
+          responseStatus: upstreamResponse.statusCode ?? null,
+          responseHeaders: upstreamResponse.headers,
+          responseContentType: upstreamResponse.headers['content-type'],
+          timing: { startedAt, completedAt, startedMs, headersMs, firstByteMs, completedMs },
+          resolver,
+          upstreamHint: requestUpstreamHint,
           pathProtocol,
           headerProtocol,
-          detectProtocolFromBody(requestBody),
-          detectProtocolFromResponse(responseBody),
-        );
-        const adapter = captureProtocol && captureProtocol !== 'openai-responses' ? getProviderAdapter(captureProtocol) : null;
-        let parsedRequest = null;
-        let parsedResponse = null;
-        if (adapter) {
-          try {
-            parsedRequest = adapter.parseRequest(requestBody);
-            parsedResponse = adapter.parseResponse(responseBody, upstreamResponse.headers['content-type']);
-          } catch { /* Preserve a Raw-only capture when provider extensions cannot be normalized. */ }
-        }
-        const traceId = traceIdentity(request.headers);
-        const capture: Capture = {
-          id: crypto.randomUUID(),
-          timestamp: completedAt,
-          token_hash: tokenIdentity(request.headers),
-          model: parsedRequest?.model ?? shallowModel(requestBody),
-          messages: parsedRequest?.messages ?? [],
-          adapter_id: adapter?.id ?? 'unresolved',
-          ...(parsedRequest ? { prompt_input: parsedRequest.input } : {}),
-          usage: parsedResponse?.usage ?? {},
-          ...(parsedResponse?.output ? { model_output: parsedResponse.output } : {}),
-          ...(traceId ? { trace_id: traceId } : {}),
-          upstream_host: targetUrl.host,
-          timing: {
-            started_at: startedAt,
-            completed_at: completedAt,
-            duration_ms: completedMs - startedMs,
-            time_to_headers_ms: headersMs - startedMs,
-            time_to_first_byte_ms: firstByteMs === null ? null : firstByteMs - startedMs,
-          },
-          request: { method: request.method ?? 'GET', url: request.url ?? '/', target_url: targetUrl.href, headers: redactedHeaders(request.headers), body: requestBody.toString('utf8') },
-          response: { status: upstreamResponse.statusCode ?? null, headers: redactedHeaders(upstreamResponse.headers), body: responseBody.toString('utf8') }
-        };
+        });
         setImmediate(() => store.enqueue(capture, (stored) => plugins.onCapture({ ...capture, ...stored }, stored)).catch(() => {}));
       });
       upstreamResponse.on('error', (error) => response.destroy(error));

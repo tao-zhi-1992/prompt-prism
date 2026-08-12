@@ -10,33 +10,10 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl, startPromptPrism } from '../../src/proxy.js';
 import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
+import { close, listen, request } from './helpers/http.js';
 
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
-
-const listen = (server: http.Server): Promise<number> => new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve((server.address() as AddressInfo).port)));
-const close = (server: http.Server): Promise<void> => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-
-interface HttpResult {
-  status: number | undefined;
-  headers: http.IncomingHttpHeaders;
-  body: string;
-  times: number[];
-}
-
-function request({ port, pathname = '/v1/messages', headers = {}, body }: { port: number; pathname?: string; headers?: http.OutgoingHttpHeaders; body?: string }): Promise<HttpResult> {
-  return new Promise<HttpResult>((resolve, reject) => {
-    const started = Date.now();
-    const chunks: Buffer[] = [];
-    const times: number[] = [];
-    const req = http.request({ host: '127.0.0.1', port, path: pathname, method: body ? 'POST' : 'GET', headers }, (res) => {
-      res.on('data', (chunk) => { chunks.push(chunk); times.push(Date.now() - started); });
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString(), times }));
-    });
-    req.on('error', reject);
-    if (body) req.end(body); else req.end();
-  });
-}
 
 test('proxy uses the configured endpoint, preserves auth, streams SSE, captures asynchronously, and serves APIs', async (t) => {
   let seen: { url: string | undefined; key: string | string[] | undefined; traceId: string | string[] | undefined; body: string } | undefined;

@@ -1,4 +1,20 @@
 import { buildDynamicProxyBaseUrl, createPromptPrism, decodeUpstreamUrl, encodeUpstreamUrl, parseUpstreamBaseUrl, type Analysis, type ApiFormatResolution, type Capture, type CaptureTiming, type ConversationMessage, type ConversationToolCallBlock, type InsightComparison, type InsightEvidence, type InsightFinding, type InsightReport, type InsightRunSummary, type ModelOutputSnapshot, type PromptPrismOptions, type ProviderProtocol, type Usage } from 'prompt-prism';
+import type { Capture as PluginCapture, ConversationMessage as PluginConversationMessage, ModelOutputSnapshot as PluginModelOutputSnapshot, Usage as PluginUsage } from '../../plugins/src/contracts/server.js';
+
+type Assert<T extends true> = T;
+type Assignable<From, To> = From extends To ? true : false;
+type SharedContractCompatibility = [
+  Assert<Assignable<Usage, PluginUsage>>,
+  Assert<Assignable<PluginUsage, Usage>>,
+  Assert<Assignable<ConversationMessage, PluginConversationMessage>>,
+  Assert<Assignable<PluginConversationMessage, ConversationMessage>>,
+  Assert<Assignable<ModelOutputSnapshot, PluginModelOutputSnapshot>>,
+  Assert<Assignable<PluginModelOutputSnapshot, ModelOutputSnapshot>>,
+  Assert<Assignable<Capture, PluginCapture>>,
+  Assert<Assignable<PluginCapture, Capture>>,
+];
+const sharedContractCompatibility = null as unknown as SharedContractCompatibility;
+void sharedContractCompatibility;
 
 const options: PromptPrismOptions = {
   upstreamBaseUrl: parseUpstreamBaseUrl('https://api.anthropic.com'),
