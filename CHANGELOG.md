@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.2.0...v0.3.0) (2026-08-12)
+
+
+### Features
+
+* **cli:** add version command ([0579b76](https://github.com/tao-zhi-1992/prompt-prism/commit/0579b76744468f272978100d57a5702d03887def))
+* **proxy:** simplify dynamic proxy URLs ([10ce783](https://github.com/tao-zhi-1992/prompt-prism/commit/10ce783b069a9cd39516357c4c70ff902e3f746a))
+
+
+### Bug Fixes
+
+* **release:** restore published version baseline ([ecf2804](https://github.com/tao-zhi-1992/prompt-prism/commit/ecf28043ba49503ba2f790bd0f174618bac24ec2))
+
 ## [0.2.0](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.1.2...v0.2.0) (2026-08-12)
 
 
