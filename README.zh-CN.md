@@ -4,10 +4,10 @@
 
 <h1 align="center">Prompt Prism</h1>
 
-<p align="center"><strong>精确查看你的模型接收了什么。</strong></p>
+<p align="center"><strong>精确查看你的 Agent 向模型发送了什么。</strong></p>
 
 <p align="center">
-  一个零运行时依赖的本地代理，用于调试模型请求、提示词变更、工具调用和多请求 Agent 轨迹。
+  一个面向 Agent 开发者的零运行时依赖本地调试代理，用于检查模型请求、提示词变更、工具调用和多请求轨迹。
 </p>
 
 <p align="center">
@@ -24,12 +24,15 @@
 
 ![Prompt Prism 仪表盘，显示 Agent 轨迹](docs/dashboard.png)
 
-Prompt Prism 位于你的应用和模型提供商之间。响应（包括 SSE 流）会被立即转发，同时一份脱敏副本在本地保存，供你检查。
+开发和运行 Agent 时，Prompt Prism 位于 Agent 和模型提供商之间。响应（包括 SSE 流）会被立即转发，同时一份脱敏副本在本地保存，供你检查。
 
 ```text
-你的应用  ──►  http://127.0.0.1:1028  ──►  模型提供商
-                       │
-                       └──► 轨迹 + Input Diff + Tools + Output + Raw
+Agent 开发者  ──构建并运行──►  你的 Agent
+                                  │
+                                  ▼
+模型提供商  ◄──  http://127.0.0.1:1028
+                          │
+                          └──► 轨迹 + Input Diff + Tools + Output + Raw
 ```
 
 ## 快速开始
@@ -41,11 +44,13 @@ npm install -g prompt-prism
 p2 start
 ```
 
-打开 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)（除非使用 `--no-open`，仪表盘会自动打开），点击 **代理地址**，输入提供商 Base URL，然后将生成的地址复制到 SDK 的 `baseURL`。继续使用提供商原有的 API key。
+打开 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)（除非使用 `--no-open`，仪表盘会自动打开），点击 **代理地址**，输入提供商 Base URL。通过 framework 配置、SDK `baseURL`、环境变量、CLI 参数或自建 HTTP 客户端，将生成的地址配置为 Agent 的模型 API 地址，并继续使用提供商原有的 API key。
 
 生成的地址形如 `http://127.0.0.1:1028/_proxy/<encoded-upstream>`。它只对当前请求选择上游，因此一个 Prism 实例无需重启就能连接不同的提供商。
 
-### Anthropic
+下面的 SDK 配置只是 Agent 接入示例；Prompt Prism 不要求使用这两个 SDK。
+
+### Anthropic SDK 示例
 
 ```js
 import Anthropic from '@anthropic-ai/sdk';
@@ -56,7 +61,7 @@ const client = new Anthropic({
 });
 ```
 
-### OpenAI 兼容
+### OpenAI 兼容 SDK 示例
 
 ```js
 import OpenAI from 'openai';
@@ -69,7 +74,7 @@ const client = new OpenAI({
 
 对于脚本，可以运行 `p2 url https://api.deepseek.com/v1`，它会输出与仪表盘生成器相同类型的地址。这是点击 **代理地址** 的替代方式，不是额外的启动步骤。
 
-如果 SDK 会替换 Base URL 而不是保留其中的路径前缀，请使用指南中介绍的固定 `--upstream-base-url` 兼容模式。
+如果 Agent 的模型 API 客户端会替换 Base URL，而不是保留其中的路径前缀，请使用指南中介绍的固定 `--upstream-base-url` 兼容模式。
 
 ## 你可以检查什么
 
@@ -90,7 +95,7 @@ const client = new OpenAI({
 
 OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本中不做规范化。它们仍会被转发并在 Raw 中捕获。
 
-动态代理地址已通过 OpenAI 和 Anthropic 官方 JavaScript SDK 的集成测试。部分第三方客户端会替换而不是追加 Base URL 路径；客户端无法保留生成的路径前缀时，请使用 `--upstream-base-url`。
+动态代理地址已通过 OpenAI 和 Anthropic 官方 JavaScript SDK 的集成测试。Agent framework、CLI 和自建 HTTP 客户端只要支持配置请求目标并保留路径前缀，也可以使用相同路由；否则请使用 `--upstream-base-url`。普通非 Agent 模型流量同样会被转发，并保留在 Raw 中。
 
 ## 文档
 

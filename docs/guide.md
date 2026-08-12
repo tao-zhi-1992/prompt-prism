@@ -2,7 +2,7 @@
 
 [← README](../README.md) · [Agent Insights](insights.md) · [Development](development.md)
 
-Prompt Prism is a transparent local HTTP proxy for model APIs. It forwards responses immediately, captures a redacted copy in the background, and serves the inspection dashboard at `/_pp/`.
+Prompt Prism is a transparent local HTTP proxy for Agent developers. It exposes the model requests, tool activity, output, and multi-request traces produced by an Agent under development, while forwarding responses immediately and capturing a redacted copy in the background.
 
 ## Installation
 
@@ -23,7 +23,7 @@ Start Prism without an upstream. This dynamic-only mode is ready for generated P
 p2 start
 ```
 
-Open the Dashboard at [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/), click **Proxy URL**, enter the provider's Base URL or complete endpoint, and copy the generated URL into the SDK's `baseURL`:
+Open the Dashboard at [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/), click **Proxy URL**, and enter the provider's Base URL or complete endpoint. Configure the generated URL as the request target used by your Agent's model API client, whether that client is provided by a framework, SDK, environment variable, CLI, or custom HTTP code:
 
 ```text
 http://127.0.0.1:1028/_proxy/<encoded-upstream>
@@ -39,11 +39,11 @@ This is an alternative to using the Dashboard button, not a second startup comma
 
 Dynamic routing applies only to requests containing that prefix and does not change a fixed upstream. The decoded URL is used directly when the dynamic request has no suffix; an explicit request suffix and query are appended when present. Invalid encoded upstream values fail with 400 instead of falling back to another provider.
 
-Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests. Third-party clients are compatible only when they preserve a Base URL path prefix while adding their endpoint. If the prefix disappears, use the fixed-upstream compatibility mode below.
+Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests, but they are examples rather than requirements. Agent frameworks, CLIs, and custom HTTP clients are compatible when they let you configure the request target and preserve its Base URL path prefix while adding an endpoint. If the prefix disappears, use the fixed-upstream compatibility mode below.
 
 ## Fixed-upstream compatibility mode
 
-Use a fixed upstream when an SDK replaces the Base URL instead of preserving its path prefix, or when every request should use one provider:
+Use a fixed upstream when the Agent's model API client replaces the Base URL instead of preserving its path prefix, or when every request should use one provider. The SDK snippets below are example client configurations:
 
 ### Anthropic Messages
 
@@ -68,13 +68,13 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:1028 your-command
 
 ### OpenAI-compatible providers
 
-Copy the provider's documented SDK `base_url` into `--upstream-base-url`:
+Copy the provider's documented model API Base URL into `--upstream-base-url`:
 
 ```bash
 p2 start --upstream-base-url https://api.deepseek.com
 ```
 
-Point an OpenAI-compatible SDK at Prism and retain its normal token and model:
+For example, point an OpenAI-compatible SDK used by the Agent at Prism and retain its normal token and model:
 
 ```js
 import OpenAI from 'openai';
@@ -102,7 +102,7 @@ Defaults:
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `--upstream-base-url` | none (dynamic-only mode) | Provider SDK Base URL |
+| `--upstream-base-url` | none (dynamic-only mode) | Provider model API Base URL |
 | `--api-format` | `auto` | Detect Anthropic Messages or OpenAI Chat Completions |
 | `--port` | `1028` | Local proxy and dashboard port |
 | `--data-dir` | `./data` | Local capture directory |
@@ -115,7 +115,7 @@ Defaults:
 
 If neither `--upstream-base-url` nor `--upstream-url` is supplied, Prism starts in dynamic-only mode. Ordinary unencoded proxy requests return `503` until they use a `/_proxy/<encoded-upstream>` URL or a fixed upstream is configured.
 
-| Provider SDK Base URL | Appended endpoint |
+| Provider model API Base URL | Appended endpoint |
 | --- | --- |
 | `https://api.deepseek.com` | `/chat/completions` |
 | `https://api.openai.com/v1` | `/chat/completions` |
