@@ -3,6 +3,13 @@ name: Release Please
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Existing package version to publish (for example, 0.2.0)'
+        required: true
+        default: '0.2.0'
+        type: string
 
 permissions:
   contents: write
@@ -12,6 +19,7 @@ permissions:
 
 jobs:
   release:
+    if: ${{ github.event_name == 'push' }}
     name: Create release and publish
     runs-on: ubuntu-latest
     steps:
@@ -54,5 +62,43 @@ jobs:
 
       - name: Publish package to npm
         if: ${{ steps.release.outputs['packages/prompt-prism--release_created'] == 'true' }}
+        working-directory: packages/prompt-prism
+        run: npm publish --access public
+
+  publish-existing:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    name: Publish an existing release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify package version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          test "$(node -p "require('./packages/prompt-prism/package.json').version")" = "$RELEASE_VERSION"
+
+      - name: Run checks before publishing
+        run: pnpm test
+
+      - name: Publish package to npm
         working-directory: packages/prompt-prism
         run: npm publish --access public
