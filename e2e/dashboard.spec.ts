@@ -30,7 +30,12 @@ function close(server: http.Server): Promise<void> {
 }
 
 async function sendCapture(model: string): Promise<void> {
-  const body = JSON.stringify({ model, max_tokens: 32, messages: [{ role: 'user', content: `hello ${model}` }] });
+  const body = JSON.stringify({
+    model,
+    max_tokens: 32,
+    messages: [{ role: 'user', content: `hello ${model}` }],
+    ...(model === 'e2e-tool-call' ? { tools: [{ name: 'read_file', description: 'Read a source file.', input_schema: { type: 'object', properties: { file_path: { type: 'string', description: 'Path to read.' } }, required: ['file_path'] } }] } : {}),
+  });
   const response = await fetch(`${proxyOrigin}/v1/messages`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': 'e2e-test-key' },
@@ -48,12 +53,16 @@ test.beforeAll(async () => {
     request.on('end', () => {
       let model = 'e2e-model';
       try { model = String((JSON.parse(Buffer.concat(chunks).toString('utf8')) as { model?: string }).model ?? model); } catch { /* keep the test fallback */ }
+      const toolCall = model === 'e2e-tool-call';
       const payload = JSON.stringify({
         id: `msg_${model}`,
         type: 'message',
         role: 'assistant',
         model,
-        content: [{ type: 'text', text: `hello from ${model}` }],
+        content: toolCall
+          ? [{ type: 'tool_use', id: 'call_e2e_read', name: 'read_file', input: { file_path: '/tmp/example.ts' } }]
+          : [{ type: 'text', text: `hello from ${model}` }],
+        stop_reason: toolCall ? 'tool_use' : 'end_turn',
         usage: { input_tokens: 3, output_tokens: 2 },
       });
       response.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) });
@@ -107,6 +116,60 @@ test('loads a capture and opens its normalized output', async ({ page }) => {
   await request.click();
   await page.getByRole('tab', { name: 'Output' }).click();
   await expect(page.getByText('hello from e2e-model')).toBeVisible();
+});
+
+test('renders expanded structured trace content with a single outer border', async ({ page }) => {
+  await sendCapture('e2e-tool-call');
+  await page.goto('./');
+  await page.getByRole('button', { name: /e2e-tool-call/ }).click();
+
+  const toolCall = page.getByRole('button', { name: /Tool call.*read_file/i });
+  await toolCall.click();
+  const event = toolCall.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " trace-event ")]');
+  const content = event.locator('.structured-content');
+  await expect(content).toBeVisible();
+  await expect(event).toHaveCSS('border-top-width', '1px');
+  for (const side of ['top', 'right', 'bottom', 'left']) {
+    await expect(content).toHaveCSS(`border-${side}-width`, '0px');
+  }
+});
+
+test('keeps Output tool call content inset with its own border', async ({ page }) => {
+  await sendCapture('e2e-tool-call');
+  await page.goto('./');
+  await page.getByRole('button', { name: /e2e-tool-call/ }).click();
+  await page.getByRole('tab', { name: 'Output' }).click();
+
+  const toolCall = page.locator('.output-tool-call');
+  const header = toolCall.locator('.output-block-header');
+  const content = toolCall.locator('.structured-content');
+  await expect(content).toBeVisible();
+  const [headerBox, contentBox] = await Promise.all([header.boundingBox(), content.boundingBox()]);
+  expect(headerBox).not.toBeNull();
+  expect(contentBox).not.toBeNull();
+  expect(contentBox!.x - headerBox!.x).toBeCloseTo(12, 0);
+  expect(headerBox!.width - contentBox!.width).toBeCloseTo(24, 0);
+  await expect(content).toHaveCSS('border-left-width', '1px');
+});
+
+test('keeps Tools structured content inset with a single content border', async ({ page }) => {
+  await sendCapture('e2e-tool-call');
+  await page.goto('./');
+  await page.getByRole('button', { name: /e2e-tool-call/ }).click();
+  await page.getByRole('tab', { name: 'Tools' }).click();
+
+  const card = page.locator('.tools-card');
+  await card.locator('.tools-card-header').click();
+  const body = card.locator('.tools-card-body');
+  const content = card.locator('.structured-content').first();
+  await expect(content).toBeVisible();
+  const [cardBox, bodyBox, contentBox] = await Promise.all([card.boundingBox(), body.boundingBox(), content.boundingBox()]);
+  expect(cardBox).not.toBeNull();
+  expect(bodyBox).not.toBeNull();
+  expect(contentBox).not.toBeNull();
+  expect(bodyBox!.x - cardBox!.x).toBeCloseTo(1, 0);
+  expect(contentBox!.x - cardBox!.x).toBeCloseTo(13, 0);
+  await expect(content).toHaveCSS('border-left-width', '1px');
 });
 
 test('loads older requests and stages then merges a new request', async ({ page }) => {
