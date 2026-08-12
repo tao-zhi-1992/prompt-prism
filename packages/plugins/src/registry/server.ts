@@ -39,6 +39,19 @@ export class ServerPluginRegistry {
     }
   }
 
+  async onClear(): Promise<void> {
+    const context = this.requireContext();
+    const results = await Promise.allSettled(this.plugins.map((plugin) => Promise.resolve().then(() => plugin.onClear?.(context))));
+    const failures: unknown[] = [];
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') return;
+      const plugin = this.plugins[index]!;
+      context.reportError(plugin.id, result.reason);
+      failures.push(result.reason);
+    });
+    if (failures.length) throw new AggregateError(failures, 'One or more plugins failed to clear');
+  }
+
   async handleApi(pluginId: string, request: IncomingMessage, response: ServerResponse, subpath: string): Promise<boolean> {
     const context = this.requireContext();
     const plugin = this.plugins.find((candidate) => candidate.id === pluginId);

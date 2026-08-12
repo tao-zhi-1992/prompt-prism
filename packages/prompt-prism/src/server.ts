@@ -210,10 +210,14 @@ export function createAdminHandler({
 
     if (url.pathname === '/_pp/api/logs') {
       if (request.method === 'DELETE') {
-        await store.clear();
-        analyzer.analyses.clear();
-        cachedSignature = '';
-        return json(response, 200, { cleared: true });
+        try {
+          await store.clear();
+          cachedSignature = '';
+          return json(response, 200, { cleared: true });
+        } catch {
+          cachedSignature = '';
+          return json(response, 500, { error: 'Failed to clear captures' });
+        }
       }
       if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
       const { sorted, summaries, positions } = logSnapshot();

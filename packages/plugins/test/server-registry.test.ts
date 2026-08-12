@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ServerPluginRegistry } from '../src/registry/server.js';
-import type { ServerPluginContext } from '../src/contracts/server.js';
+import type { PromptPrismServerPlugin, ServerPluginContext } from '../src/contracts/server.js';
 
 const context = (): ServerPluginContext => ({
   analysisPath: '/tmp/analysis.jsonl', captures: [], readCapture: vi.fn(), parseProviderRequest: vi.fn(), parseProviderResponse: vi.fn(), json: vi.fn(), reportError: vi.fn(),
@@ -34,6 +34,22 @@ describe('ServerPluginRegistry', () => {
   it('fails startup when initialization fails', async () => {
     const registry = new ServerPluginRegistry([{ id: 'broken', async init() { throw new Error('boom'); } }]);
     await expect(registry.init(context())).rejects.toThrow(/broken failed to initialize/);
+  });
+
+  it('notifies every plugin when clearing and reports all failures', async () => {
+    const events: string[] = [];
+    const failure = new Error('clear failed');
+    const plugins: PromptPrismServerPlugin[] = [
+      { id: 'failing', onClear: () => { events.push('failing'); throw failure; } },
+      { id: 'healthy', onClear: () => { events.push('healthy'); } },
+    ];
+    const registry = new ServerPluginRegistry(plugins);
+    const pluginContext = context();
+    await registry.init(pluginContext);
+
+    await expect(registry.onClear()).rejects.toThrow('One or more plugins failed to clear');
+    expect(events).toEqual(['failing', 'healthy']);
+    expect(pluginContext.reportError).toHaveBeenCalledWith('failing', failure);
   });
 
   it('dispatches APIs by plugin ID and leaves unknown routes unhandled', async () => {

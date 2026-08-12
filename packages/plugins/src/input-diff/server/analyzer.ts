@@ -1,4 +1,5 @@
-import { appendFile, readFile } from 'node:fs/promises';
+import { appendFile, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { diffCharacters, divergencePoint, type DiffPart } from './diff.js';
 import type { Capture, CaptureIndexEntry, JsonValue, Message, ModelInputSection, ModelInputSnapshot } from '../../contracts/server.js';
 
@@ -122,14 +123,48 @@ export class InputDiffAnalyzer {
   }
 
   async init(captures: readonly CaptureIndexEntry[] = []): Promise<void> {
-    try {
-      const lines = (await readFile(this.analysisPath, 'utf8')).trim().split('\n').filter(Boolean);
-      for (const line of lines) {
-        const item = JSON.parse(line) as InputDiffAnalysis;
+    const content = await readOptionalFile(this.analysisPath);
+    if (content !== null) {
+      const lines = content.split('\n');
+      const completeTail = content.endsWith('\n');
+      const captureIds = new Set(captures.map(({ id }) => id));
+      let needsRewrite = content.length > 0 && !completeTail;
+      for (const [index, line] of lines.entries()) {
+        if (!line.trim()) continue;
+        let value: unknown;
+        try {
+          value = JSON.parse(line);
+        }
+        catch (error: unknown) {
+          if (!completeTail && index === lines.length - 1) {
+            needsRewrite = true;
+            break;
+          }
+          throw new Error(`Invalid analysis record at line ${index + 1}`, { cause: error });
+        }
+        if (!isInputDiffAnalysis(value)) throw new Error(`Invalid analysis record at line ${index + 1}`);
+        const item = value;
+        if (!captureIds.has(item.id)) {
+          needsRewrite = true;
+          continue;
+        }
+        if (this.analyses.has(item.id)) needsRewrite = true;
         this.analyses.set(item.id, item);
       }
-    } catch (error: unknown) { if (!isMissingFile(error)) throw error; }
+      if (needsRewrite) await this.rewriteAnalyses();
+    }
     for (const capture of captures) this.addToIndex(capture);
+  }
+
+  private async rewriteAnalyses(): Promise<void> {
+    const content = [...this.analyses.values()].map((item) => JSON.stringify(item)).join('\n');
+    const temporaryPath = `${this.analysisPath}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporaryPath, content ? `${content}\n` : '', { flag: 'wx' });
+      await rename(temporaryPath, this.analysisPath);
+    } finally {
+      await unlinkIfPresent(temporaryPath);
+    }
   }
 
   findParent(capture: Capture): ParentMatch | null {
@@ -194,8 +229,41 @@ export class InputDiffAnalyzer {
     const key = groupKey(entry);
     this.index.set(key, (this.index.get(key) ?? []).filter((item) => item.id !== entry.id));
   }
+
+  clear(): void {
+    this.analyses.clear();
+    this.index.clear();
+  }
 }
 
 function isMissingFile(error: unknown): error is NodeJS.ErrnoException {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isInputDiffAnalysis(value: unknown): value is InputDiffAnalysis {
+  return isObject(value)
+    && typeof value.id === 'string' && value.id.length > 0
+    && typeof value.timestamp === 'string' && !Number.isNaN(Date.parse(value.timestamp))
+    && (typeof value.matched_parent_id === 'string' || value.matched_parent_id === null)
+    && typeof value.matched_message_count === 'number'
+    && typeof value.divergence_point === 'number'
+    && Array.isArray(value.diff)
+    && typeof value.estimated_cacheable_tokens === 'number'
+    && typeof value.actual_cache_read_tokens === 'number'
+    && typeof value.estimated_cache_miss === 'number'
+    && typeof value.cache_hit_below_expected === 'boolean';
+}
+
+async function unlinkIfPresent(filename: string): Promise<void> {
+  try { await unlink(filename); }
+  catch (error: unknown) { if (!isMissingFile(error)) throw error; }
+}
+
+async function readOptionalFile(filename: string): Promise<string | null> {
+  try { return await readFile(filename, 'utf8'); }
+  catch (error: unknown) { if (isMissingFile(error)) return null; throw error; }
 }

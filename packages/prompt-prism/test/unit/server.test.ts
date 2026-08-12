@@ -32,7 +32,12 @@ function analysis(id: string, parentId: string | null): Analysis {
   };
 }
 
-async function adminRequest(url: string, captures: CaptureIndexEntry[], analyses = new Map<string, Analysis>()): Promise<{ status: number; body: unknown }> {
+async function adminRequest(
+  url: string,
+  captures: CaptureIndexEntry[],
+  analyses = new Map<string, Analysis>(),
+  options: { method?: string; clear?: () => Promise<void> } = {},
+): Promise<{ status: number; body: unknown }> {
   let body: unknown;
   let status = 0;
   const response = {
@@ -41,14 +46,14 @@ async function adminRequest(url: string, captures: CaptureIndexEntry[], analyses
   } as unknown as http.ServerResponse;
   const apiFormat = (): ApiFormatResolution => ({ mode: 'auto', configured: 'auto', resolved: null, source: null });
   const handler = createAdminHandler({
-    store: { captures, readCapture: async () => null, clear: async () => {} },
+    store: { captures, readCapture: async () => null, clear: options.clear ?? (async () => {}) },
     analyzer: { analyses },
     plugins: { handleApi: async () => false },
     apiFormat,
     dynamicUpstreamAllowed: () => true,
     proxyUrlPath: () => '/_proxy/test',
   });
-  await handler({ method: 'GET', url } as http.IncomingMessage, response);
+  await handler({ method: options.method ?? 'GET', url } as http.IncomingMessage, response);
   return { status, body };
 }
 
@@ -139,4 +144,15 @@ test('validates log pagination and serves summaries by id', async () => {
   assert.equal((detail.body as { id: string }).id, 'capture/id');
   assert.equal((await adminRequest('/_pp/api/logs/missing', captures)).status, 404);
   assert.throws(() => decodeLogCursor('invalid'), /Invalid logs cursor/);
+});
+
+test('returns stable JSON responses when clearing captures succeeds or fails', async () => {
+  const captures = [entry('capture', '2026-08-09T00:00:00.000Z')];
+  const success = await adminRequest('/_pp/api/logs', captures, new Map(), { method: 'DELETE' });
+  assert.deepEqual(success, { status: 200, body: { cleared: true } });
+
+  const failure = await adminRequest('/_pp/api/logs', captures, new Map(), {
+    method: 'DELETE', clear: async () => { throw new Error('private failure'); },
+  });
+  assert.deepEqual(failure, { status: 500, body: { error: 'Failed to clear captures' } });
 });

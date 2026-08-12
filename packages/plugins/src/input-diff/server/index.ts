@@ -22,6 +22,9 @@ export function createInputDiffServerPlugin(): PromptPrismServerPlugin & { getAn
     onEvict(entry) {
       getAnalyzer().remove(entry);
     },
+    onClear() {
+      getAnalyzer().clear();
+    },
     async handleApi(request, response, subpath, context) {
       if (request.method !== 'GET') {
         context.json(response, 405, { error: 'Method not allowed' });

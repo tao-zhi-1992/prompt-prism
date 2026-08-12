@@ -1,10 +1,11 @@
-import { mkdtemp } from 'node:fs/promises';
+import { appendFile, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { InputDiffAnalyzer } from '../server/analyzer.js';
+import { createInputDiffServerPlugin } from '../server/index.js';
 import { diffCharacters, divergencePoint, type DiffPart } from '../server/diff.js';
-import type { JsonValue, Message, ModelInputSnapshot } from '../../contracts/server.js';
+import type { JsonValue, Message, ModelInputSnapshot, ServerPluginContext } from '../../contracts/server.js';
 
 function apply(parts: DiffPart[]) {
   return {
@@ -72,6 +73,90 @@ describe('Input Diff server plugin', () => {
     }));
     expect(result.matched_parent_id).toBeNull();
     expect(result.sections?.every(({ state }) => state === 'baseline' || state === 'empty')).toBe(true);
+  });
+
+  it('clears analyses and parent indexes before processing a new capture generation', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-clear-'));
+    const analyzer = new InputDiffAnalyzer({ analysisPath: path.join(dir, 'analysis.jsonl') });
+    await analyzer.init();
+    const messages = [{ role: 'user', content: 'same' }];
+    await analyzer.analyze(capture('before-clear', '2026-01-01T00:00:00.000Z', messages));
+
+    analyzer.clear();
+
+    expect(analyzer.analyses.size).toBe(0);
+    expect(analyzer.index.size).toBe(0);
+    const result = await analyzer.analyze(capture('after-clear', '2026-01-02T00:00:00.000Z', messages));
+    expect(result.matched_parent_id).toBeNull();
+  });
+
+  it('clears analyzer state through the plugin lifecycle hook', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-plugin-clear-'));
+    const plugin = createInputDiffServerPlugin();
+    const context: ServerPluginContext = {
+      analysisPath: path.join(dir, 'analysis.jsonl'), captures: [], readCapture: vi.fn(),
+      parseProviderRequest: vi.fn(), parseProviderResponse: vi.fn(), json: vi.fn(), reportError: vi.fn(),
+    };
+    await plugin.init!(context);
+    await plugin.getAnalyzer().analyze(capture('before-clear', '2026-01-01T00:00:00.000Z', [{ role: 'user', content: 'same' }]));
+
+    await plugin.onClear!(context);
+
+    expect(plugin.getAnalyzer().analyses.size).toBe(0);
+    expect(plugin.getAnalyzer().index.size).toBe(0);
+  });
+
+  it('repairs an incomplete analysis tail and removes analyses for missing captures', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-recovery-'));
+    const analysisPath = path.join(dir, 'analysis.jsonl');
+    const analyzer = new InputDiffAnalyzer({ analysisPath });
+    await analyzer.init();
+    const messages = [{ role: 'user', content: 'same' }];
+    const staleCapture = capture('stale', '2026-01-01T00:00:00.000Z', messages);
+    const validCapture = capture('valid', '2026-01-02T00:00:00.000Z', messages);
+    await analyzer.analyze(staleCapture);
+    await analyzer.analyze(validCapture);
+    await appendFile(analysisPath, '{"id":"partial"');
+
+    const recovered = new InputDiffAnalyzer({ analysisPath });
+    await recovered.init([{ ...validCapture, file_ref: 'valid.json' }]);
+
+    expect([...recovered.analyses.keys()]).toEqual(['valid']);
+    const persisted = await readFile(analysisPath, 'utf8');
+    expect(persisted.trim().split('\n').map((line) => JSON.parse(line).id)).toEqual(['valid']);
+  });
+
+  it('compacts duplicate analysis records while retaining the latest value', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-duplicate-'));
+    const analysisPath = path.join(dir, 'analysis.jsonl');
+    const analyzer = new InputDiffAnalyzer({ analysisPath });
+    await analyzer.init();
+    const messages = [{ role: 'user', content: 'same' }];
+    const stored = { ...capture('duplicate', '2026-01-01T00:00:00.000Z', messages), file_ref: 'duplicate.json' };
+    await analyzer.analyze(stored, stored);
+    await analyzer.analyze({ ...stored, timestamp: '2026-01-02T00:00:00.000Z' }, stored);
+
+    const recovered = new InputDiffAnalyzer({ analysisPath });
+    await recovered.init([stored]);
+
+    expect(recovered.analyses.get('duplicate')?.timestamp).toBe('2026-01-02T00:00:00.000Z');
+    expect((await readFile(analysisPath, 'utf8')).trim().split('\n')).toHaveLength(1);
+  });
+
+  it('rejects corruption before the incomplete tail of the analysis log', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-corrupt-'));
+    const analysisPath = path.join(dir, 'analysis.jsonl');
+    await writeFile(analysisPath, '{bad}\n{"id":"partial"');
+
+    await expect(new InputDiffAnalyzer({ analysisPath }).init()).rejects.toThrow('Invalid analysis record at line 1');
+  });
+
+  it('rejects syntactically valid analysis records with missing fields', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-invalid-'));
+    const analysisPath = path.join(dir, 'analysis.jsonl');
+    await writeFile(analysisPath, '{"id":"incomplete"}');
+
+    await expect(new InputDiffAnalyzer({ analysisPath }).init()).rejects.toThrow('Invalid analysis record at line 1');
   });
 
   it('matches normalized primary items while preserving cache-control changes in the visible diff', async () => {

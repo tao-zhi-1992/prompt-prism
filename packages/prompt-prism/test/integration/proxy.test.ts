@@ -771,3 +771,34 @@ test('captures timing for non-streaming JSON responses', async (t) => {
   assert.ok((stored?.timing?.time_to_headers_ms ?? 0) >= 15);
   assert.ok((stored?.timing?.time_to_first_byte_ms ?? 0) >= (stored?.timing?.time_to_headers_ms ?? 0));
 });
+
+test('clear orders after a completed response and removes its capture and analysis', async (t) => {
+  const upstream = http.createServer((req, res) => {
+    req.resume();
+    req.on('end', () => {
+      const body = JSON.stringify({
+        id: 'msg_clear', type: 'message', role: 'assistant', model: 'claude-test',
+        content: [{ type: 'text', text: 'done' }], stop_reason: 'end_turn',
+        usage: { input_tokens: 2, output_tokens: 1 },
+      });
+      res.writeHead(200, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
+      res.end(body);
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-clear-'));
+  const prism = await createPromptPrism({ upstreamUrl: `http://127.0.0.1:${upstreamPort}/v1/messages`, dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  const body = JSON.stringify({ model: 'claude-test', messages: [{ role: 'user', content: 'clear me' }] });
+  assert.equal((await request({ port: proxyPort, headers: { 'content-type': 'application/json' }, body })).status, 200);
+  const cleared = await request({ port: proxyPort, pathname: '/_pp/api/logs', method: 'DELETE' });
+  await prism.store.pending;
+
+  assert.equal(cleared.status, 200);
+  assert.deepEqual(JSON.parse(cleared.body), { cleared: true });
+  assert.deepEqual(prism.store.captures, []);
+  assert.equal(prism.analyzer.analyses.size, 0);
+  assert.deepEqual(JSON.parse((await request({ port: proxyPort, pathname: '/_pp/api/logs' })).body), []);
+});

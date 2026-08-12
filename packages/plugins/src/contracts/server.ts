@@ -69,5 +69,6 @@ export interface PromptPrismServerPlugin {
   init?(context: ServerPluginContext): Promise<void>;
   onCapture?(capture: Capture, entry: CaptureIndexEntry, context: ServerPluginContext): Promise<void>;
   onEvict?(entry: CaptureIndexEntry, context: ServerPluginContext): void;
+  onClear?(context: ServerPluginContext): Promise<void> | void;
   handleApi?(request: IncomingMessage, response: ServerResponse, subpath: string, context: ServerPluginContext): Promise<boolean>;
 }
