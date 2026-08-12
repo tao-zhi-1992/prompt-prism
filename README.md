@@ -27,12 +27,9 @@
 While you build and run an Agent, Prompt Prism sits between it and the model provider. Responses—including SSE streams—are forwarded immediately, while a redacted copy is captured locally for inspection.
 
 ```text
-Agent developer  ──builds and runs──►  your agent
-                                          │
-                                          ▼
-model provider  ◄──  http://127.0.0.1:1028
-                              │
-                              └──► Trace + Input Diff + Tools + Output + Raw
+your agent  ──►  http://127.0.0.1:1028  ──►  model provider
+                       │
+                       └──► Trace + Input Diff + Tools + Output + Raw
 ```
 
 ## Quick start
