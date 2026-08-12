@@ -158,7 +158,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     if (incomingUrl.pathname.startsWith(DYNAMIC_UPSTREAM_PREFIX)) {
       if (!dynamicUpstreamAllowed()) return json(response, 403, { error: 'Dynamic upstreams are disabled for non-loopback listeners' });
       try { dynamicRoute = parseDynamicUpstreamRoute(request.url); }
-      catch (error) { return json(response, 400, { error: error instanceof Error ? error.message : 'Invalid dynamic upstream token' }); }
+      catch (error) { return json(response, 400, { error: error instanceof Error ? error.message : 'Invalid encoded upstream value' }); }
     }
     if (!dynamicRoute && (request.url === '/_pp' || request.url?.startsWith('/_pp/'))) {
       admin(request, response).catch((error: unknown) => { if (!response.headersSent) response.writeHead(500); response.end(error instanceof Error ? error.message : String(error)); });
@@ -174,7 +174,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     if (!dynamicRoute && upstreamMode === 'none') {
       return json(response, 503, {
         error: 'No upstream configured',
-        detail: 'Use a dynamic upstream URL under /_pp/up/<token> or configure --upstream-base-url/--upstream-url',
+        detail: 'Use a dynamic upstream URL under /_proxy/<encoded-upstream> or configure --upstream-base-url/--upstream-url',
       });
     }
     const pathProtocol = detectProtocolFromPath(requestPath);

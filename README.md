@@ -43,7 +43,7 @@ p2 start
 
 Open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/) (it opens automatically unless `--no-open` is used), click **Proxy URL**, enter your provider's Base URL, and copy the generated URL into your SDK's `baseURL`. Keep using the provider's normal API key.
 
-The generated URL looks like `http://127.0.0.1:1028/_pp/up/<token>`. It selects the upstream for that request, so one Prism instance can connect to different providers without restarting.
+The generated URL looks like `http://127.0.0.1:1028/_proxy/<encoded-upstream>`. It selects the upstream for that request, so one Prism instance can connect to different providers without restarting.
 
 ### Anthropic
 
@@ -52,7 +52,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: 'http://127.0.0.1:1028/_pp/up/<token>'
+  baseURL: 'http://127.0.0.1:1028/_proxy/<encoded-upstream>'
 });
 ```
 
@@ -63,7 +63,7 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'http://127.0.0.1:1028/_pp/up/<token>'
+  baseURL: 'http://127.0.0.1:1028/_proxy/<encoded-upstream>'
 });
 ```
 
@@ -105,7 +105,8 @@ Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic
 import {
   buildDynamicProxyBaseUrl,
   createPromptPrism,
-  encodeUpstreamBaseUrl,
+  decodeUpstreamUrl,
+  encodeUpstreamUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism

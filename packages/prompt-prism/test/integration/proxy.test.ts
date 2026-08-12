@@ -423,14 +423,14 @@ test('dynamic upstream paths fail closed and require opt-in on non-loopback list
 
   const route = new URL(buildDynamicProxyBaseUrl(`http://127.0.0.1:${upstreamPort}`)).pathname;
   assert.equal((await request({ port: proxyPort, pathname: `${route}/v1/messages` })).status, 403);
-  assert.equal((await request({ port: proxyPort, pathname: '/_pp/up/not-valid=/v1/messages' })).status, 403);
+  assert.equal((await request({ port: proxyPort, pathname: '/_proxy/not-valid=/v1/messages' })).status, 403);
   assert.equal(upstreamCalls, 0);
 
   const allowedDir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-dynamic-security-allowed-'));
   const allowed = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}`, allowRemoteDynamicUpstream: true, dataDir: allowedDir });
   const allowedPort = await new Promise<number>((resolve) => allowed.server.listen(0, '0.0.0.0', () => resolve((allowed.server.address() as AddressInfo).port)));
   t.after(() => close(allowed.server));
-  assert.equal((await request({ port: allowedPort, pathname: '/_pp/up/not-valid=/v1/messages' })).status, 400);
+  assert.equal((await request({ port: allowedPort, pathname: '/_proxy/not-valid=/v1/messages' })).status, 400);
   const invalidBody = JSON.stringify({ upstream_base_url: 'https://provider.example.com/v1?secret=value' });
   const invalidGenerated = await request({ port: allowedPort, pathname: '/_pp/api/proxy-url', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(invalidBody) }, body: invalidBody });
   assert.equal(invalidGenerated.status, 400);
@@ -697,10 +697,14 @@ test('starts in dynamic-only mode without contacting an implicit Anthropic upstr
   assert.equal(ordinary.status, 503);
   assert.deepEqual(JSON.parse(ordinary.body), {
     error: 'No upstream configured',
-    detail: 'Use a dynamic upstream URL under /_pp/up/<token> or configure --upstream-base-url/--upstream-url',
+    detail: 'Use a dynamic upstream URL under /_proxy/<encoded-upstream> or configure --upstream-base-url/--upstream-url',
   });
   assert.equal(seen, false);
   assert.equal(prism.store.captures.length, 0);
+
+  const legacy = await request({ port: proxyPort, pathname: '/_pp/up/legacy-value/v1/messages' });
+  assert.equal(legacy.status, 404);
+  assert.equal(seen, false);
 
   const dynamicBase = buildDynamicProxyBaseUrl(`http://127.0.0.1:${upstreamPort}/gateway`, `http://127.0.0.1:${proxyPort}`);
   const dynamicPath = `${new URL(dynamicBase).pathname}/v1/messages?dynamic=1`;

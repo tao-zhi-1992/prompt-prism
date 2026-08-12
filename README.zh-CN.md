@@ -43,7 +43,7 @@ p2 start
 
 打开 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)（除非使用 `--no-open`，仪表盘会自动打开），点击 **代理地址**，输入提供商 Base URL，然后将生成的地址复制到 SDK 的 `baseURL`。继续使用提供商原有的 API key。
 
-生成的地址形如 `http://127.0.0.1:1028/_pp/up/<token>`。它只对当前请求选择上游，因此一个 Prism 实例无需重启就能连接不同的提供商。
+生成的地址形如 `http://127.0.0.1:1028/_proxy/<encoded-upstream>`。它只对当前请求选择上游，因此一个 Prism 实例无需重启就能连接不同的提供商。
 
 ### Anthropic
 
@@ -52,7 +52,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: 'http://127.0.0.1:1028/_pp/up/<token>'
+  baseURL: 'http://127.0.0.1:1028/_proxy/<encoded-upstream>'
 });
 ```
 
@@ -63,7 +63,7 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  baseURL: 'http://127.0.0.1:1028/_pp/up/<token>'
+  baseURL: 'http://127.0.0.1:1028/_proxy/<encoded-upstream>'
 });
 ```
 
@@ -105,7 +105,8 @@ OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本�
 import {
   buildDynamicProxyBaseUrl,
   createPromptPrism,
-  encodeUpstreamBaseUrl,
+  decodeUpstreamUrl,
+  encodeUpstreamUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism

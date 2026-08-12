@@ -1,4 +1,4 @@
-import { buildDynamicProxyBaseUrl, createPromptPrism, encodeUpstreamBaseUrl, parseUpstreamBaseUrl, type Analysis, type ApiFormatResolution, type Capture, type CaptureTiming, type ConversationMessage, type ConversationToolCallBlock, type InsightComparison, type InsightEvidence, type InsightFinding, type InsightReport, type InsightRunSummary, type ModelOutputSnapshot, type PromptPrismOptions, type ProviderProtocol, type Usage } from 'prompt-prism';
+import { buildDynamicProxyBaseUrl, createPromptPrism, decodeUpstreamUrl, encodeUpstreamUrl, parseUpstreamBaseUrl, type Analysis, type ApiFormatResolution, type Capture, type CaptureTiming, type ConversationMessage, type ConversationToolCallBlock, type InsightComparison, type InsightEvidence, type InsightFinding, type InsightReport, type InsightRunSummary, type ModelOutputSnapshot, type PromptPrismOptions, type ProviderProtocol, type Usage } from 'prompt-prism';
 
 const options: PromptPrismOptions = {
   upstreamBaseUrl: parseUpstreamBaseUrl('https://api.anthropic.com'),
@@ -11,9 +11,11 @@ const options: PromptPrismOptions = {
   allowRemoteDynamicUpstream: true,
 };
 const dynamicUrl: string = buildDynamicProxyBaseUrl('https://api.example.com/v1');
-const dynamicToken: string = encodeUpstreamBaseUrl('https://api.example.com/v1');
+const encodedUpstream: string = encodeUpstreamUrl('https://api.example.com/v1');
+const decodedUpstream: URL = decodeUpstreamUrl(encodedUpstream);
 void dynamicUrl;
-void dynamicToken;
+void encodedUpstream;
+void decodedUpstream;
 
 const protocol: ProviderProtocol = 'anthropic-messages';
 const resolution: ApiFormatResolution = { mode: 'auto', configured: 'auto', resolved: protocol, source: 'upstream-url' };

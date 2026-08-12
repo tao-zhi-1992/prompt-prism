@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Existing package version to publish (for example, 0.2.0)'
+        description: 'Existing package version to publish (for example, 0.3.0)'
         required: true
-        default: '0.2.0'
+        default: '0.3.0'
         type: string
 
 permissions:

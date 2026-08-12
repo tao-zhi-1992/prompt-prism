@@ -1,5 +1,5 @@
 export { createPromptPrism, startPromptPrism } from './proxy.js';
-export { buildDynamicProxyBaseUrl, encodeUpstreamBaseUrl, parseUpstreamBaseUrl, parseUpstreamUrl } from './upstream.js';
+export { buildDynamicProxyBaseUrl, encodeUpstreamUrl, decodeUpstreamUrl, parseUpstreamBaseUrl, parseUpstreamUrl } from './upstream.js';
 export type {
   Analysis,
   ApiFormatOption,
