@@ -12,6 +12,7 @@ function captures(count: number): CaptureSummary[] {
     model: `model-${index}`,
     file_ref: `${index}.json`,
     response_status: 200,
+    upstream_host: `api-${index}.example.com`,
   }));
 }
 
@@ -43,7 +44,7 @@ describe('RequestList', () => {
     expect(handlers.onSelect).toHaveBeenCalledWith('capture-00005');
 
     const viewport = container.querySelector<HTMLElement>('.scroll-viewport')!;
-    viewport.scrollTop = 6_400;
+    viewport.scrollTop = 8_200;
     fireEvent.scroll(viewport);
     await waitFor(() => expect(screen.getByText('model-100')).toBeVisible());
     await userEvent.click(screen.getByText('model-100').closest('button')!);

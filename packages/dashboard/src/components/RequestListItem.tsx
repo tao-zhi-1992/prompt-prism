@@ -21,11 +21,14 @@ export function RequestListItem({ capture, selected, onSelect }: Props) {
       aria-current={selected ? 'true' : undefined}
       onClick={() => onSelect(capture.id)}
     >
-      <span className={`status-dot status-dot--${tone}`} aria-hidden="true" />
       <span className="request-copy">
         <span className="request-line request-line--primary">
+          <span className={`status-dot status-dot--${tone}`} aria-hidden="true" />
           <strong>{capture.model || t('common.unknownModel')}</strong>
           <time dateTime={capture.timestamp}>{formatTime(capture.timestamp, locale)}</time>
+        </span>
+        <span className="request-line request-line--host" title={capture.upstream_host}>
+          {capture.upstream_host}
         </span>
         <span className="request-line request-line--secondary">
           <span className={`status-label status-label--${tone}`}>{formatHttpStatus(capture.response_status)}</span>
