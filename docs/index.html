@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Prompt Prism — Inspect exactly what your model receives</title>
-    <meta name="description" content="A zero-runtime-dependency local proxy for inspecting model requests, prompt changes, tool use, and multi-request agent traces.">
+    <title>Prompt Prism — See exactly what your agent sends to the model</title>
+    <meta name="description" content="A local debugging proxy for Agent developers inspecting model requests, prompt changes, tool use, and multi-request traces.">
     <meta name="theme-color" content="#050705">
     <link rel="canonical" href="https://tao-zhi-1992.github.io/prompt-prism/">
     <link rel="icon" href="./assets/logo-mark.png" type="image/png">
     <link rel="stylesheet" href="./styles.css">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Prompt Prism">
-    <meta property="og:description" content="Inspect exactly what your model receives.">
+    <meta property="og:description" content="See exactly what your agent sends to the model.">
     <meta property="og:url" content="https://tao-zhi-1992.github.io/prompt-prism/">
     <meta property="og:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
     <meta property="og:image:width" content="2400">
@@ -19,7 +19,7 @@
     <meta property="og:image:alt" content="Prompt Prism Dashboard showing a multi-request agent trace and Proxy URL button">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Prompt Prism">
-    <meta name="twitter:description" content="Inspect exactly what your model receives.">
+    <meta name="twitter:description" content="See exactly what your agent sends to the model.">
     <meta name="twitter:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
   </head>
   <body>
@@ -41,9 +41,9 @@
     <main id="main">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow"><span></span> Local model inspection</p>
+          <p class="eyebrow"><span></span> Local Agent debugging</p>
           <h1 id="hero-title">See the request.<br><em>Follow the trace.</em><br>Fix the agent.</h1>
-          <p class="hero-lede">Prompt Prism is a transparent local proxy that reveals prompt changes, normalized model output, tool activity, and complete multi-request agent traces.</p>
+          <p class="hero-lede">Built for Agent developers, Prompt Prism reveals prompt changes, normalized model output, tool activity, and complete multi-request traces through a transparent local proxy.</p>
           <div class="hero-actions">
             <a class="button button-primary" href="https://github.com/tao-zhi-1992/prompt-prism">View on GitHub <span aria-hidden="true">↗</span></a>
             <a class="button" href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.md">Read the guide</a>
@@ -118,8 +118,8 @@
           <h2 id="flow-title">Your traffic keeps moving.</h2>
           <p>SSE and JSON responses are forwarded immediately. Capture and analysis happen on a side channel.</p>
         </div>
-        <div class="flow" aria-label="Your application sends requests through Prompt Prism to the model provider while Prompt Prism stores a local redacted capture">
-          <div class="flow-node"><small>01</small><strong>Your app</strong><span>normal SDK</span></div>
+        <div class="flow" aria-label="Your Agent sends model requests through Prompt Prism while you develop it, and Prompt Prism stores a local redacted capture">
+          <div class="flow-node"><small>01</small><strong>Your agent</strong><span>your Agent stack</span></div>
           <div class="flow-arrow"><span>request</span><i></i></div>
           <div class="flow-node flow-node-prism"><small>02</small><strong>Prompt Prism</strong><span>localhost:1028</span></div>
           <div class="flow-arrow"><span>SSE / JSON</span><i></i></div>
@@ -132,7 +132,7 @@
         <div class="section-heading">
           <p class="section-index">03 / Compatible</p>
           <h2 id="compatibility-title">One proxy.<br>Two normalized protocols.</h2>
-          <p>Automatic detection resolves the first confident request and locks the protocol for the process.</p>
+          <p>Automatic detection resolves each capture independently, so one protocol never locks or affects the next.</p>
         </div>
         <div class="protocols">
           <article>
@@ -169,15 +169,15 @@
         <div>
           <p class="section-index">05 / Start</p>
           <h2 id="quickstart-title">Inspect your next request.</h2>
-          <p>Install the CLI, choose the provider Base URL, and point your SDK at localhost.</p>
+          <p>Start Prism, generate a Proxy URL, and configure it as your Agent's model API target through its framework, SDK, CLI, environment, or HTTP client.</p>
         </div>
         <pre><code><span># install</span>
 npm install -g prompt-prism
 
-<span># start with a provider Base URL</span>
-p2 start --upstream-base-url https://api.anthropic.com
+<span># start the local proxy</span>
+p2 start
 
-<span># dashboard</span>
+<span># open the Dashboard and click Proxy URL</span>
 http://127.0.0.1:1028/_pp/</code></pre>
       </section>
 

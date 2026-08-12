@@ -4,10 +4,10 @@
 
 <h1 align="center">Prompt Prism</h1>
 
-<p align="center"><strong>Inspect exactly what your model receives.</strong></p>
+<p align="center"><strong>See exactly what your agent sends to the model.</strong></p>
 
 <p align="center">
-  A zero-runtime-dependency local proxy for debugging model requests, prompt changes, tool use, and multi-request agent traces.
+  A zero-runtime-dependency local debugging proxy for Agent developers inspecting model requests, prompt changes, tool use, and multi-request traces.
 </p>
 
 <p align="center">
@@ -24,12 +24,15 @@
 
 ![Prompt Prism dashboard showing an agent trace](docs/dashboard.png)
 
-Prompt Prism sits between your application and its model provider. Responses—including SSE streams—are forwarded immediately, while a redacted copy is captured locally for inspection.
+While you build and run an Agent, Prompt Prism sits between it and the model provider. Responses—including SSE streams—are forwarded immediately, while a redacted copy is captured locally for inspection.
 
 ```text
-your app  ──►  http://127.0.0.1:1028  ──►  model provider
-                       │
-                       └──► Trace + Input Diff + Tools + Output + Raw
+Agent developer  ──builds and runs──►  your agent
+                                          │
+                                          ▼
+model provider  ◄──  http://127.0.0.1:1028
+                              │
+                              └──► Trace + Input Diff + Tools + Output + Raw
 ```
 
 ## Quick start
@@ -41,11 +44,13 @@ npm install -g prompt-prism
 p2 start
 ```
 
-Open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/) (it opens automatically unless `--no-open` is used), click **Proxy URL**, enter your provider's Base URL, and copy the generated URL into your SDK's `baseURL`. Keep using the provider's normal API key.
+Open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/) (it opens automatically unless `--no-open` is used), click **Proxy URL**, and enter your provider's Base URL. Configure your Agent's model API client to use the generated URL—through its framework settings, SDK `baseURL`, environment variable, CLI option, or custom HTTP client—and keep using the provider's normal API key.
 
 The generated URL looks like `http://127.0.0.1:1028/_proxy/<encoded-upstream>`. It selects the upstream for that request, so one Prism instance can connect to different providers without restarting.
 
-### Anthropic
+The following SDK configurations are examples of connecting an Agent; Prompt Prism does not require either SDK.
+
+### Anthropic SDK example
 
 ```js
 import Anthropic from '@anthropic-ai/sdk';
@@ -56,7 +61,7 @@ const client = new Anthropic({
 });
 ```
 
-### OpenAI-compatible
+### OpenAI-compatible SDK example
 
 ```js
 import OpenAI from 'openai';
@@ -69,7 +74,7 @@ const client = new OpenAI({
 
 For scripts, `p2 url https://api.deepseek.com/v1` prints the same kind of URL as the Dashboard generator. It is an alternative to clicking **Proxy URL**, not an extra startup step.
 
-If an SDK replaces the Base URL instead of preserving its path prefix, use the fixed `--upstream-base-url` compatibility mode described in the Guide.
+If the Agent's model API client replaces the Base URL instead of preserving its path prefix, use the fixed `--upstream-base-url` compatibility mode described in the Guide.
 
 ## What you can inspect
 
@@ -90,7 +95,7 @@ If an SDK replaces the Base URL instead of preserving its path prefix, use the f
 
 OpenAI Responses, Realtime, Embeddings, Images, and Audio endpoints are not normalized in this release. They are still forwarded and captured in Raw.
 
-Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic JavaScript SDKs. Some third-party clients replace rather than append the Base URL path; use `--upstream-base-url` when a client does not preserve the generated prefix.
+Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic JavaScript SDKs. Agent frameworks, CLIs, and custom HTTP clients can use the same route when they support a configurable request target and preserve its path prefix; otherwise, use `--upstream-base-url`. Non-Agent model traffic is also forwarded and remains available in Raw.
 
 ## Documentation
 

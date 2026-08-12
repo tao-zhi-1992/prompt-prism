@@ -2,7 +2,7 @@
 
 [← README](../README.zh-CN.md) · [Agent Insights](insights.zh-CN.md) · [开发指南](development.zh-CN.md)
 
-Prompt Prism 是一个透明的本地 HTTP 代理，面向模型 API。它立即转发响应，在后台保存一份脱敏副本，并在 `/_pp/` 提供检查仪表盘。
+Prompt Prism 是一个面向 Agent 开发者的透明本地 HTTP 代理。它展示开发中 Agent 产生的模型请求、工具活动、输出和多请求轨迹，同时立即转发响应，并在后台保存一份脱敏副本。
 
 ## 安装
 
@@ -23,7 +23,7 @@ npm install -g prompt-prism
 p2 start
 ```
 
-打开仪表盘 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)，点击 **代理地址**，输入提供商 Base URL 或完整 endpoint，然后把生成的地址复制到 SDK 的 `baseURL`：
+打开仪表盘 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)，点击 **代理地址**，输入提供商 Base URL 或完整 endpoint。将生成的地址配置为 Agent 模型 API 客户端使用的请求目标；这个客户端可以来自 framework、SDK、环境变量、CLI 或自建 HTTP 代码：
 
 ```text
 http://127.0.0.1:1028/_proxy/<encoded-upstream>
@@ -39,11 +39,11 @@ p2 url https://api.deepseek.com/v1
 
 动态路由只作用于带该前缀的请求，不修改固定上游。动态请求没有后缀时直接使用解码后的 URL；明确提供请求后缀和 query 时才会追加。无效的 encoded upstream 值返回 400，不会回退到其他提供商。
 
-OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试。第三方客户端只有在追加接口路径时保留 Base URL 路径前缀才兼容；如果前缀消失，请使用下面的固定上游兼容模式。
+OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试，但它们只是示例，并非使用要求。Agent framework、CLI 和自建 HTTP 客户端只要允许配置请求目标，并在追加 endpoint 时保留 Base URL 路径前缀，就可以兼容；如果前缀消失，请使用下面的固定上游兼容模式。
 
 ## 固定上游兼容模式
 
-如果 SDK 会替换 Base URL 而不是保留路径前缀，或者所有请求都应该使用同一个提供商，请使用固定 upstream：
+如果 Agent 的模型 API 客户端会替换 Base URL 而不是保留路径前缀，或者所有请求都应该使用同一个提供商，请使用固定 upstream。下面的 SDK 片段只是客户端配置示例：
 
 ### Anthropic Messages
 
@@ -68,13 +68,13 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:1028 your-command
 
 ### OpenAI 兼容提供商
 
-把提供商文档中的 SDK `base_url` 复制到 `--upstream-base-url`：
+把提供商文档中的模型 API Base URL 复制到 `--upstream-base-url`：
 
 ```bash
 p2 start --upstream-base-url https://api.deepseek.com
 ```
 
-将 OpenAI 兼容 SDK 指向 Prism，保留其正常 token 和模型：
+例如，将 Agent 使用的 OpenAI 兼容 SDK 指向 Prism，并保留其正常 token 和模型：
 
 ```js
 import OpenAI from 'openai';
@@ -102,7 +102,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 | 选项 | 默认值 | 用途 |
 | --- | --- | --- |
-| `--upstream-base-url` | 无（仅动态模式） | 提供商 SDK Base URL |
+| `--upstream-base-url` | 无（仅动态模式） | 提供商模型 API Base URL |
 | `--api-format` | `auto` | 检测 Anthropic Messages 或 OpenAI Chat Completions |
 | `--port` | `1028` | 本地代理和仪表盘端口 |
 | `--data-dir` | `./data` | 本地捕获目录 |
@@ -115,7 +115,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 如果没有提供 `--upstream-base-url` 或 `--upstream-url`，Prism 会以仅动态模式启动。普通未编码的代理请求会返回 `503`，直到请求使用 `/_proxy/<encoded-upstream>` 地址，或启动时配置固定上游。
 
-| 提供商 SDK Base URL | 追加的端点 |
+| 提供商模型 API Base URL | 追加的端点 |
 | --- | --- |
 | `https://api.deepseek.com` | `/chat/completions` |
 | `https://api.openai.com/v1` | `/chat/completions` |

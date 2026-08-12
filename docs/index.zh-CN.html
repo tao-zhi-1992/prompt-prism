@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Prompt Prism — 精确查看你的模型接收了什么</title>
-    <meta name="description" content="一个零运行时依赖的本地代理，用于检查模型请求、提示词变更、工具调用和多请求 Agent 轨迹。">
+    <title>Prompt Prism — 精确查看你的 Agent 向模型发送了什么</title>
+    <meta name="description" content="一个面向 Agent 开发者的本地调试代理，用于检查模型请求、提示词变更、工具调用和多请求轨迹。">
     <meta name="theme-color" content="#050705">
     <link rel="canonical" href="https://tao-zhi-1992.github.io/prompt-prism/">
     <link rel="icon" href="./assets/logo-mark.png" type="image/png">
     <link rel="stylesheet" href="./styles.css">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Prompt Prism">
-    <meta property="og:description" content="精确查看你的模型接收了什么。">
+    <meta property="og:description" content="精确查看你的 Agent 向模型发送了什么。">
     <meta property="og:url" content="https://tao-zhi-1992.github.io/prompt-prism/index.zh-CN.html">
     <meta property="og:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
     <meta property="og:image:width" content="2400">
@@ -19,7 +19,7 @@
     <meta property="og:image:alt" content="Prompt Prism 仪表盘，显示多请求 Agent 轨迹和代理地址按钮">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Prompt Prism">
-    <meta name="twitter:description" content="精确查看你的模型接收了什么。">
+    <meta name="twitter:description" content="精确查看你的 Agent 向模型发送了什么。">
     <meta name="twitter:image" content="https://tao-zhi-1992.github.io/prompt-prism/dashboard.png">
   </head>
   <body>
@@ -41,9 +41,9 @@
     <main id="main">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow"><span></span> 本地模型检查</p>
+          <p class="eyebrow"><span></span> 本地 Agent 调试</p>
           <h1 id="hero-title">看见请求。<br><em>追踪轨迹。</em><br>修复 Agent。</h1>
-          <p class="hero-lede">Prompt Prism 是一个透明的本地代理，它揭示提示词变更、规范化后的模型输出、工具活动，以及完整的多请求 Agent 轨迹。</p>
+          <p class="hero-lede">Prompt Prism 面向 Agent 开发者，通过透明的本地代理揭示提示词变更、规范化后的模型输出、工具活动和完整的多请求轨迹。</p>
           <div class="hero-actions">
             <a class="button button-primary" href="https://github.com/tao-zhi-1992/prompt-prism">在 GitHub 上查看 <span aria-hidden="true">↗</span></a>
             <a class="button" href="https://github.com/tao-zhi-1992/prompt-prism/blob/main/docs/guide.zh-CN.md">阅读使用指南</a>
@@ -118,8 +118,8 @@
           <h2 id="flow-title">你的流量不受影响。</h2>
           <p>SSE 和 JSON 响应立即转发，捕获与分析在旁路进行。</p>
         </div>
-        <div class="flow" aria-label="你的应用通过 Prompt Prism 向模型提供商发送请求，Prompt Prism 在本地保存脱敏后的捕获">
-          <div class="flow-node"><small>01</small><strong>你的应用</strong><span>标准 SDK</span></div>
+        <div class="flow" aria-label="开发中的 Agent 通过 Prompt Prism 向模型提供商发送请求，Prompt Prism 在本地保存脱敏后的捕获">
+          <div class="flow-node"><small>01</small><strong>你的 Agent</strong><span>你的 Agent 技术栈</span></div>
           <div class="flow-arrow"><span>请求</span><i></i></div>
           <div class="flow-node flow-node-prism"><small>02</small><strong>Prompt Prism</strong><span>localhost:1028</span></div>
           <div class="flow-arrow"><span>SSE / JSON</span><i></i></div>
@@ -132,7 +132,7 @@
         <div class="section-heading">
           <p class="section-index">03 / 兼容</p>
           <h2 id="compatibility-title">一个代理，<br>两种协议。</h2>
-          <p>自动检测解析第一个可信请求，并为进程锁定协议。</p>
+          <p>自动检测会独立解析每条捕获记录，一种协议不会锁定或影响下一条记录。</p>
         </div>
         <div class="protocols">
           <article>
@@ -169,15 +169,15 @@
         <div>
           <p class="section-index">05 / 开始</p>
           <h2 id="quickstart-title">检查你的下一个请求。</h2>
-          <p>安装 CLI，选择提供商 Base URL，把 SDK 指向 localhost。</p>
+          <p>启动 Prism，生成代理地址，再通过 framework、SDK、CLI、环境变量或 HTTP 客户端将其配置为 Agent 的模型 API 地址。</p>
         </div>
         <pre><code><span># 安装</span>
 npm install -g prompt-prism
 
-<span># 使用提供商 Base URL 启动</span>
-p2 start --upstream-base-url https://api.anthropic.com
+<span># 启动本地代理</span>
+p2 start
 
-<span># 仪表盘</span>
+<span># 打开仪表盘并点击“代理地址”</span>
 http://127.0.0.1:1028/_pp/</code></pre>
       </section>
 
