@@ -90,6 +90,8 @@ OpenAI Chat Completions 的 JSON 和 SSE 响应、函数工具调用/结果、sy
 ## CLI 参考
 
 ```text
+p2 --version
+p2 -v
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]

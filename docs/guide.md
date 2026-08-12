@@ -90,6 +90,8 @@ OpenAI Chat Completions JSON and SSE responses, function tool calls/results, sys
 ## CLI reference
 
 ```text
+p2 --version
+p2 -v
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
          [--open | --no-open]

@@ -2,11 +2,14 @@ import { parseArgs } from 'node:util';
 import { startPromptPrism } from './proxy.js';
 import { runInsightsCli } from './insights-cli.js';
 import { buildDynamicProxyBaseUrl } from './upstream.js';
+import packageJson from '../package.json' with { type: 'json' };
 
 function usage(): void {
   console.log(`Prompt Prism
 
 Usage:
+  p2 --version
+  p2 -v
   p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
            [--port NUMBER] [--data-dir PATH] [--max-storage SIZE] [--open | --no-open]
   p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
@@ -31,6 +34,10 @@ function parseBytes(value: string): number {
 
 export async function main(args = process.argv.slice(2)): Promise<void> {
   const command = args[0];
+  if (command === '--version' || command === '-v') {
+    console.log(packageJson.version);
+    return;
+  }
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     usage();
     return;

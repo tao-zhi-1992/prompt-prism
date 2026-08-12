@@ -6,6 +6,10 @@
 
 * **proxy:** simplify dynamic Proxy URLs to `/_proxy/<encoded-upstream>` and rename the public URL encoding helpers to `encodeUpstreamUrl` and `decodeUpstreamUrl`.
 
+### Added
+
+* **cli:** add `p2 --version` and `p2 -v` version output.
+
 ## [0.2.0](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.1.2...v0.2.0) (2026-08-12)
 
 
