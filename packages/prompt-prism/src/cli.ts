@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { startPromptPrism } from './proxy.js';
 import { runInsightsCli } from './insights-cli.js';
+import { buildDynamicProxyBaseUrl } from './upstream.js';
 
 function usage(): void {
   console.log(`Prompt Prism
@@ -8,10 +9,11 @@ function usage(): void {
 Usage:
   p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
            [--port NUMBER] [--data-dir PATH] [--max-storage SIZE] [--open | --no-open]
+  p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
   p2 insights <list|report|compare|evidence> [OPTIONS]
 
 Defaults:
-  upstream-base-url https://api.anthropic.com
+  upstream          dynamic-only (use p2 url or --upstream-base-url)
   api-format        auto (available: auto, anthropic-messages, openai-chat-completions)
   port         1028
   data-dir     ./data
@@ -35,6 +37,16 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   }
   if (command === 'insights') {
     await runInsightsCli(args.slice(1));
+    return;
+  }
+  if (command === 'url') {
+    const { values, positionals } = parseArgs({
+      args: args.slice(1),
+      options: { 'proxy-url': { type: 'string', default: 'http://127.0.0.1:1028' } },
+      allowPositionals: true,
+    });
+    if (positionals.length !== 1) throw new Error('Usage: p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]');
+    console.log(buildDynamicProxyBaseUrl(positionals[0]!, values['proxy-url']));
     return;
   }
   if (command !== 'start') {

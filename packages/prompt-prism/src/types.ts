@@ -198,6 +198,7 @@ export interface PromptPrismOptions {
   port?: number;
   host?: string;
   open?: boolean;
+  allowRemoteDynamicUpstream?: boolean;
 }
 
 export interface PromptPrismStore {
@@ -215,8 +216,8 @@ export interface PromptPrismInstance {
   server: http.Server;
   store: PromptPrismStore;
   analyzer: PromptPrismAnalyzer;
-  upstreamUrl: URL;
-  upstreamMode: 'base' | 'exact';
+  upstreamUrl: URL | null;
+  upstreamMode: 'base' | 'exact' | 'none';
   apiFormat: ApiFormatResolution;
 }
 

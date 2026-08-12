@@ -2,6 +2,8 @@
 node_modules/
 data/
 coverage/
+test-results/
+playwright-report/
 example/dist/
 example/.workspaces/
 packages/prompt-prism/public/dashboard/

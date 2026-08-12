@@ -147,6 +147,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<App />);
     expect(await screen.findByText('No requests yet')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Proxy URL' })).toBeVisible();
 
     await vi.advanceTimersByTimeAsync(3000);
 
@@ -297,6 +298,7 @@ describe('App', () => {
     expect(screen.getByText('v0.1.2')).toBeVisible();
     expect(screen.queryByText('提示词与响应检查器')).not.toBeInTheDocument();
     expect(screen.getByText('请求')).toBeVisible();
+    expect(screen.getByRole('button', { name: '代理地址' })).toBeVisible();
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['追踪', '输入差异', '输出', '工具', '系统提示词', '原始数据']);
     expect(window.localStorage.getItem('prompt-prism-locale')).toBe('zh-CN');
     expect(document.documentElement.lang).toBe('zh-CN');

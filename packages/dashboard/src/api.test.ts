@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getNewCaptureBatch } from './api';
+import { generateProxyUrl, getNewCaptureBatch } from './api';
 import type { CaptureSummary } from './types';
 
 function capture(id: string): CaptureSummary {
@@ -37,5 +37,19 @@ describe('getNewCaptureBatch', () => {
 
     await expect(getNewCaptureBatch('same')).resolves.toMatchObject({ newestCursor: 'same' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('generateProxyUrl', () => {
+  it('posts the upstream Base URL and combines the returned path with the dashboard origin', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ path: '/_pp/up/encoded' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(generateProxyUrl('https://provider.example.com/v1')).resolves.toBe(`${window.location.origin}/_pp/up/encoded`);
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/proxy-url', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ upstream_base_url: 'https://provider.example.com/v1' }),
+    });
   });
 });

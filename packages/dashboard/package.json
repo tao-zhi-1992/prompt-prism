@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --config vite.config.ts",
     "build": "tsc --noEmit && vite build --config vite.config.ts",
-    "test": "vitest run --config vite.config.ts"
+    "test": "vitest run --config vite.config.ts",
+    "test:coverage": "vitest run --coverage --config vite.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -22,6 +23,7 @@
     "@testing-library/user-event": "^14.6.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "@vitejs/plugin-react": "^6.0.5",
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",

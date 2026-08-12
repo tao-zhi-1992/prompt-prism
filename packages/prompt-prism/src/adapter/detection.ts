@@ -93,7 +93,11 @@ export class ApiFormatResolver {
   }
 
   resolve(...evidence: Array<DetectedProtocol | null>): DetectedProtocol | null {
+    return this.resolveWithUpstreamHint(this.upstreamHint, ...evidence);
+  }
+
+  resolveWithUpstreamHint(upstreamHint: DetectedProtocol | null, ...evidence: Array<DetectedProtocol | null>): DetectedProtocol | null {
     if (this.resolution.mode === 'explicit') return this.resolution.resolved;
-    return evidence.find((protocol): protocol is DetectedProtocol => protocol !== null) ?? this.upstreamHint;
+    return evidence.find((protocol): protocol is DetectedProtocol => protocol !== null) ?? upstreamHint;
   }
 }

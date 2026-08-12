@@ -9,6 +9,7 @@ import { getProviderAdapter } from './adapter/registry.js';
 import { ApiFormatResolver, detectProtocolFromBody, detectProtocolFromHeaders, detectProtocolFromPath, detectProtocolFromResponse, endpointPath, type DetectedProtocol } from './adapter/detection.js';
 import { createAdminHandler, json } from './server.js';
 import { loadBuiltinPluginRuntime } from './plugin-runtime.js';
+import { buildDynamicProxyBaseUrl, DYNAMIC_UPSTREAM_PREFIX, parseDynamicUpstreamRoute, parseUpstreamBaseUrl, parseUpstreamUrl } from './upstream.js';
 import type { Capture, PromptPrismInstance, PromptPrismOptions, RawHeaders, StartedPromptPrism } from './types.js';
 
 const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
@@ -68,22 +69,7 @@ function traceIdentity(headers: http.IncomingHttpHeaders): string | undefined {
   return typeof candidate === 'string' && TRACE_ID.test(candidate) ? candidate : undefined;
 }
 
-export function parseUpstreamUrl(value: string | URL): URL {
-  let upstreamUrl;
-  try { upstreamUrl = new URL(value); }
-  catch { throw new Error('Upstream URL must be a valid absolute URL'); }
-  if (!['http:', 'https:'].includes(upstreamUrl.protocol)) throw new Error('Upstream URL must use http or https');
-  if (upstreamUrl.hash) throw new Error('Upstream URL must not contain a fragment');
-  return upstreamUrl;
-}
-
-export function parseUpstreamBaseUrl(value: string | URL): URL {
-  const upstreamUrl = parseUpstreamUrl(value);
-  if (upstreamUrl.search) throw new Error('Upstream Base URL must not contain a query; use --upstream-url for an exact endpoint');
-  if (detectProtocolFromPath(upstreamUrl.pathname)) throw new Error('Upstream Base URL must not include an API endpoint; use --upstream-url for a complete endpoint');
-  upstreamUrl.pathname = upstreamUrl.pathname.replace(/\/+$/, '');
-  return upstreamUrl;
-}
+export { parseUpstreamBaseUrl, parseUpstreamUrl } from './upstream.js';
 
 function joinedTarget(baseUrl: URL, requestUrl: string | undefined, protocol: DetectedProtocol | null): URL {
   const incoming = new URL(requestUrl ?? '/', 'http://prompt-prism.local');
@@ -92,6 +78,27 @@ function joinedTarget(baseUrl: URL, requestUrl: string | undefined, protocol: De
   target.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/${suffix.replace(/^\/+/, '')}`;
   target.search = incoming.search;
   return target;
+}
+
+function directTarget(baseUrl: URL, requestUrl: string): URL {
+  const target = new URL(baseUrl);
+  target.search = new URL(requestUrl, 'http://prompt-prism.local').search;
+  return target;
+}
+
+function joinedDynamicTarget(baseUrl: URL, requestUrl: string): URL {
+  const incoming = new URL(requestUrl, 'http://prompt-prism.local');
+  const target = new URL(baseUrl);
+  target.pathname = `${baseUrl.pathname.replace(/\/+$/, '')}/${incoming.pathname.replace(/^\/+/, '')}`;
+  target.search = incoming.search;
+  return target;
+}
+
+function isLoopbackListener(server: http.Server): boolean {
+  const address = server.address();
+  if (!address || typeof address === 'string') return false;
+  const value = address.address.toLowerCase();
+  return value === '::1' || /^127(?:\.\d{1,3}){3}$/.test(value) || /^::ffff:127(?:\.\d{1,3}){3}$/.test(value);
 }
 
 function shallowModel(body: Buffer): string | null {
@@ -111,12 +118,12 @@ function openBrowser(url: string): void {
 
 export async function createPromptPrism(options: PromptPrismOptions = {}): Promise<PromptPrismInstance> {
   if (options.upstreamBaseUrl !== undefined && options.upstreamUrl !== undefined) throw new Error('upstreamBaseUrl and upstreamUrl are mutually exclusive');
-  const upstreamMode = options.upstreamUrl === undefined ? 'base' : 'exact';
+  const upstreamMode = options.upstreamUrl !== undefined ? 'exact' : options.upstreamBaseUrl !== undefined ? 'base' : 'none';
   const upstreamUrl = upstreamMode === 'exact'
     ? parseUpstreamUrl(options.upstreamUrl!)
-    : parseUpstreamBaseUrl(options.upstreamBaseUrl ?? 'https://api.anthropic.com');
-  const resolver = new ApiFormatResolver(options.apiFormat ?? 'auto', upstreamUrl, upstreamMode === 'exact', upstreamMode === 'exact' || options.upstreamBaseUrl !== undefined);
-  const pathProtocol = upstreamMode === 'exact' ? detectProtocolFromPath(upstreamUrl.pathname) : null;
+    : upstreamMode === 'base' ? parseUpstreamBaseUrl(options.upstreamBaseUrl!) : null;
+  const resolver = new ApiFormatResolver(options.apiFormat ?? 'auto', upstreamUrl ?? undefined, upstreamMode === 'exact', upstreamMode !== 'none');
+  const pathProtocol = upstreamMode === 'exact' ? detectProtocolFromPath(upstreamUrl!.pathname) : null;
   if (resolver.resolution.mode === 'explicit' && pathProtocol && pathProtocol !== resolver.resolution.resolved) {
     console.warn(`[prompt-prism] API format ${resolver.resolution.resolved} conflicts with upstream endpoint ${pathProtocol}; using the explicit format.`);
   }
@@ -133,25 +140,54 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
   });
   const analyzer = plugins.analyzer;
   store.onEvict = (item) => plugins.onEvict(item);
-  const admin = createAdminHandler({ store, analyzer, plugins, apiFormat: () => ({ ...resolver.resolution }) });
+  let server: http.Server;
+  const dynamicUpstreamAllowed = () => options.allowRemoteDynamicUpstream === true || isLoopbackListener(server);
+  const admin = createAdminHandler({
+    store,
+    analyzer,
+    plugins,
+    apiFormat: () => ({ ...resolver.resolution }),
+    dynamicUpstreamAllowed,
+    proxyUrlPath: (value) => new URL(buildDynamicProxyBaseUrl(value)).pathname,
+  });
 
-  const server = http.createServer((request, response) => {
+  server = http.createServer((request, response) => {
     if (serveRootBrandAsset(request, response)) return;
-    if (request.url === '/_pp' || request.url?.startsWith('/_pp/')) {
+    const incomingUrl = new URL(request.url ?? '/', 'http://prompt-prism.local');
+    let dynamicRoute: ReturnType<typeof parseDynamicUpstreamRoute> = null;
+    if (incomingUrl.pathname.startsWith(DYNAMIC_UPSTREAM_PREFIX)) {
+      if (!dynamicUpstreamAllowed()) return json(response, 403, { error: 'Dynamic upstreams are disabled for non-loopback listeners' });
+      try { dynamicRoute = parseDynamicUpstreamRoute(request.url); }
+      catch (error) { return json(response, 400, { error: error instanceof Error ? error.message : 'Invalid dynamic upstream token' }); }
+    }
+    if (!dynamicRoute && (request.url === '/_pp' || request.url?.startsWith('/_pp/'))) {
       admin(request, response).catch((error: unknown) => { if (!response.headersSent) response.writeHead(500); response.end(error instanceof Error ? error.message : String(error)); });
       return;
     }
 
-    const requestPath = new URL(request.url ?? '/', 'http://prompt-prism.local').pathname;
+    const requestPath = dynamicRoute?.requestPath ?? incomingUrl.pathname;
     if (request.method === 'GET' && requestPath.startsWith('/.well-known/')) {
       response.writeHead(404, { 'cache-control': 'no-store' });
       response.end();
       return;
     }
+    if (!dynamicRoute && upstreamMode === 'none') {
+      return json(response, 503, {
+        error: 'No upstream configured',
+        detail: 'Use a dynamic upstream URL under /_pp/up/<token> or configure --upstream-base-url/--upstream-url',
+      });
+    }
     const pathProtocol = detectProtocolFromPath(requestPath);
     const headerProtocol = detectProtocolFromHeaders(request.headers);
-    const routingProtocol = resolver.resolve(pathProtocol, headerProtocol);
-    const targetUrl = upstreamMode === 'exact' ? upstreamUrl : joinedTarget(upstreamUrl, request.url, routingProtocol);
+    const requestUpstreamHint = dynamicRoute
+      ? new ApiFormatResolver('auto', dynamicRoute.baseUrl).upstreamHint
+      : resolver.upstreamHint;
+    const routingProtocol = resolver.resolveWithUpstreamHint(requestUpstreamHint, pathProtocol, headerProtocol);
+    const targetUrl = dynamicRoute
+      ? dynamicRoute.requestSuffix === null
+        ? directTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl)
+        : joinedDynamicTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl)
+      : upstreamMode === 'exact' ? upstreamUrl! : joinedTarget(upstreamUrl!, request.url, routingProtocol);
     const transport = targetUrl.protocol === 'https:' ? https : http;
 
     const startedMs = Date.now();
@@ -179,7 +215,8 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
         const completedAt = new Date(completedMs).toISOString();
         const requestBody = Buffer.concat(requestChunks);
         const responseBody = Buffer.concat(responseChunks);
-        const captureProtocol = resolver.resolve(
+        const captureProtocol = resolver.resolveWithUpstreamHint(
+          requestUpstreamHint,
           pathProtocol,
           headerProtocol,
           detectProtocolFromBody(requestBody),
@@ -246,7 +283,10 @@ export async function startPromptPrism(options: PromptPrismOptions = {}): Promis
   const port = address && typeof address === 'object' ? address.port : requestedPort;
   const dashboard = `http://127.0.0.1:${port}/_pp/`;
   const format = instance.apiFormat.mode === 'auto' ? 'Auto · per capture' : instance.apiFormat.resolved;
-  console.log(`\n  Prompt Prism is running\n\n  Proxy          http://127.0.0.1:${port}\n  Dashboard      ${dashboard}\n  Upstream ${instance.upstreamMode === 'base' ? 'Base' : 'URL '} ${instance.upstreamUrl.href}\n  API format     ${format}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
+  const upstream = instance.upstreamMode === 'none'
+    ? 'Dynamic only'
+    : `${instance.upstreamMode === 'base' ? 'Base' : 'URL '} ${instance.upstreamUrl!.href}`;
+  console.log(`\n  Prompt Prism is running\n\n  Proxy          http://127.0.0.1:${port}\n  Dashboard      ${dashboard}\n  Upstream       ${upstream}\n  API format     ${format}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
   if (options.open !== false) openBrowser(dashboard);
   return { ...instance, port, dashboard };
 }

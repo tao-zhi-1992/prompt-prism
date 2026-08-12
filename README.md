@@ -14,7 +14,8 @@
   <a href="https://tao-zhi-1992.github.io/prompt-prism/">Website</a> ·
   <a href="docs/guide.md">Guide</a> ·
   <a href="docs/insights.md">Agent Insights</a> ·
-  <a href="docs/development.md">Development</a>
+  <a href="docs/development.md">Development</a> ·
+  <a href="docs/releasing.md">Releasing</a>
 </p>
 
 <p align="center">
@@ -41,6 +42,8 @@ p2 start --upstream-base-url https://api.anthropic.com
 ```
 
 Point your SDK at `http://127.0.0.1:1028`, keep its normal API key, and open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/). The dashboard opens automatically unless `--no-open` is used.
+
+To start without choosing a provider, run `p2 start` with no upstream option. This dynamic-only mode accepts generated `/_pp/up/...` URLs; ordinary proxy requests return a configuration error until you provide a fixed upstream.
 
 ### Anthropic
 
@@ -70,6 +73,16 @@ const client = new OpenAI({
 });
 ```
 
+### Switch providers without restarting
+
+Generate a proxy URL from the provider's original SDK Base URL or complete endpoint:
+
+```bash
+p2 url https://api.deepseek.com/v1
+```
+
+Paste the generated `http://127.0.0.1:1028/_pp/up/...` URL into the SDK. The Dashboard's **Proxy URL** button provides the same generator. Dynamic URLs can target different providers through one running Prism instance; requests without one continue to use the startup upstream.
+
 ## What you can inspect
 
 - **Trace** — follow model, reasoning, tool call, and tool result events across captures.
@@ -89,17 +102,22 @@ const client = new OpenAI({
 
 OpenAI Responses, Realtime, Embeddings, Images, and Audio endpoints are not normalized in this release. They are still forwarded and captured in Raw.
 
+Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic JavaScript SDKs. Some third-party clients replace rather than append the Base URL path; use `--upstream-base-url` when a client does not preserve the generated prefix.
+
 ## Documentation
 
 - [Guide](docs/guide.md) — provider setup, CLI options, protocol detection, embedding, and local data.
 - [Agent Insights](docs/insights.md) — inspect and compare agent runs from the shell.
 - [Development](docs/development.md) — run the demo, work on the monorepo, and understand Input Diff matching.
+- [Releasing](docs/releasing.md) — configure Trusted Publishing and release from Conventional Commits.
 
 ## Programmatic API
 
 ```js
 import {
+  buildDynamicProxyBaseUrl,
   createPromptPrism,
+  encodeUpstreamBaseUrl,
   parseUpstreamBaseUrl,
   parseUpstreamUrl,
   startPromptPrism

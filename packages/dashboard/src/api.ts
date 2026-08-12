@@ -51,3 +51,12 @@ export async function getNewCaptureBatch(after: string, signal?: AbortSignal): P
 export async function clearCaptures(): Promise<void> {
   await readJson(await fetch('/_pp/api/logs', { method: 'DELETE' }));
 }
+
+export async function generateProxyUrl(upstreamBaseUrl: string): Promise<string> {
+  const result = await readJson<{ path: string }>(await fetch('/_pp/api/proxy-url', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ upstream_base_url: upstreamBaseUrl }),
+  }));
+  return `${window.location.origin}${result.path}`;
+}
