@@ -43,6 +43,8 @@ p2 start --upstream-base-url https://api.anthropic.com
 
 Point your SDK at `http://127.0.0.1:1028`, keep its normal API key, and open [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/). The dashboard opens automatically unless `--no-open` is used.
 
+To start without choosing a provider, run `p2 start` with no upstream option. This dynamic-only mode accepts generated `/_pp/up/...` URLs; ordinary proxy requests return a configuration error until you provide a fixed upstream.
+
 ### Anthropic
 
 ```js

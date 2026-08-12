@@ -8,7 +8,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl } from '../../src/proxy.js';
+import { createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl, startPromptPrism } from '../../src/proxy.js';
 import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
 
 const run = promisify(execFile);
@@ -64,6 +64,7 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   const upstreamPort = await listen(upstream);
   const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-proxy-'));
   const prism = await createPromptPrism({ upstreamUrl: `http://127.0.0.1:${upstreamPort}/api/v1/messages?configured=1`, dataDir: dir });
+  assert.ok(prism.upstreamUrl);
   assert.equal(prism.upstreamUrl.href, `http://127.0.0.1:${upstreamPort}/api/v1/messages?configured=1`);
   const proxyPort = await listen(prism.server);
   t.after(async () => { await close(prism.server); await close(upstream); });
@@ -624,6 +625,68 @@ test('base URL mode derives provider endpoints without locking the Auto configur
   assert.deepEqual(prism.apiFormat, { mode: 'auto', configured: 'auto', resolved: null, source: null });
   const after = JSON.parse((await request({ port: proxyPort, pathname: '/_pp/api/config' })).body);
   assert.deepEqual(after.api_format, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+});
+
+test('starts in dynamic-only mode without contacting an implicit Anthropic upstream', async (t) => {
+  let seen = false;
+  const upstream = http.createServer((req, res) => {
+    seen = true;
+    req.resume();
+    req.on('end', () => {
+      const body = JSON.stringify({ id: 'dynamic-only-message', type: 'message', role: 'assistant', model: 'dynamic-only', content: [{ type: 'text', text: 'dynamic hello' }], usage: { input_tokens: 1, output_tokens: 1 } });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(body);
+    });
+  });
+  const upstreamPort = await listen(upstream);
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-dynamic-only-'));
+  const prism = await createPromptPrism({ dataDir: dir });
+  const proxyPort = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+
+  assert.equal(prism.upstreamUrl, null);
+  assert.equal(prism.upstreamMode, 'none');
+  assert.deepEqual(prism.apiFormat, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+  const config = await request({ port: proxyPort, pathname: '/_pp/api/config' });
+  assert.deepEqual(JSON.parse(config.body).api_format, { mode: 'auto', configured: 'auto', resolved: null, source: null });
+
+  const ordinary = await request({ port: proxyPort, pathname: '/v1/messages' });
+  assert.equal(ordinary.status, 503);
+  assert.deepEqual(JSON.parse(ordinary.body), {
+    error: 'No upstream configured',
+    detail: 'Use a dynamic upstream URL under /_pp/up/<token> or configure --upstream-base-url/--upstream-url',
+  });
+  assert.equal(seen, false);
+  assert.equal(prism.store.captures.length, 0);
+
+  const dynamicBase = buildDynamicProxyBaseUrl(`http://127.0.0.1:${upstreamPort}/gateway`, `http://127.0.0.1:${proxyPort}`);
+  const dynamicPath = `${new URL(dynamicBase).pathname}/v1/messages?dynamic=1`;
+  const body = JSON.stringify({ model: 'dynamic-only', messages: [{ role: 'user', content: 'hello' }] });
+  const dynamic = await request({ port: proxyPort, pathname: dynamicPath, headers: { 'content-type': 'application/json' }, body });
+  assert.equal(dynamic.status, 200);
+  assert.equal(seen, true);
+  await prism.store.pending;
+  assert.equal(prism.store.captures.length, 1);
+  const capture = await prism.store.readCapture(prism.store.captures[0]!.id);
+  assert.equal(capture?.adapter_id, 'anthropic-messages');
+  assert.equal(capture?.request?.target_url, `http://127.0.0.1:${upstreamPort}/gateway/v1/messages?dynamic=1`);
+});
+
+test('reports dynamic-only mode at startup when no upstream is configured', async (t) => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-start-dynamic-only-'));
+  const output: string[] = [];
+  const originalLog = console.log;
+  console.log = (...args: unknown[]) => output.push(args.map(String).join(' '));
+  let prism: Awaited<ReturnType<typeof startPromptPrism>> | undefined;
+  try {
+    prism = await startPromptPrism({ dataDir: dir, port: 0, open: false });
+  } finally {
+    console.log = originalLog;
+  }
+  assert.ok(prism);
+  t.after(() => close(prism!.server));
+  assert.equal(prism.upstreamUrl, null);
+  assert.match(output.join('\n'), /Upstream\s+Dynamic only/);
 });
 
 test('unrecognized base routes remain transparent and create Raw-only captures', async (t) => {

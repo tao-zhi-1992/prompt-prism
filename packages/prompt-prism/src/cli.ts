@@ -13,7 +13,7 @@ Usage:
   p2 insights <list|report|compare|evidence> [OPTIONS]
 
 Defaults:
-  upstream-base-url https://api.anthropic.com
+  upstream          dynamic-only (use p2 url or --upstream-base-url)
   api-format        auto (available: auto, anthropic-messages, openai-chat-completions)
   port         1028
   data-dir     ./data

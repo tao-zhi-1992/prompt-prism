@@ -104,12 +104,12 @@ function openBrowser(url: string): void {
 
 export async function createPromptPrism(options: PromptPrismOptions = {}): Promise<PromptPrismInstance> {
   if (options.upstreamBaseUrl !== undefined && options.upstreamUrl !== undefined) throw new Error('upstreamBaseUrl and upstreamUrl are mutually exclusive');
-  const upstreamMode = options.upstreamUrl === undefined ? 'base' : 'exact';
+  const upstreamMode = options.upstreamUrl !== undefined ? 'exact' : options.upstreamBaseUrl !== undefined ? 'base' : 'none';
   const upstreamUrl = upstreamMode === 'exact'
     ? parseUpstreamUrl(options.upstreamUrl!)
-    : parseUpstreamBaseUrl(options.upstreamBaseUrl ?? 'https://api.anthropic.com');
-  const resolver = new ApiFormatResolver(options.apiFormat ?? 'auto', upstreamUrl, upstreamMode === 'exact', upstreamMode === 'exact' || options.upstreamBaseUrl !== undefined);
-  const pathProtocol = upstreamMode === 'exact' ? detectProtocolFromPath(upstreamUrl.pathname) : null;
+    : upstreamMode === 'base' ? parseUpstreamBaseUrl(options.upstreamBaseUrl!) : null;
+  const resolver = new ApiFormatResolver(options.apiFormat ?? 'auto', upstreamUrl ?? undefined, upstreamMode === 'exact', upstreamMode !== 'none');
+  const pathProtocol = upstreamMode === 'exact' ? detectProtocolFromPath(upstreamUrl!.pathname) : null;
   if (resolver.resolution.mode === 'explicit' && pathProtocol && pathProtocol !== resolver.resolution.resolved) {
     console.warn(`[prompt-prism] API format ${resolver.resolution.resolved} conflicts with upstream endpoint ${pathProtocol}; using the explicit format.`);
   }
@@ -157,6 +157,12 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
       response.end();
       return;
     }
+    if (!dynamicRoute && upstreamMode === 'none') {
+      return json(response, 503, {
+        error: 'No upstream configured',
+        detail: 'Use a dynamic upstream URL under /_pp/up/<token> or configure --upstream-base-url/--upstream-url',
+      });
+    }
     const pathProtocol = detectProtocolFromPath(requestPath);
     const headerProtocol = detectProtocolFromHeaders(request.headers);
     const requestUpstreamHint = dynamicRoute
@@ -165,7 +171,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     const routingProtocol = resolver.resolveWithUpstreamHint(requestUpstreamHint, pathProtocol, headerProtocol);
     const targetUrl = dynamicRoute
       ? joinedTarget(dynamicRoute.baseUrl, dynamicRoute.requestUrl, routingProtocol)
-      : upstreamMode === 'exact' ? upstreamUrl : joinedTarget(upstreamUrl, request.url, routingProtocol);
+      : upstreamMode === 'exact' ? upstreamUrl! : joinedTarget(upstreamUrl!, request.url, routingProtocol);
     const transport = targetUrl.protocol === 'https:' ? https : http;
 
     const startedMs = Date.now();
@@ -261,7 +267,10 @@ export async function startPromptPrism(options: PromptPrismOptions = {}): Promis
   const port = address && typeof address === 'object' ? address.port : requestedPort;
   const dashboard = `http://127.0.0.1:${port}/_pp/`;
   const format = instance.apiFormat.mode === 'auto' ? 'Auto · per capture' : instance.apiFormat.resolved;
-  console.log(`\n  Prompt Prism is running\n\n  Proxy          http://127.0.0.1:${port}\n  Dashboard      ${dashboard}\n  Upstream ${instance.upstreamMode === 'base' ? 'Base' : 'URL '} ${instance.upstreamUrl.href}\n  API format     ${format}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
+  const upstream = instance.upstreamMode === 'none'
+    ? 'Dynamic only'
+    : `${instance.upstreamMode === 'base' ? 'Base' : 'URL '} ${instance.upstreamUrl!.href}`;
+  console.log(`\n  Prompt Prism is running\n\n  Proxy          http://127.0.0.1:${port}\n  Dashboard      ${dashboard}\n  Upstream       ${upstream}\n  API format     ${format}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
   if (options.open !== false) openBrowser(dashboard);
   return { ...instance, port, dashboard };
 }

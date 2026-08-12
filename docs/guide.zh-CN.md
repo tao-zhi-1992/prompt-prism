@@ -91,7 +91,7 @@ p2 url UPSTREAM_BASE_URL [--proxy-url URL]
 
 | 选项 | 默认值 | 用途 |
 | --- | --- | --- |
-| `--upstream-base-url` | `https://api.anthropic.com` | 提供商 SDK Base URL |
+| `--upstream-base-url` | 无（仅动态模式） | 提供商 SDK Base URL |
 | `--api-format` | `auto` | 检测 Anthropic Messages 或 OpenAI Chat Completions |
 | `--port` | `1028` | 本地代理和仪表盘端口 |
 | `--data-dir` | `./data` | 本地捕获目录 |
@@ -99,6 +99,8 @@ p2 url UPSTREAM_BASE_URL [--proxy-url URL]
 | `--open` | 启用 | 启动后打开仪表盘 |
 
 推荐使用 `--upstream-base-url`。Prism 会追加由传入协议选定的端点：
+
+如果没有提供 `--upstream-base-url` 或 `--upstream-url`，Prism 仍会启动，以便使用生成的动态地址。普通代理请求会返回 `503`，直到请求使用 `/_pp/up/<token>` 地址，或启动时配置固定上游。
 
 | 提供商 SDK Base URL | 追加的端点 |
 | --- | --- |
@@ -114,7 +116,7 @@ p2 url UPSTREAM_BASE_URL [--proxy-url URL]
 
 `--api-format` 接受 `auto`、`anthropic-messages` 或 `openai-chat-completions`。更短的 `anthropic` 和 `openai` 别名仍然支持。
 
-在 auto 模式下，Prism 独立检测每条捕获记录：依次考虑请求路径、头部、协议专属请求体、提供商响应，最后是显式提供的上游 URL 或已知提供商 Base URL。每条捕获记录以第一个可信信号为准，因此一种协议不会锁定或影响后续捕获。路由只使用转发前可用的信号：请求路径、头部和上游 URL 提示。隐式的 Anthropic 默认上游仅用于转发，不作为格式提示。
+在 auto 模式下，Prism 独立检测每条捕获记录：依次考虑请求路径、头部、协议专属请求体、提供商响应，最后是显式提供的上游 URL 或已知提供商 Base URL。每条捕获记录以第一个可信信号为准，因此一种协议不会锁定或影响后续捕获。路由只使用转发前可用的信号：请求路径、头部和上游 URL 提示。没有固定上游时，动态请求使用其解码出的 Base URL 作为当前请求的提示。
 
 未知的自定义 Base URL 不会被猜测。流量模糊的捕获记录照常转发，仅以 Raw 存储，不影响后续捕获。客户端需要固定协议时，请显式使用 `--api-format`。
 

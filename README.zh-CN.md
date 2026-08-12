@@ -43,6 +43,8 @@ p2 start --upstream-base-url https://api.anthropic.com
 
 将你的 SDK 指向 `http://127.0.0.1:1028`，保留原有 API key，然后打开仪表盘 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)。除非使用 `--no-open`，仪表盘会自动打开。
 
+如果暂时不选择提供商，可以直接运行不带 upstream 选项的 `p2 start`。此时是仅动态模式，只接受生成的 `/_pp/up/...` 地址；普通代理请求会返回配置错误，直到你提供固定 upstream。
+
 ### Anthropic
 
 ```js

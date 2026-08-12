@@ -91,7 +91,7 @@ Defaults:
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `--upstream-base-url` | `https://api.anthropic.com` | Provider SDK Base URL |
+| `--upstream-base-url` | none (dynamic-only mode) | Provider SDK Base URL |
 | `--api-format` | `auto` | Detect Anthropic Messages or OpenAI Chat Completions |
 | `--port` | `1028` | Local proxy and dashboard port |
 | `--data-dir` | `./data` | Local capture directory |
@@ -99,6 +99,8 @@ Defaults:
 | `--open` | enabled | Open the dashboard after startup |
 
 `--upstream-base-url` is recommended. Prism appends the endpoint selected by the incoming protocol:
+
+If neither `--upstream-base-url` nor `--upstream-url` is supplied, Prism still starts so you can use generated dynamic URLs. Ordinary proxy requests return `503` until they use a `/_pp/up/<token>` URL or a fixed upstream is configured.
 
 | Provider SDK Base URL | Appended endpoint |
 | --- | --- |
@@ -114,7 +116,7 @@ Use `--upstream-url` for a complete endpoint, including its final path and optio
 
 `--api-format` accepts `auto`, `anthropic-messages`, or `openai-chat-completions`. The shorter `anthropic` and `openai` aliases remain supported.
 
-In auto mode, Prism detects every capture independently. It considers the request path, headers, protocol-specific request body, provider response, and finally an explicitly provided upstream URL or known provider Base URL. The first confident signal for that capture wins, so one protocol never locks or influences later captures. Routing uses only signals available before forwarding: the request path, headers, and upstream URL hint. The implicit default Anthropic upstream is used only for forwarding and is not a format hint.
+In auto mode, Prism detects every capture independently. It considers the request path, headers, protocol-specific request body, provider response, and finally an explicitly provided upstream URL or known provider Base URL. The first confident signal for that capture wins, so one protocol never locks or influences later captures. Routing uses only signals available before forwarding: the request path, headers, and upstream URL hint. With no fixed upstream, dynamic requests use their decoded Base URL as the per-request hint.
 
 Unknown custom Base URLs are not guessed. A capture with ambiguous traffic is forwarded and stored as Raw-only without affecting later captures. Use an explicit `--api-format` when a client needs a fixed protocol.
 
