@@ -1,6 +1,6 @@
 import type { CaptureSummary } from '../types';
 import { formatHttpStatus, formatTime, httpStatusTone } from '../format';
-import { traceDisplayName, useI18n } from '@prompt-prism/plugins/dashboard';
+import { traceDisplayName, useI18n } from '@prompt-prism/dashboard-kit';
 
 type Props = {
   capture: CaptureSummary;

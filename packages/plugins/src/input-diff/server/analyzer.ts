@@ -1,7 +1,7 @@
 import { appendFile, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { diffCharacters, divergencePoint, type DiffPart } from './diff.js';
-import type { Capture, CaptureIndexEntry, JsonValue, Message, ModelInputSection, ModelInputSnapshot } from '../../contracts/server.js';
+import type { Capture, CaptureIndexEntry, JsonValue, Message, ModelInputSection, ModelInputSnapshot } from '@prompt-prism/contracts/server';
 
 export type InputDiffSectionState = 'changed' | 'unchanged' | 'baseline' | 'empty' | 'unavailable';
 

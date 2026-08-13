@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { RequestListItem } from './RequestListItem';
 import type { CaptureSummary } from '../types';
-import { traceDisplayName } from '@prompt-prism/plugins/dashboard';
+import { traceDisplayName } from '@prompt-prism/dashboard-kit';
 
 const capture: CaptureSummary = {
   id: 'capture-123456789',

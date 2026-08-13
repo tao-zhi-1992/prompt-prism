@@ -3,8 +3,8 @@ import Markdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import { JsonView } from 'react-json-view-lite';
-import type { JsonValue } from '../contracts/dashboard.js';
-import { useI18n } from '../i18n/index.js';
+import type { JsonValue } from '@prompt-prism/dashboard-kit';
+import { useI18n } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 
 export type StructuredContentMode = 'auto' | 'json' | 'markdown' | 'code' | 'text';

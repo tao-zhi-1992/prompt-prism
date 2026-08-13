@@ -4,9 +4,9 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { traceDisplayName } from '../packages/plugins/src/trace/dashboard/displayName.js';
+import { traceDisplayName } from '../packages/dashboard-kit/src/trace/displayName.js';
 
-type CreatePromptPrism = (typeof import('../packages/prompt-prism/dist/proxy.js'))['createPromptPrism'];
+type CreatePromptPrism = (typeof import('../packages/prompt-prism/dist/index.js'))['createPromptPrism'];
 
 const proxyPort = Number(process.env.PP_E2E_PORT ?? 4173);
 const proxyOrigin = `http://127.0.0.1:${proxyPort}`;
@@ -47,7 +47,7 @@ async function sendCapture(model: string, traceId?: string): Promise<void> {
 }
 
 test.beforeAll(async () => {
-  ({ createPromptPrism } = await import('../packages/prompt-prism/dist/proxy.js'));
+  ({ createPromptPrism } = await import('../packages/prompt-prism/dist/index.js'));
   upstream = http.createServer((request, response) => {
     const chunks: Buffer[] = [];
     request.on('data', (chunk) => chunks.push(chunk));

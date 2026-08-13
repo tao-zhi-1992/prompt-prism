@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { InputDiffAnalyzer } from '../server/analyzer.js';
 import { createInputDiffServerPlugin } from '../server/index.js';
 import { diffCharacters, divergencePoint, type DiffPart } from '../server/diff.js';
-import type { JsonValue, Message, ModelInputSnapshot, ServerPluginContext } from '../../contracts/server.js';
+import type { JsonValue, Message, ModelInputSnapshot, ServerPluginContext } from '@prompt-prism/contracts/server';
 
 function apply(parts: DiffPart[]) {
   return {

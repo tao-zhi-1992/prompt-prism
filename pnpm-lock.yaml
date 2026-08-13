@@ -37,11 +37,58 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/builtins:
+    dependencies:
+      '@prompt-prism/core':
+        specifier: workspace:*
+        version: link:../core
+      '@prompt-prism/dashboard-kit':
+        specifier: workspace:*
+        version: link:../dashboard-kit
+      '@prompt-prism/plugins':
+        specifier: workspace:*
+        version: link:../plugins
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/contracts:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/core:
+    dependencies:
+      '@prompt-prism/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   packages/dashboard:
     dependencies:
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@prompt-prism/builtins':
+        specifier: workspace:*
+        version: link:../builtins
+      '@prompt-prism/dashboard-kit':
+        specifier: workspace:*
+        version: link:../dashboard-kit
       '@prompt-prism/plugins':
         specifier: workspace:*
         version: link:../plugins
@@ -92,11 +139,45 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0))
 
+  packages/dashboard-kit:
+    dependencies:
+      '@prompt-prism/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.18
+        version: 19.2.18
+      '@vitejs/plugin-react':
+        specifier: ^6.0.5
+        version: 6.0.5(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0))
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.2.1
+        version: 8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0))
+
   packages/plugins:
     dependencies:
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@prompt-prism/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@prompt-prism/dashboard-kit':
+        specifier: workspace:*
+        version: link:../dashboard-kit
       '@prompt-prism/ui':
         specifier: workspace:*
         version: link:../ui
@@ -163,6 +244,16 @@ importers:
         version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0))
 
   packages/prompt-prism:
+    dependencies:
+      '@prompt-prism/builtins':
+        specifier: workspace:*
+        version: link:../builtins
+      '@prompt-prism/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@prompt-prism/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.91.1
@@ -173,6 +264,9 @@ importers:
       c8:
         specifier: ^10.1.3
         version: 10.1.3
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       openai:
         specifier: ^6.26.0
         version: 6.26.0(ws@8.21.3)(zod@4.4.3)

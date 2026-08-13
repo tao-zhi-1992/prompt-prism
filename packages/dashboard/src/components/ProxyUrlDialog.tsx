@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Button } from '@prompt-prism/ui';
-import { useI18n } from '@prompt-prism/plugins/dashboard';
+import { useI18n } from '@prompt-prism/dashboard-kit';
 import { generateProxyUrl } from '../api';
 
 function LinkIcon() {

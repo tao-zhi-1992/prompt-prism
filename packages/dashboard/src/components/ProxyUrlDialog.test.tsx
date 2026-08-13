@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '@prompt-prism/plugins/dashboard';
+import { I18nProvider } from '@prompt-prism/dashboard-kit';
 import { ProxyUrlDialog } from './ProxyUrlDialog';
 
 afterEach(() => vi.unstubAllGlobals());

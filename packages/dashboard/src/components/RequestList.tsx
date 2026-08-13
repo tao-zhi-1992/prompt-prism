@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef } from 'react';
 import type { CaptureSummary } from '../types';
 import { RequestListItem } from './RequestListItem';
-import { useI18n } from '@prompt-prism/plugins/dashboard';
+import { useI18n } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 
 type Props = {

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TracePanel, type TraceResult } from '../dashboard/TracePanel.js';
-import { traceDisplayName } from '../dashboard/displayName.js';
+import { traceDisplayName } from '@prompt-prism/dashboard-kit';
 
 const trace: TraceResult = {
   id: 'session-123', source: 'explicit', selected_capture_id: 'capture-two', truncated: false,

@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
-import { startPromptPrism } from './proxy.js';
+import { startPromptPrism } from './index.js';
 import { runInsightsCli } from './insights-cli.js';
-import { buildDynamicProxyBaseUrl } from './upstream.js';
+import { buildDynamicProxyBaseUrl } from '@prompt-prism/core';
 import { checkForUpdate, formatUpdateNotice, runAutomaticUpdateCheck, shouldRunAutomaticUpdateCheck } from './update-check.js';
 import packageJson from '../package.json' with { type: 'json' };
 
@@ -96,7 +96,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   await startPromptPrism({
     upstreamBaseUrl: values['upstream-base-url'],
     upstreamUrl: values['upstream-url'],
-    apiFormat: values['api-format'] as import('./types.js').ApiFormatOption,
+    apiFormat: values['api-format'] as import('@prompt-prism/core').ApiFormatOption,
     port,
     dataDir: values['data-dir'],
     maxBytes: parseBytes(values['max-storage']),

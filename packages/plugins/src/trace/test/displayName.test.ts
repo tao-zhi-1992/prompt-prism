@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TRACE_DISPLAY_NAMES, traceDisplayName } from '../dashboard/displayName.js';
+import { TRACE_DISPLAY_NAMES, traceDisplayName } from '@prompt-prism/dashboard-kit';
 
 describe('trace display names', () => {
   it('uses a fixed 256-name display-only palette', () => {

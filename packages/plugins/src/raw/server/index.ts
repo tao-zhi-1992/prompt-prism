@@ -1,4 +1,4 @@
-import type { PromptPrismServerPlugin } from '../../contracts/server.js';
+import type { PromptPrismServerPlugin } from '@prompt-prism/contracts/server';
 import { rawPluginMeta } from '../index.js';
 
 export function createRawServerPlugin(): PromptPrismServerPlugin {

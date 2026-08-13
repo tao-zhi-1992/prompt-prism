@@ -1,10 +1,19 @@
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { CaptureTiming, Message, ModelInputSnapshot, ModelOutputSnapshot, Usage } from './model.js';
+import type { CaptureTiming, ConversationMessage, Message, ModelInputSnapshot, ModelOutputSnapshot, Usage } from './model.js';
 export type * from './model.js';
 export interface ProviderRequest { model: string | null; messages: Message[]; input: ModelInputSnapshot; }
 export interface ProviderResponse { usage: Usage; output: ModelOutputSnapshot | null; }
 
 export type RawHeaders = Record<string, string | string[] | undefined>;
+export interface ServerRequest {
+  method?: string;
+  url?: string;
+  headers: RawHeaders;
+}
+export interface ServerResponse {
+  headersSent: boolean;
+  end(chunk?: unknown): void;
+  writeHead(statusCode: number, headers?: RawHeaders): void;
+}
 
 export interface RawRequest {
   method: string;
@@ -52,6 +61,26 @@ export interface CaptureIndexEntry {
   messages: Message[];
   adapter_id?: string;
   prompt_input?: ModelInputSnapshot;
+  parent_capture_id?: string;
+}
+
+export type TraceInputRelation = 'root' | 'append' | 'rewritten';
+export interface TraceCall {
+  capture_id: string;
+  timestamp: string;
+  model: string | null;
+  response_status?: number | null;
+  upstream_host?: string;
+  input_relation: TraceInputRelation;
+  input_delta: ConversationMessage[];
+  output: ModelOutputSnapshot | null;
+}
+export interface TraceResult {
+  id: string;
+  source: 'explicit' | 'inferred';
+  selected_capture_id: string;
+  truncated: boolean;
+  calls: TraceCall[];
 }
 
 export interface ServerPluginContext {
@@ -59,6 +88,7 @@ export interface ServerPluginContext {
   captures: readonly CaptureIndexEntry[];
   readCapture(id: string): Promise<Capture | null>;
   getTraceParent?: (id: string) => string | null | undefined;
+  getTraceResult?(id: string): Promise<TraceResult | null>;
   parseProviderRequest(adapterId: string, body: string): ProviderRequest;
   parseProviderResponse(adapterId: string, body: string, contentType?: string): ProviderResponse;
   json(response: ServerResponse, status: number, value: unknown): void;
@@ -71,5 +101,5 @@ export interface PromptPrismServerPlugin {
   onCapture?(capture: Capture, entry: CaptureIndexEntry, context: ServerPluginContext): Promise<void>;
   onEvict?(entry: CaptureIndexEntry, context: ServerPluginContext): void;
   onClear?(context: ServerPluginContext): Promise<void> | void;
-  handleApi?(request: IncomingMessage, response: ServerResponse, subpath: string, context: ServerPluginContext): Promise<boolean>;
+  handleApi?(request: ServerRequest, response: ServerResponse, subpath: string, context: ServerPluginContext): Promise<boolean>;
 }

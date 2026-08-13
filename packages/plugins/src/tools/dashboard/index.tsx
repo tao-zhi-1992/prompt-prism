@@ -1,4 +1,4 @@
-import { defineDetailTab } from '../../registry/dashboard.js';
+import { defineDetailTab } from '@prompt-prism/dashboard-kit';
 import { toolsPluginMeta } from '../index.js';
 import { ToolsPanel, type ToolsData } from './ToolsPanel.js';
 import './styles.css';

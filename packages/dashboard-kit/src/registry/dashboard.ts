@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import type { DetailTabPanelProps, DetailTabPlugin, DetailTabPluginDefinition } from '../contracts/dashboard.js';
+import type { DetailTabPanelProps, DetailTabPlugin, DetailTabPluginDefinition } from '../contracts.js';
 import { validatePluginId } from './validation.js';
 
 export function defineDetailTab<Data>(definition: DetailTabPluginDefinition<Data>): DetailTabPlugin {

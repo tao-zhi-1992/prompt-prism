@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ServerPluginRegistry } from '../src/registry/server.js';
-import type { PromptPrismServerPlugin, ServerPluginContext } from '../src/contracts/server.js';
+import type { PromptPrismServerPlugin, ServerPluginContext } from '@prompt-prism/contracts/server';
 
 const context = (): ServerPluginContext => ({
   analysisPath: '/tmp/analysis.jsonl', captures: [], readCapture: vi.fn(), parseProviderRequest: vi.fn(), parseProviderResponse: vi.fn(), json: vi.fn(), reportError: vi.fn(),

@@ -1,5 +1,4 @@
-import type { Capture, JsonValue, PromptPrismServerPlugin, ServerPluginContext } from '../../contracts/server.js';
-import { readCaptureOutput } from '../../trace/server/index.js';
+import type { Capture, JsonValue, PromptPrismServerPlugin, ServerPluginContext } from '@prompt-prism/contracts/server';
 import { toolsPluginMeta } from '../index.js';
 
 function toolsFromInput(input: { sections: Array<{ id: string; value: JsonValue }> }): JsonValue[] | null {
@@ -37,7 +36,12 @@ function visibleOutput(block: { type: string; provider_type?: string }): boolean
 
 export function extractUsedTools(capture: Capture, context: ServerPluginContext): ToolUsage[] {
   const groups = new Map<string, ToolUsage>();
-  const blocks = readCaptureOutput(capture, context)?.content ?? [];
+  let output = capture.model_output ?? null;
+  if (!output && capture.response?.body) {
+    const contentType = Object.entries(capture.response.headers).find(([name]) => name.toLowerCase() === 'content-type')?.[1];
+    try { output = context.parseProviderResponse(capture.adapter_id ?? 'anthropic', capture.response.body, Array.isArray(contentType) ? contentType[0] : contentType).output; } catch { output = null; }
+  }
+  const blocks = output?.content ?? [];
   for (const [index, block] of blocks.entries()) {
     if (!visibleOutput(block)) continue;
     if (block.type !== 'tool_call') continue;

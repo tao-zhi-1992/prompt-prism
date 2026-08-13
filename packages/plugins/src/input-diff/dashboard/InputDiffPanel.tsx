@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import { buildFormattedDiff, type DiffPart } from './formattedDiff.js';
-import { useI18n, type TranslationKey } from '../../i18n/index.js';
+import { useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 
 export type InputDiffSectionState = 'changed' | 'unchanged' | 'baseline' | 'empty' | 'unavailable';

@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { CaptureTiming, Usage } from './model.js';
-export type * from './model.js';
+import type { CaptureTiming, Usage } from '@prompt-prism/contracts/model';
+export type { CaptureTiming, Usage } from '@prompt-prism/contracts/model';
 
 export interface CaptureSummary {
   id: string;

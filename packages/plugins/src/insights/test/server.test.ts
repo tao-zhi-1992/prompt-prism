@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Capture, CaptureIndexEntry, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '../../contracts/server.js';
+import type { Capture, CaptureIndexEntry, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '@prompt-prism/contracts/server';
 import {
   buildInsightEvidence,
   buildInsightReport,
@@ -128,7 +128,7 @@ describe('Insights server plugin', () => {
 
   it('validates API routes and returns reports', async () => {
     const { second, pluginContext } = fixture();
-    const plugin = createInsightsServerPlugin({ getParentId: () => null });
+    const plugin = createInsightsServerPlugin();
     const response = {} as never;
     await plugin.handleApi!({ method: 'GET', url: '/_pp/api/insights/runs?limit=1' } as never, response, 'runs', pluginContext);
     await plugin.handleApi!({ method: 'GET', url: `/_pp/api/insights/report/${second.id}` } as never, response, `report/${second.id}`, pluginContext);

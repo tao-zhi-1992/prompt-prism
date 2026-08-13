@@ -1,4 +1,4 @@
-import type { PromptPrismServerPlugin } from '../../contracts/server.js';
+import type { PromptPrismServerPlugin } from '@prompt-prism/contracts/server';
 import { inputDiffPluginMeta } from '../index.js';
 import { InputDiffAnalyzer } from './analyzer.js';
 

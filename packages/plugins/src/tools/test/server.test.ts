@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Capture, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '../../contracts/server.js';
+import type { Capture, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '@prompt-prism/contracts/server';
 import { createToolsServerPlugin } from '../server/index.js';
 
 const response = {} as never;

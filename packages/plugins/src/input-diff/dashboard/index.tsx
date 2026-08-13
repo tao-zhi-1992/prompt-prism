@@ -1,4 +1,4 @@
-import { defineDetailTab } from '../../registry/dashboard.js';
+import { defineDetailTab } from '@prompt-prism/dashboard-kit';
 import { inputDiffPluginMeta } from '../index.js';
 import { InputDiffPanel, type InputDiffAnalysis } from './InputDiffPanel.js';
 import './styles.css';

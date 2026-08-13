@@ -1,0 +1,11 @@
+{
+  "name": "@prompt-prism/dashboard-kit",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run --config vite.config.ts" },
+  "dependencies": { "@prompt-prism/contracts": "workspace:*" },
+  "peerDependencies": { "react": "^19.2.8" },
+  "devDependencies": { "@types/react": "^19.2.18", "@vitejs/plugin-react": "^6.0.5", "jsdom": "^29.1.1", "react": "^19.2.8", "typescript": "^7.0.2", "vite": "^8.2.1", "vitest": "^4.1.10" }
+}

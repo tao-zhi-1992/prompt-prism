@@ -1,0 +1,21 @@
+{
+  "name": "@prompt-prism/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./capture": "./src/capture.ts",
+    "./proxy-target": "./src/proxy-target.ts",
+    "./server": "./src/server.ts",
+    "./store": "./src/store.ts",
+    "./trace-service": "./src/trace-service.ts",
+    "./upstream": "./src/upstream.ts",
+    "./adapter/anthropic": "./src/adapter/anthropic.ts",
+    "./adapter/openai": "./src/adapter/openai.ts",
+    "./adapter/detection": "./src/adapter/detection.ts"
+  },
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit" },
+  "dependencies": { "@prompt-prism/contracts": "workspace:*" },
+  "devDependencies": { "@types/node": "^24.0.0", "typescript": "^7.0.2" }
+}

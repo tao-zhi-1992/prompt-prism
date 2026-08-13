@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Tabs } from '@base-ui/react/tabs';
-import { dashboardPluginRegistry, useI18n, type CaptureSummary, type DetailTabPlugin, type TranslationKey } from '@prompt-prism/plugins/dashboard';
+import { defaultDashboardTabs } from '@prompt-prism/builtins/dashboard';
+import { DetailTabRegistry, useI18n, type CaptureSummary, type DetailTabPlugin, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import { ProxyUrlDialog } from './ProxyUrlDialog';
 
 type Resource = { status: 'loading' } | { status: 'ready'; data: unknown; refreshError?: string } | { status: 'error'; error: string };
 
 export function DetailPane({ capture, initialTab, onSelectCapture, onSelectTab }: { capture: CaptureSummary | null; initialTab?: string | null; onSelectCapture?: (id: string, tab?: string, anchor?: string) => void; onSelectTab?: (tab: string) => void }) {
   const { t } = useI18n();
-  const plugins = dashboardPluginRegistry.plugins;
+  const plugins = new DetailTabRegistry([...defaultDashboardTabs]).plugins;
   const [tab, setTab] = useState(initialTab && plugins.some((plugin) => plugin.id === initialTab) ? initialTab : plugins[0]?.id ?? '');
   const cache = useRef(new Map<string, Resource>());
   const [, render] = useState(0);

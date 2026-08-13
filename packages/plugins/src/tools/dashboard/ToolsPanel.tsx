@@ -1,8 +1,8 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import type { JsonValue } from '../../contracts/dashboard.js';
-import { useI18n } from '../../i18n/index.js';
+import type { JsonValue } from '@prompt-prism/dashboard-kit';
+import { useI18n } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 import { StructuredContent } from '../../content/StructuredContent.js';
 

@@ -7,8 +7,8 @@ import type {
   ToolCallOutputBlock,
   UnknownOutputBlock,
   Usage,
-} from '../../contracts/dashboard.js';
-import { useI18n, type TranslationKey } from '../../i18n/index.js';
+} from '@prompt-prism/dashboard-kit';
+import { useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 import { StructuredContent } from '../../content/StructuredContent.js';
 

@@ -17,6 +17,7 @@
     "test:coverage": "pnpm --filter @prompt-prism/plugins test:coverage && pnpm --filter prompt-prism test:coverage && pnpm --filter @prompt-prism/dashboard test:coverage && pnpm --filter @prompt-prism/ui test:coverage && node scripts/check-diff-coverage.mjs",
     "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
     "test:e2e": "pnpm --filter prompt-prism build:all && playwright test --config=e2e/playwright.config.ts",
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
     "dashboard:dev": "pnpm --filter @prompt-prism/dashboard dev"
   },
   "devDependencies": {

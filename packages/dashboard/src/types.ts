@@ -1,1 +1,1 @@
-export type { CaptureSummary, Usage } from '@prompt-prism/plugins/dashboard';
+export type { CaptureSummary, Usage } from '@prompt-prism/dashboard-kit';

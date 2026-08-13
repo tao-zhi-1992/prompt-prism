@@ -4,7 +4,7 @@ import { RequestList } from './components/RequestList';
 import { DetailPane } from './components/DetailPane';
 import { SettingsMenu } from './components/SettingsMenu';
 import { useTheme } from './theme';
-import { I18nProvider, useI18n } from '@prompt-prism/plugins/dashboard';
+import { I18nProvider, useI18n } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 import { useCaptureFeed } from './hooks/useCaptureFeed';
 import { useCaptureSelection } from './hooks/useCaptureSelection';

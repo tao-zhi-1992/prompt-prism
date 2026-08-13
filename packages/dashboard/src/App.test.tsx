@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { traceDisplayName, type InputDiffAnalysis, type OutputCapture, type RawCapture } from '@prompt-prism/plugins/dashboard';
+import { traceDisplayName } from '@prompt-prism/dashboard-kit';
+import type { InputDiffAnalysis, OutputCapture, RawCapture } from '@prompt-prism/plugins/dashboard';
 import App from './App';
 import type { CaptureSummary } from './types';
 

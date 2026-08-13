@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ReactNode } from 'react';
-import { I18nProvider, LOCALE_STORAGE_KEY, resolveLocale, useI18n } from '../src/i18n/index.js';
+import { I18nProvider, LOCALE_STORAGE_KEY, resolveLocale, useI18n } from '@prompt-prism/dashboard-kit';
 
 afterEach(() => {
   localStorage.removeItem(LOCALE_STORAGE_KEY);

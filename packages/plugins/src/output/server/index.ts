@@ -1,5 +1,5 @@
-import type { RawHeaders } from '../../contracts/server.js';
-import type { PromptPrismServerPlugin } from '../../contracts/server.js';
+import type { RawHeaders } from '@prompt-prism/contracts/server';
+import type { PromptPrismServerPlugin } from '@prompt-prism/contracts/server';
 import { outputPluginMeta } from '../index.js';
 
 function header(headers: RawHeaders, name: string): string | undefined {
