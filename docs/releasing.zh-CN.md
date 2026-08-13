@@ -1,27 +1,20 @@
 # 发布 Prompt Prism
 
-Prompt Prism 采用手动准备和发布流程。合并到 `main` 会运行 CI，但不会自动修改包版本、创建 tag 或 GitHub Release，也不会发布到 npm。
+Prompt Prism 使用经过审核的 Release PR。`release-prep` Skill 会根据 Conventional Commits 自动计算下一个版本，重新生成 Dashboard 截图，更新包版本和 `CHANGELOG.md`，运行完整检查，并从 `release-prep/v<version>` 向 `main` 创建 PR。
 
-## 准备发布
+在干净的功能分支运行：
 
-1. 将本次发布所需的改动合并到 `main`，并拉取最新分支。
-2. 确定下一个语义化版本，更新 `packages/prompt-prism/package.json`。
-3. 在 `CHANGELOG.md` 中添加对应版本、日期和发布说明。
-4. 运行完整检查并核对包内容：
-
-```bash
-pnpm install --frozen-lockfile
-pnpm test
-pnpm --dir packages/prompt-prism pack --dry-run
+```text
+Use $release-prep to prepare the next release PR.
 ```
 
-5. 使用 `chore(release): release <version>` 将版本号和变更日志一起提交，然后把该提交合并或推送到 `main`。
+PR 仍需人工 review，并遵守分支保护规则。PR 合并后，`Create release tag` workflow 会检查包版本确实变化且 changelog 存在对应条目，然后创建并推送 `v<version>` annotated tag。该 workflow 可安全重复运行；普通合并或版本元数据不匹配不会创建 tag。
 
-普通功能开发期间不要修改版本号；版本变更只属于正式的发布准备提交。
+普通功能开发期间不要修改版本号；版本变更只属于发布准备 PR。
 
 ## 发布
 
-在干净且已同步到发布提交的 `main` 工作区执行：
+Release PR 合并且 `v<version>` tag 已存在后，在干净且已同步到 `main` 的工作区执行：
 
 ```bash
 test "$(node -p "require('./packages/prompt-prism/package.json').version")" = "<version>"
@@ -29,11 +22,9 @@ pnpm test
 cd packages/prompt-prism
 npm publish --access public
 cd ../..
-git tag -a "v<version>" -m "v<version>"
-git push origin "v<version>"
 gh release create "v<version>" --title "v<version>" --generate-notes
 ```
 
-执行前需要分别登录 npm 和 GitHub。只有 npm 发布成功后才创建 tag 和 GitHub Release，避免发布失败时留下已经存在的版本 tag。
+执行前需要分别登录 npm 和 GitHub。tag 已由合并后的 workflow 自动创建，不要在本地重复创建。GitHub Release 和 npm 发布仍然手动执行。
 
-仓库仍要求使用 Conventional Commits，但提交类型不再自动触发发布或计算版本号。
+Skill 使用 Conventional Commits 计算下一个版本，但普通提交不会自动触发发布。

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Release Preparation"
+  short_description: "Prepare and open a validated release PR"
+  default_prompt: "Use $release-prep to prepare the next Prompt Prism release PR."
+
+policy:
+  allow_implicit_invocation: true

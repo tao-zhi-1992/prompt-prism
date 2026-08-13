@@ -1,27 +1,20 @@
 # Releasing Prompt Prism
 
-Prompt Prism releases are prepared and published manually. Merging into `main` runs CI, but it does not change the package version, create a tag or GitHub release, or publish to npm.
+Prompt Prism uses a reviewed Release PR. The release-prep Skill derives the next version from Conventional Commits, refreshes the Dashboard screenshot, updates the package version and `CHANGELOG.md`, runs the full checks, and opens a PR from `release-prep/v<version>` to `main`.
 
-## Prepare a release
+Run the Skill from a clean feature branch:
 
-1. Merge the intended changes into `main` and check out the updated branch.
-2. Choose the next semantic version and update `packages/prompt-prism/package.json`.
-3. Add the matching version, date, and release notes to `CHANGELOG.md`.
-4. Run the complete checks and inspect the package contents:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm test
-pnpm --dir packages/prompt-prism pack --dry-run
+```text
+Use $release-prep to prepare the next release PR.
 ```
 
-5. Commit the version and changelog together using `chore(release): release <version>`, then merge or push that commit to `main`.
+The PR remains subject to review and branch protection. After it is merged, the `Create release tag` workflow checks that the package version changed and that the matching changelog entry exists, then creates and pushes the annotated `v<version>` tag. The workflow is idempotent and does not create a tag for ordinary merges or mismatched release metadata.
 
-Do not update the version during ordinary feature development. The version change belongs only to the release preparation commit.
+Do not update the version during ordinary feature development. The version change belongs only to the release-preparation PR.
 
 ## Publish
 
-From a clean, up-to-date `main` checkout at the release commit:
+After the Release PR has been merged and the `v<version>` tag exists, publish from a clean, up-to-date `main` checkout:
 
 ```bash
 test "$(node -p "require('./packages/prompt-prism/package.json').version")" = "<version>"
@@ -29,11 +22,9 @@ pnpm test
 cd packages/prompt-prism
 npm publish --access public
 cd ../..
-git tag -a "v<version>" -m "v<version>"
-git push origin "v<version>"
 gh release create "v<version>" --title "v<version>" --generate-notes
 ```
 
-Authenticate with npm and GitHub before running these commands. Create the tag and GitHub release only after npm publishing succeeds, so a failed publish does not leave a release tag behind.
+Authenticate with npm and GitHub before running these commands. The tag already exists because it was created after the Release PR merge; create the GitHub Release after npm publishing succeeds if you want a failed publish to leave no GitHub Release behind.
 
-Conventional Commits remain required for repository history, but they no longer trigger or calculate releases automatically.
+The tag is created automatically after the PR merge; do not recreate it locally. GitHub Release creation and npm publishing remain manual. Conventional Commits are used by the Skill to calculate the next version, but ordinary commits do not trigger a release.
