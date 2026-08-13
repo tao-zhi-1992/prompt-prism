@@ -111,8 +111,9 @@ function plan() {
   const base = tag?.match.slice(1, 4).join('.') ?? '0.0.0';
   const packageVersion = parseVersion(readPackageVersion(), 'package version');
   if (compareVersions(packageVersion, base) < 0) throw new Error(`package version ${packageVersion} is behind latest tag ${tag?.name ?? base}`);
+  const versionBaseline = compareVersions(packageVersion, base) > 0 ? packageVersion : base;
   const releaseCommit = commits.find((commit) => commit.subject.match(/^chore\(release\): prepare v(\d+\.\d+\.\d+)$/i));
-  const derivedVersion = deriveVersion(base, commits);
+  const derivedVersion = deriveVersion(versionBaseline, commits);
   const prepared = Boolean(releaseCommit && packageVersion === releaseCommit.subject.match(/v(\d+\.\d+\.\d+)$/i)?.[1] && changelogHas(packageVersion));
   const version = prepared
     ? packageVersion

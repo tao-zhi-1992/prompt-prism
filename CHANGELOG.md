@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.2](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.3.1...v0.3.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* **ci:** repair release tag workflow ([e168b90](https://github.com/tao-zhi-1992/prompt-prism/commit/e168b9067bbca4d5daa1e144c6526906722d35c7))
+* **dashboard:** unify structural border colors ([49a718e](https://github.com/tao-zhi-1992/prompt-prism/commit/49a718e2201e5a109bf56bc01ce70ffb4e36f5c3))
+
+
+### Documentation
+
+* simplify Agent flow diagrams ([5ad973a](https://github.com/tao-zhi-1992/prompt-prism/commit/5ad973af395684856851cc5bf0dc6f0e3467e24f))
+
 ## [0.3.1](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.3.0...v0.3.1) (2026-08-13)
 
 

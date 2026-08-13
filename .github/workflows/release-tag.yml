@@ -46,12 +46,12 @@ jobs:
             exit 0
           fi
 
-          if [[ -n "$previous_version" ]] && ! node - "$current_version" "$previous_version" <<'NODE'
-          const [current, previous] = process.argv.slice(2).map((value) => value.split('.').map(Number));
-          if (current.length !== 3 || previous.length !== 3 || current.some(Number.isNaN) || previous.some(Number.isNaN)) process.exit(1);
-          const comparison = current.findIndex((part, index) => part !== previous[index]);
-          process.exit(comparison === -1 || current[comparison] < previous[comparison] ? 1 : 0);
-          NODE
+          if [[ -n "$previous_version" ]] && ! node -e '
+            const [current, previous] = process.argv.slice(1, 3).map((value) => value.split(".").map(Number));
+            if (current.length !== 3 || previous.length !== 3 || current.some(Number.isNaN) || previous.some(Number.isNaN)) process.exit(1);
+            const comparison = current.findIndex((part, index) => part !== previous[index]);
+            process.exit(comparison === -1 || current[comparison] < previous[comparison] ? 1 : 0);
+          ' "$current_version" "$previous_version"; then
             echo "Package version $current_version is not greater than previous version $previous_version" >&2
             exit 1
           fi
