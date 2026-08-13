@@ -35,6 +35,8 @@ http://127.0.0.1:1028/_proxy/<encoded-upstream>
 p2 url https://api.deepseek.com/v1
 ```
 
+`p2 start` 在交互式终端中会低频后台检查更新：先访问官方 npm registry，官方源无法访问时再回退到 `registry.npmmirror.com`。每 24 小时最多检查一次，不会自动安装任何内容，只读取公开的包版本元数据。需要立即检查时运行 `p2 update-check`。可用 `p2 start --no-update-check` 或 `P2_NO_UPDATE_CHECK=1` 禁用自动检查。
+
 这是仪表盘按钮的替代方式，不是第二个启动命令。一个 Prism 实例无需重启就能把不同请求转发到不同提供商。
 
 动态路由只作用于带该前缀的请求，不修改固定上游。动态请求没有后缀时直接使用解码后的 URL；明确提供请求后缀和 query 时才会追加。无效的 encoded upstream 值返回 400，不会回退到其他提供商。
@@ -92,9 +94,10 @@ OpenAI Chat Completions 的 JSON 和 SSE 响应、函数工具调用/结果、sy
 ```text
 p2 --version
 p2 -v
+p2 update-check
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
-         [--open | --no-open]
+         [--open | --no-open] [--no-update-check]
 p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 ```
 

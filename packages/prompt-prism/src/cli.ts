@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { startPromptPrism } from './proxy.js';
 import { runInsightsCli } from './insights-cli.js';
 import { buildDynamicProxyBaseUrl } from './upstream.js';
+import { checkForUpdate, formatUpdateNotice, runAutomaticUpdateCheck, shouldRunAutomaticUpdateCheck } from './update-check.js';
 import packageJson from '../package.json' with { type: 'json' };
 
 function usage(): void {
@@ -10,8 +11,10 @@ function usage(): void {
 Usage:
   p2 --version
   p2 -v
+  p2 update-check
   p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
            [--port NUMBER] [--data-dir PATH] [--max-storage SIZE] [--open | --no-open]
+           [--no-update-check]
   p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
   p2 insights <list|report|compare|evidence> [OPTIONS]
 
@@ -46,6 +49,11 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
     await runInsightsCli(args.slice(1));
     return;
   }
+  if (command === 'update-check') {
+    const update = await checkForUpdate({ currentVersion: packageJson.version, force: true });
+    console.log(formatUpdateNotice(update, true) ?? `Prompt Prism is up to date (${update.currentVersion}) [${update.registry}]`);
+    return;
+  }
   if (command === 'url') {
     const { values, positionals } = parseArgs({
       args: args.slice(1),
@@ -73,6 +81,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
       'data-dir': { type: 'string', default: './data' },
       'max-storage': { type: 'string', default: '1GB' },
       open: { type: 'boolean', default: true },
+      'no-update-check': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h' }
     },
     allowNegative: true
@@ -93,4 +102,5 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
     maxBytes: parseBytes(values['max-storage']),
     open: values.open
   });
+  if (!values['no-update-check'] && shouldRunAutomaticUpdateCheck()) void runAutomaticUpdateCheck(packageJson.version);
 }

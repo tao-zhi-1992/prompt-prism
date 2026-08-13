@@ -46,6 +46,8 @@ test('CLI documents base and exact upstream modes with automatic API format', as
   assert.match(stdout, /upstream\s+dynamic-only/);
   assert.doesNotMatch(stdout, /upstream-base-url https:\/\/api\.anthropic\.com/);
   assert.match(stdout, /p2 insights/);
+  assert.match(stdout, /p2 update-check/);
+  assert.match(stdout, /--no-update-check/);
   assert.match(stdout, /p2 url UPSTREAM_URL_OR_BASE_URL/);
   assert.doesNotMatch(stdout, /--base-url|--target|\btarget\b/i);
 });
@@ -73,6 +75,12 @@ test('CLI generates copyable dynamic proxy URLs with a configurable proxy origin
     run(process.execPath, [cli, 'url', 'file:///tmp/provider']),
     (error: unknown) => error instanceof Error && 'stderr' in error && /must use http or https/.test(String(error.stderr)),
   );
+});
+
+test('CLI url keeps stdout clean when update checks are disabled', async () => {
+  const result = await run(process.execPath, [cli, 'url', 'https://provider.example.com/v1'], { env: { ...process.env, P2_NO_UPDATE_CHECK: '1' } });
+  assert.equal(result.stderr, '');
+  assert.match(result.stdout, /_proxy\//);
 });
 
 test('Insights CLI exposes list, latest report, compare, and evidence in stable JSON', async (t) => {
