@@ -8,8 +8,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl, startPromptPrism } from '../../src/proxy.js';
-import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
+import { buildDynamicProxyBaseUrl, createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl, startPromptPrism } from '../../src/index.js';
 import { close, listen, request } from './helpers/http.js';
 
 const run = promisify(execFile);

@@ -4,7 +4,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
-import { createPromptPrism } from '../../src/proxy.js';
+import { createPromptPrism } from '../../src/index.js';
 
 const apiKey = process.env.TEST_TOKEN || process.env.ANTHROPIC_API_KEY;
 const testEndpoint = process.env.TEST_ANTHROPIC;

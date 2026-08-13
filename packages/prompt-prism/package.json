@@ -27,7 +27,7 @@
     "test:unit": "pnpm typecheck && tsx --test test/unit/*.test.ts",
     "test:integration": "pnpm build:all && pnpm typecheck && tsx --test test/integration/*.test.ts",
     "pretest:coverage": "pnpm build:all",
-    "test:coverage": "c8 --clean --all --include='src/**/*.ts' --exclude='src/**/*.test.ts' --exclude='src/**/test/**' --exclude='src/cli.ts' --exclude='src/index.ts' --exclude='src/insights-cli.ts' --exclude='src/types.ts' --exclude='src/adapter/provider.ts' --reporter=text --reporter=json --reporter=html --report-dir=coverage --check-coverage --statements=90 --branches=75 --functions=90 --lines=90 tsx --test test/unit/*.test.ts test/integration/*.test.ts",
+    "test:coverage": "c8 --clean --all --include='src/**/*.ts' --exclude='src/**/*.test.ts' --exclude='src/**/test/**' --exclude='src/cli.ts' --exclude='src/index.ts' --exclude='src/insights-cli.ts' --exclude='src/update-check.ts' --reporter=text --reporter=json --reporter=html --report-dir=coverage --check-coverage --statements=90 --branches=75 --functions=90 --lines=90 tsx --test test/unit/*.test.ts test/integration/*.test.ts",
     "test:live": "pnpm build:all && pnpm typecheck && node --env-file-if-exists=.env --import tsx --test test/live/*.test.ts",
     "prepack": "pnpm build:all && node scripts/prepare-package.js"
   },

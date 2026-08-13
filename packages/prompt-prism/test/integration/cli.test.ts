@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
+import { buildDynamicProxyBaseUrl } from '../../src/index.js';
 import packageJson from '../../package.json' with { type: 'json' };
 
 const run = promisify(execFile);
