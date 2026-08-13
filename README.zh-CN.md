@@ -27,9 +27,12 @@
 开发和运行 Agent 时，Prompt Prism 位于 Agent 和模型提供商之间。响应（包括 SSE 流）会被立即转发，同时一份脱敏副本在本地保存，供你检查。
 
 ```text
-你的 Agent  ──►  http://127.0.0.1:1028  ──►  模型提供商
-                       │
-                       └──► 轨迹 + Input Diff + Tools + Output + Raw
+Agent 开发者  ──构建并运行──►  你的 Agent
+                                  │
+                                  ▼
+模型提供商  ◄──  http://127.0.0.1:1028
+                          │
+                          └──► 轨迹 + Input Diff + Tools + Output + Raw
 ```
 
 ## 快速开始
