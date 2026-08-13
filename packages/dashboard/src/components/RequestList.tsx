@@ -16,13 +16,14 @@ type Props = {
   olderError: string | null;
   newCount: number;
   onSelect: (id: string, tab?: string) => void;
+  onTraceClick: (id: string) => void;
   onRetry: () => void;
   onLoadOlder: () => void;
   onShowNew: () => void;
   onAtTopChange: (atTop: boolean) => void;
 };
 
-export function RequestList({ captures, selectedId, loading, error, hasOlder, olderLoading, olderError, newCount, onSelect, onRetry, onLoadOlder, onShowNew, onAtTopChange }: Props) {
+export function RequestList({ captures, selectedId, loading, error, hasOlder, olderLoading, olderError, newCount, onSelect, onTraceClick, onRetry, onLoadOlder, onShowNew, onAtTopChange }: Props) {
   const { t } = useI18n();
   const viewportRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -81,7 +82,7 @@ export function RequestList({ captures, selectedId, loading, error, hasOlder, ol
                 style={{ transform: `translateY(${virtualItem.start}px)` }}
               >
                 {capture
-                  ? <RequestListItem capture={capture} selected={capture.id === selectedId} onSelect={onSelect} />
+                  ? <RequestListItem capture={capture} selected={capture.id === selectedId} onSelect={onSelect} onTraceClick={onTraceClick} />
                   : olderError
                     ? <Button onClick={onLoadOlder}>{t('requests.loadOlderFailed')}</Button>
                     : olderLoading

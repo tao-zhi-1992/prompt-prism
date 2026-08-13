@@ -13,6 +13,7 @@ export interface CaptureSummary {
   trace_id?: string;
   trace_group_id?: string;
   trace_group_source?: 'explicit' | 'inferred';
+  trace_group_index?: number;
   timing?: CaptureTiming;
   file_ref: string;
   analysis?: unknown;

@@ -13,6 +13,7 @@ import type {
 import { useI18n, type TranslationKey } from '../../i18n/index.js';
 import { Button } from '@prompt-prism/ui';
 import { StructuredContent } from '../../content/StructuredContent.js';
+import { traceColorIndex } from './colors.js';
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';
 export interface TraceCall {
@@ -413,7 +414,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
   if (!trace) return null;
   const usage = aggregateUsage(trace.calls.map((call) => call.output?.usage));
   return (
-    <div className="trace-panel">
+    <div className={`trace-panel trace-color-${traceColorIndex(trace.id)}`}>
       <div className="trace-overview">
         <header className="trace-summary">
           <div><span>{t('tab.trace')}</span><code className="trace-summary-id" title={trace.id}>trace:{trace.id.slice(0, 8)}</code></div>

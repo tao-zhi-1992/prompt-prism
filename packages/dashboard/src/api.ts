@@ -32,6 +32,12 @@ export async function getCaptureSummary(id: string, signal?: AbortSignal): Promi
   return readJson(await fetch(`/_pp/api/logs/${encodeURIComponent(id)}`, { signal, cache: 'no-store' }));
 }
 
+export async function getTraceFirstCaptureId(captureId: string, signal?: AbortSignal): Promise<string> {
+  const trace = await readJson<{ calls?: Array<{ capture_id?: unknown }> }>(await fetch(`/_pp/api/trace/${encodeURIComponent(captureId)}`, { signal, cache: 'no-store' }));
+  const firstCaptureId = trace.calls?.[0]?.capture_id;
+  return typeof firstCaptureId === 'string' && firstCaptureId ? firstCaptureId : captureId;
+}
+
 export async function getNewCaptureBatch(after: string, signal?: AbortSignal): Promise<NewCaptureBatch> {
   const items: CaptureSummary[] = [];
   let cursor = after;

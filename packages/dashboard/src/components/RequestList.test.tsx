@@ -27,6 +27,7 @@ function props(items: CaptureSummary[]) {
     olderError: null as string | null,
     newCount: 0,
     onSelect: vi.fn(),
+    onTraceClick: vi.fn(),
     onRetry: vi.fn(),
     onLoadOlder: vi.fn(),
     onShowNew: vi.fn(),

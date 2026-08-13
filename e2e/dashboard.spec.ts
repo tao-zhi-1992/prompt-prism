@@ -29,7 +29,7 @@ function close(server: http.Server): Promise<void> {
   return new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 }
 
-async function sendCapture(model: string): Promise<void> {
+async function sendCapture(model: string, traceId?: string): Promise<void> {
   const body = JSON.stringify({
     model,
     max_tokens: 32,
@@ -38,7 +38,7 @@ async function sendCapture(model: string): Promise<void> {
   });
   const response = await fetch(`${proxyOrigin}/v1/messages`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': 'e2e-test-key' },
+    headers: { 'content-type': 'application/json', 'x-api-key': 'e2e-test-key', ...(traceId ? { 'x-prompt-prism-trace-id': traceId } : {}) },
     body,
   });
   expect(response.ok).toBeTruthy();
@@ -118,6 +118,32 @@ test('loads a capture and opens its normalized output', async ({ page }) => {
   await expect(page.getByText('hello from e2e-model')).toBeVisible();
 });
 
+test('opens a trace at its first capture and keeps trace colors stable', async ({ page }) => {
+  await sendCapture('e2e-trace-first', 'trace-a');
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  await sendCapture('e2e-trace-second', 'trace-a');
+  await sendCapture('e2e-trace-other', 'trace-b');
+  await page.goto('./');
+
+  const traceABadges = page.locator('.trace-badge[title="trace-a"]');
+  const traceBBadge = page.locator('.trace-badge[title="trace-b"]');
+  await expect(traceABadges).toHaveCount(2);
+  await expect(traceBBadge).toHaveCount(1);
+  await expect(traceABadges.first()).toContainText('#2');
+  await expect(traceABadges.last()).toContainText('#1');
+  await expect(traceBBadge).toContainText('#1');
+  const traceAClass = await traceABadges.first().getAttribute('class');
+  const traceBClass = await traceBBadge.getAttribute('class');
+  expect(traceAClass).toMatch(/trace-color-[0-7]/);
+  expect(traceBClass).toMatch(/trace-color-[0-7]/);
+  expect(traceBClass).not.toBe(traceAClass);
+
+  await traceABadges.last().click();
+  await expect(page.locator('.request-item[data-selected]')).toContainText('e2e-trace-first');
+  await expect(page.getByRole('tab', { name: 'Trace' })).toHaveAttribute('data-active');
+  await expect(page.locator('.trace-panel')).toHaveClass(new RegExp(traceAClass!.match(/trace-color-[0-7]/)![0]));
+});
+
 test('renders expanded structured trace content with a single outer border', async ({ page }) => {
   await sendCapture('e2e-tool-call');
   await page.goto('./');
@@ -182,6 +208,33 @@ test('keeps Output collapsible header height stable while toggling', async ({ pa
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(toggle).toHaveCSS('border-bottom-width', '0px');
   await expect(toggle.locator('xpath=following-sibling::*[contains(concat(" ", normalize-space(@class), " "), " output-collapsible-panel ")]')).toHaveCSS('border-top-width', '1px');
+  const reexpanded = await toggle.boundingBox();
+  expect(expanded).not.toBeNull();
+  expect(collapsed).not.toBeNull();
+  expect(reexpanded).not.toBeNull();
+  expect(collapsed!.height).toBeCloseTo(expanded!.height, 4);
+  expect(reexpanded!.height).toBeCloseTo(expanded!.height, 4);
+});
+
+test('keeps Input Diff section header height stable while toggling', async ({ page }) => {
+  await sendCapture('e2e-model');
+  await page.goto('./');
+  await page.getByRole('button', { name: /e2e-model/ }).click();
+  await page.getByRole('tab', { name: 'Input Diff' }).click();
+
+  const toggle = page.getByRole('button', { name: 'Messages' });
+  const panel = toggle.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " input-diff-section ")]').locator('.input-diff-section-panel');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  const expanded = await toggle.boundingBox();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  await expect(panel).toHaveCount(0);
+  const collapsed = await toggle.boundingBox();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  await expect(panel).toHaveCSS('border-top-width', '1px');
   const reexpanded = await toggle.boundingBox();
   expect(expanded).not.toBeNull();
   expect(collapsed).not.toBeNull();

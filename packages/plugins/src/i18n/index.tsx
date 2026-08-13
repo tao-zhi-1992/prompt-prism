@@ -171,6 +171,7 @@ const en = {
   'trace.refreshFailed': 'Refresh failed: {{error}}',
   'trace.beginningUnavailable': 'The beginning of this trace is no longer available.',
   'trace.noCalls': 'No trace calls are available.',
+  'trace.openFirstRequest': 'Open trace {{id}} request {{index}} from its first request',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -343,6 +344,7 @@ const zh: Record<TranslationKey, string> = {
   'trace.refreshFailed': '刷新失败：{{error}}',
   'trace.beginningUnavailable': '该追踪开头的部分数据已不可用。',
   'trace.noCalls': '没有可用的追踪调用。',
+  'trace.openFirstRequest': '打开追踪 {{id}} 的第 {{index}} 个请求（从首个请求开始）',
 };
 
 const dictionaries: Record<Locale, Record<TranslationKey, string>> = { en, 'zh-CN': zh };

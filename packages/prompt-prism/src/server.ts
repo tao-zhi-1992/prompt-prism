@@ -9,7 +9,7 @@ const dashboardDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const brandDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets');
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png', 'favicon.ico']);
 type TraceGroupSource = 'explicit' | 'inferred';
-type TraceGroupMetadata = { trace_group_id: string; trace_group_source: TraceGroupSource };
+type TraceGroupMetadata = { trace_group_id: string; trace_group_source: TraceGroupSource; trace_group_index: number };
 type LogCursorPosition = { timestamp: string; id: string };
 const DEFAULT_LOG_LIMIT = 100;
 const MAX_LOG_LIMIT = 200;
@@ -108,22 +108,29 @@ function inferredRootId(id: string, byId: Map<string, CaptureIndexEntry>, analys
 function buildTraceGroupMetadata(captures: readonly CaptureIndexEntry[], analyses: Map<string, Analysis>): Map<string, TraceGroupMetadata> {
   const byId = new Map(captures.map((capture) => [capture.id, capture]));
   const inferredRoots = new Map<string, string>();
-  const inferredCounts = new Map<string, number>();
+  const groups = new Map<string, { id: string; source: TraceGroupSource; captures: CaptureIndexEntry[] }>();
+  const addToGroup = (id: string, source: TraceGroupSource, capture: CaptureIndexEntry) => {
+    const key = `${source}\0${id}`;
+    const group = groups.get(key) ?? { id, source, captures: [] };
+    group.captures.push(capture);
+    groups.set(key, group);
+  };
+
   for (const capture of captures) {
-    if (capture.trace_id) continue;
-    const rootId = inferredRootId(capture.id, byId, analyses, inferredRoots);
-    inferredRoots.set(capture.id, rootId);
-    inferredCounts.set(rootId, (inferredCounts.get(rootId) ?? 0) + 1);
+    if (capture.trace_id) addToGroup(capture.trace_id, 'explicit', capture);
+    else addToGroup(inferredRootId(capture.id, byId, analyses, inferredRoots), 'inferred', capture);
   }
 
   const metadata = new Map<string, TraceGroupMetadata>();
-  for (const capture of captures) {
-    if (capture.trace_id) {
-      metadata.set(capture.id, { trace_group_id: capture.trace_id, trace_group_source: 'explicit' });
-      continue;
-    }
-    const rootId = inferredRoots.get(capture.id);
-    if (rootId && (inferredCounts.get(rootId) ?? 0) > 1) metadata.set(capture.id, { trace_group_id: rootId, trace_group_source: 'inferred' });
+  for (const group of groups.values()) {
+    if (group.source === 'inferred' && group.captures.length < 2) continue;
+    group.captures
+      .sort((left, right) => left.timestamp.localeCompare(right.timestamp) || left.id.localeCompare(right.id))
+      .forEach((capture, index) => metadata.set(capture.id, {
+        trace_group_id: group.id,
+        trace_group_source: group.source,
+        trace_group_index: index + 1,
+      }));
   }
   return metadata;
 }
@@ -189,9 +196,23 @@ export function createAdminHandler({
   let cachedPositions = new Map<string, number>();
 
   const logSnapshot = () => {
-    const first = store.captures[0];
-    const last = store.captures.at(-1);
-    const signature = `${store.captures.length}:${first?.id ?? ''}:${last?.id ?? ''}:${analyzer.analyses.size}`;
+    const captureSignature = store.captures.map((capture) => JSON.stringify([
+      capture.id,
+      capture.timestamp,
+      capture.token_hash,
+      capture.model,
+      capture.usage,
+      capture.response_status,
+      capture.upstream_host,
+      capture.trace_id,
+      capture.timing,
+      capture.file_ref,
+    ])).join('\x01');
+    const analysisSignature = [...analyzer.analyses.entries()]
+      .map(([id, analysis]) => `${id}\0${JSON.stringify(analysis)}`)
+      .sort()
+      .join('\x01');
+    const signature = `${captureSignature}|${analysisSignature}`;
     if (signature === cachedSignature) return { sorted: cachedSorted, summaries: cachedSummaries, positions: cachedPositions };
     const traceGroups = buildTraceGroupMetadata(store.captures, analyzer.analyses);
     cachedSorted = [...store.captures].sort(compareLogPosition);

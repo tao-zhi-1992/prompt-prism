@@ -113,6 +113,38 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('/_pp/api/logs/deep-capture', expect.anything());
   });
 
+  it('opens a trace at its earliest capture when the left trace badge is clicked', async () => {
+    const first = { ...captures[1], id: 'first-trace-capture', timestamp: '2026-08-09T05:00:00.000Z', model: 'first-trace-model', trace_group_id: 'session-one', trace_group_source: 'explicit' as const, trace_group_index: 1 };
+    const newest = { ...captures[0], id: 'newest-trace-capture', model: 'newest-trace-model', trace_group_id: 'session-one', trace_group_source: 'explicit' as const, trace_group_index: 2 };
+    const trace = {
+      id: 'session-one', source: 'explicit' as const, selected_capture_id: newest.id, truncated: false,
+      calls: [
+        { capture_id: first.id, timestamp: first.timestamp, model: first.model, response_status: 200, input_relation: 'root' as const, input_delta: [], output: null },
+        { capture_id: newest.id, timestamp: newest.timestamp, model: newest.model, response_status: 200, input_relation: 'append' as const, input_delta: [], output: null },
+      ],
+    };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (isLogsPage(url)) return new Response(JSON.stringify(capturePage([newest, first])));
+      if (url === `/_pp/api/logs/${first.id}`) return new Response(JSON.stringify(first), { status: 200 });
+      if (url.includes('/trace/')) return new Response(JSON.stringify(trace), { status: 200 });
+      throw new Error(`unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+    await screen.findByRole('button', { name: /newest-trace-model/i });
+    await userEvent.click(screen.getAllByRole('button', { name: /Open trace session- request [12] from its first request/ })[0]!);
+
+    await waitFor(() => {
+      expect(new URLSearchParams(window.location.search).get('capture')).toBe(first.id);
+      expect(new URLSearchParams(window.location.search).get('tab')).toBe('trace');
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/trace/newest-trace-capture', expect.anything());
+    expect(await screen.findByRole('button', { name: /first-trace-model/i })).toHaveAttribute('data-selected');
+    expect(await screen.findByRole('tab', { name: 'Trace' })).toHaveAttribute('data-active');
+  });
+
   it('stages polled captures while browsing history and merges them on demand', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const incoming = { ...captures[0], id: 'polled-capture', model: 'polled-model', timestamp: '2026-08-10T07:00:00.000Z' };

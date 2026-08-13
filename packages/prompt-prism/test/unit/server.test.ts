@@ -74,15 +74,20 @@ test('adds explicit and inferred trace group metadata without rewriting trace_id
   assert.equal(result.get('explicit-one')?.trace_id, 'session-one');
   assert.equal(result.get('explicit-one')?.trace_group_id, 'session-one');
   assert.equal(result.get('explicit-one')?.trace_group_source, 'explicit');
+  assert.equal(result.get('explicit-one')?.trace_group_index, 1);
   assert.equal(result.get('explicit-two')?.trace_id, 'session-one');
   assert.equal(result.get('explicit-two')?.trace_group_id, 'session-one');
   assert.equal(result.get('explicit-two')?.trace_group_source, 'explicit');
+  assert.equal(result.get('explicit-two')?.trace_group_index, 2);
   assert.equal(result.get('root')?.trace_group_id, 'root');
   assert.equal(result.get('root')?.trace_group_source, 'inferred');
+  assert.equal(result.get('root')?.trace_group_index, 1);
   assert.equal(result.get('child')?.trace_group_id, 'root');
   assert.equal(result.get('child')?.trace_group_source, 'inferred');
+  assert.equal(result.get('child')?.trace_group_index, 2);
   assert.equal(result.get('single')?.trace_group_id, undefined);
   assert.equal(result.get('single')?.trace_group_source, undefined);
+  assert.equal(result.get('single')?.trace_group_index, undefined);
 });
 
 test('paginates logs with stable opaque cursors while preserving the legacy array response', async () => {

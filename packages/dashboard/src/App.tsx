@@ -8,6 +8,7 @@ import { I18nProvider, useI18n } from '@prompt-prism/plugins/dashboard';
 import { Button } from '@prompt-prism/ui';
 import { useCaptureFeed } from './hooks/useCaptureFeed';
 import { useCaptureSelection } from './hooks/useCaptureSelection';
+import { getTraceFirstCaptureId } from './api';
 
 function Dashboard() {
   const { preference, setPreference } = useTheme();
@@ -20,6 +21,22 @@ function Dashboard() {
   const [clearOpen, setClearOpen] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
   const clearActionRef = useRef<HTMLSpanElement>(null);
+  const traceNavigationRef = useRef<{ sequence: number; controller?: AbortController }>({ sequence: 0 });
+
+  const openTrace = useCallback(async (captureId: string) => {
+    traceNavigationRef.current.controller?.abort();
+    const controller = new AbortController();
+    const sequence = traceNavigationRef.current.sequence + 1;
+    traceNavigationRef.current = { sequence, controller };
+    try {
+      const firstCaptureId = await getTraceFirstCaptureId(captureId, controller.signal);
+      if (!controller.signal.aborted && traceNavigationRef.current.sequence === sequence) select(firstCaptureId, 'trace');
+    } catch {
+      if (!controller.signal.aborted && traceNavigationRef.current.sequence === sequence) select(captureId, 'trace');
+    }
+  }, [select]);
+
+  useEffect(() => () => traceNavigationRef.current.controller?.abort(), []);
 
   const clear = useCallback(async () => {
     setClearBusy(true);
@@ -87,6 +104,7 @@ function Dashboard() {
           olderError={olderError}
           newCount={pendingCaptures.length}
           onSelect={select}
+          onTraceClick={(captureId) => { void openTrace(captureId); }}
           onRetry={retryInitial}
           onLoadOlder={() => { void loadOlder(); }}
           onShowNew={showNewCaptures}

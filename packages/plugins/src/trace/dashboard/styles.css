@@ -5,7 +5,7 @@
 .trace-summary > div:last-child { border-right: 0; }
 .trace-summary span { color: var(--faint); font-size: 8px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .trace-summary code, .trace-summary b { overflow: hidden; color: var(--text); font: 10px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
-.trace-summary-id { width: max-content; max-width: 100%; padding: 3px 5px; color: var(--accent-strong) !important; border: 1px solid var(--line-strong); background: var(--green-bg); font-size: 9px !important; }
+.trace-summary-id { width: max-content; max-width: 100%; padding: 3px 5px; color: var(--trace-fg, var(--accent-strong)) !important; border: 1px solid var(--trace-border, var(--line-strong)); background: var(--trace-bg, var(--green-bg)); font-size: 9px !important; }
 .trace-source-value { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .trace-info-trigger { display: grid; place-items: center; width: 14px; height: 14px; padding: 0; color: var(--muted); border: 1px solid var(--line-strong); background: transparent; font: 600 9px "DM Mono", monospace; cursor: help; }
 .trace-info-trigger:hover { color: var(--text); border-color: var(--line-strong); background: var(--surface-3); }
@@ -25,9 +25,9 @@
 .trace-content { display: grid; gap: 18px; min-width: 100%; padding: 16px 16px 70px 34px; }
 .trace-call { position: relative; min-width: 0; border: 1px solid var(--line); background: var(--surface-1); }
 .trace-call::before { content: ""; position: absolute; top: -19px; bottom: -19px; left: -20px; width: 1px; background: var(--line); }
-.trace-call::after { content: ""; position: absolute; top: 18px; left: -24px; width: 9px; height: 9px; background: var(--faint); }
+.trace-call::after { content: ""; position: absolute; top: 18px; left: -24px; width: 9px; height: 9px; background: var(--trace-fg, var(--faint)); }
 .trace-call[data-selected] { border-color: var(--line); }
-.trace-call[data-selected]::after { background: var(--accent); }
+.trace-call[data-selected]::after { background: var(--trace-fg, var(--accent)); }
 .trace-call-header-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-width: 0; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .trace-call-header { display: grid; grid-template-columns: auto minmax(90px, 1fr) minmax(100px, 1fr) auto auto; align-items: center; gap: 10px; width: 100%; min-width: 0; min-height: 36px; padding: 6px 10px; color: var(--muted); background: transparent; text-align: left; text-decoration: none; cursor: pointer; }
 .trace-call-header:hover { background: var(--surface-3); }
