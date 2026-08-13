@@ -69,7 +69,13 @@ pnpm demo
 可选变量：
 
 - `DEMO_BASE_URL`：默认为 `http://127.0.0.1:1028`；不要包含 `/v1`。
-- `DEMO_API_FORMAT`：默认为 `auto`，使用演示的 Anthropic 客户端配合按捕获记录进行的代理检测；用 `anthropic-messages` 或 `openai-chat-completions` 覆盖客户端协议。
+- `DEMO_API_FORMAT`：默认为 `auto`，使用演示的 Anthropic 客户端配合按捕获记录进行的代理检测；用 `anthropic-messages`、`openai-chat-completions` 或 `openai-responses` 覆盖客户端协议。
+
+## 协议 Fixture
+
+Adapter 兼容性 fixture 位于 `packages/core/test/fixtures/protocols`。它们是公开 API 形态的精简、离线副本；`sources.json` 记录来源 URL 和 revision，不会 vendor 完整的 provider 规范。支持的协议变更时，手动更新 fixture 后运行 adapter 与集成测试。
+
+用 `pnpm check:openai-openapi -- <commit>` 可把当前 fixture 对照官方 OpenAI OpenAPI commit。该命令仅用于人工维护，会访问网络，CI 不会运行它。Realtime、Batch、Assistants 和 managed-agent 专用协议仍作为 Raw capture 保存。
 - `DEMO_PORT`：默认为 `3000`。
 
 会话保存在内存中。生成的工作区保留在 `example/.workspaces/` 下，可通过**重置工作区**重建。

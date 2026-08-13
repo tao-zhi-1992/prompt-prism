@@ -62,6 +62,9 @@ export interface CaptureIndexEntry {
   adapter_id?: string;
   prompt_input?: ModelInputSnapshot;
   parent_capture_id?: string;
+  trace_relation_source?: 'explicit' | 'inferred';
+  trace_relation_reason?: 'explicit_trace_id' | 'input_prefix' | 'input_with_previous_output';
+  trace_relation_version?: 1;
 }
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';

@@ -74,7 +74,7 @@ export function buildCapture({
     detectProtocolFromBody(requestBody),
     detectProtocolFromResponse(responseBody),
   );
-  const adapter = captureProtocol && captureProtocol !== 'openai-responses' ? getProviderAdapter(captureProtocol) : null;
+  const adapter = captureProtocol ? getProviderAdapter(captureProtocol) : null;
   let parsedRequest = null;
   let parsedResponse = null;
   if (adapter) {

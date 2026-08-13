@@ -12,18 +12,17 @@ import type {
 } from '@prompt-prism/contracts/server';
 import { insightsPluginMeta } from '../index.js';
 import type { TraceInputRelation, TraceResult } from '@prompt-prism/contracts/server';
-
 type ParentLookup = (id: string) => string | null | undefined;
 
 function parseConversation(capture: Capture, context: ServerPluginContext) {
-  if (!capture.request?.body) return [];
-  try { return context.parseProviderRequest(capture.adapter_id ?? 'anthropic', capture.request.body).input.conversation ?? []; }
+  if (!capture.request?.body || !capture.adapter_id || capture.adapter_id === 'unresolved') return [];
+  try { return context.parseProviderRequest(capture.adapter_id, capture.request.body).input.conversation ?? []; }
   catch { return []; }
 }
 function parseOutput(capture: Capture, context: ServerPluginContext) {
-  if (!capture.response?.body) return null;
+  if (!capture.response?.body || !capture.adapter_id || capture.adapter_id === 'unresolved') return null;
   const contentType = Object.entries(capture.response.headers).find(([name]) => name.toLowerCase() === 'content-type')?.[1];
-  try { return context.parseProviderResponse(capture.adapter_id ?? 'anthropic', capture.response.body, Array.isArray(contentType) ? contentType[0] : contentType).output; }
+  try { return context.parseProviderResponse(capture.adapter_id, capture.response.body, Array.isArray(contentType) ? contentType[0] : contentType).output; }
   catch { return null; }
 }
 
@@ -297,8 +296,8 @@ function finding(code: string, scope: string, severity: InsightFinding['severity
   return { code, scope, severity, summary: summaryText, recommendation, evidence };
 }
 
-export async function buildInsightReport(selectedId: string, context: ServerPluginContext, getParentId: ParentLookup): Promise<InsightReport | null> {
-  const trace = await context.getTraceResult?.(selectedId) ?? await localTraceResult(selectedId, context, getParentId);
+export async function buildInsightReport(selectedId: string, context: ServerPluginContext): Promise<InsightReport | null> {
+  const trace = context.getTraceResult ? await context.getTraceResult(selectedId) : null;
   if (!trace) return null;
   const entries = entriesForTrace(trace, context.captures);
   if (!entries.length) return null;
@@ -315,7 +314,7 @@ export async function buildInsightReport(selectedId: string, context: ServerPlug
     const capture = await context.readCapture(call.capture_id);
     let promptInput = entry.prompt_input ?? capture?.prompt_input;
     if (!promptInput && capture?.request?.body) {
-      try { promptInput = context.parseProviderRequest(capture.adapter_id ?? 'anthropic', capture.request.body).input; }
+      if (capture.adapter_id && capture.adapter_id !== 'unresolved') try { promptInput = context.parseProviderRequest(capture.adapter_id, capture.request.body).input; }
       catch { promptInput = undefined; }
     }
     const sections = (promptInput?.sections ?? []).map(sectionSize);
@@ -458,32 +457,6 @@ export async function buildInsightReport(selectedId: string, context: ServerPlug
   return { schema_version: SCHEMA_VERSION, run, sections, tools, calls, findings };
 }
 
-async function localTraceResult(selectedId: string, context: ServerPluginContext, getParentId: ParentLookup): Promise<TraceResult | null> {
-  const selected = context.captures.find((item) => item.id === selectedId);
-  if (!selected || !(await context.readCapture(selectedId))) return null;
-  const source = selected.trace_id ? 'explicit' as const : 'inferred' as const;
-  const byId = new Map(context.captures.map((item) => [item.id, item]));
-  let entries: CaptureIndexEntry[];
-  let truncated = false;
-  if (source === 'explicit') entries = context.captures.filter((item) => item.trace_id === selected.trace_id);
-  else {
-    entries = []; const seen = new Set<string>(); let current: CaptureIndexEntry | undefined = selected;
-    while (current && !seen.has(current.id)) { entries.push(current); seen.add(current.id); const parent = getParentId(current.id); if (!parent) break; current = byId.get(parent); if (!current) truncated = true; }
-    entries.reverse();
-  }
-  entries.sort((left, right) => left.timestamp.localeCompare(right.timestamp) || left.id.localeCompare(right.id));
-  let previous = null as import('@prompt-prism/contracts/model').ConversationMessage[] | null;
-  const calls: TraceResult['calls'] = [];
-  for (const entry of entries) {
-    const capture = await context.readCapture(entry.id);
-    const conversation = capture?.prompt_input?.conversation ?? (capture ? parseConversation(capture, context) : []);
-    const output = capture?.model_output ?? (capture ? parseOutput(capture, context) : null);
-    const prefix = previous && previous.length <= conversation.length && previous.every((message, index) => JSON.stringify(message) === JSON.stringify(conversation[index]));
-    calls.push({ capture_id: entry.id, timestamp: entry.timestamp, model: entry.model, response_status: entry.response_status, upstream_host: entry.upstream_host, input_relation: previous === null ? 'root' : prefix ? 'append' : 'rewritten', input_delta: previous && prefix ? conversation.slice(previous.length) : conversation, output });
-    previous = conversation;
-  }
-  return { id: selected.trace_id ?? entries[0]?.id ?? selected.id, source, selected_capture_id: selected.id, truncated, calls };
-}
 
 function delta(before: number | null, after: number | null): InsightMetricDelta {
   if (before === null || after === null) return { before, after, absolute: null, percent: null };
@@ -568,7 +541,7 @@ export async function buildInsightEvidence(captureId: string, sectionId: string,
   } else {
     let input = capture.prompt_input;
     if (!input && capture.request?.body) {
-      try { input = context.parseProviderRequest(capture.adapter_id ?? 'anthropic', capture.request.body).input; }
+      if (capture.adapter_id && capture.adapter_id !== 'unresolved') try { input = context.parseProviderRequest(capture.adapter_id, capture.request.body).input; }
       catch { input = undefined; }
     }
     const section = input?.sections.find((item) => item.id === sectionId);
@@ -612,7 +585,7 @@ export function createInsightsServerPlugin(): PromptPrismServerPlugin {
         return true;
       }
       if (subpath.startsWith('report/')) {
-        const report = await buildInsightReport(decodeURIComponent(subpath.slice('report/'.length)), context, context.getTraceParent ?? (() => null));
+        const report = await buildInsightReport(decodeURIComponent(subpath.slice('report/'.length)), context);
         if (!report) context.json(response, 404, { error: 'Run not found', code: 'run_not_found' });
         else context.json(response, 200, report);
         return true;
@@ -625,8 +598,8 @@ export function createInsightsServerPlugin(): PromptPrismServerPlugin {
           return true;
         }
         const [baseline, candidate] = await Promise.all([
-          buildInsightReport(baselineId, context, context.getTraceParent ?? (() => null)),
-          buildInsightReport(candidateId, context, context.getTraceParent ?? (() => null)),
+          buildInsightReport(baselineId, context),
+          buildInsightReport(candidateId, context),
         ]);
         if (!baseline || !candidate) context.json(response, 404, { error: 'Run not found', code: 'run_not_found' });
         else context.json(response, 200, compareInsightReports(baseline, candidate));

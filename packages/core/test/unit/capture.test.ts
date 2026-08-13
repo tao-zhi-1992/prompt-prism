@@ -41,14 +41,14 @@ test('builds a normalized capture and redacts sensitive headers', () => {
   assert.equal(capture.timing?.time_to_first_byte_ms, 30);
 });
 
-test('keeps an unsupported response as Raw without leaking normalized fields', () => {
+test('normalizes OpenAI Responses instead of falling back to Raw', () => {
   const requestBody = Buffer.from(JSON.stringify({ model: 'gpt-test', input: 'hello' }));
   const capture = buildCapture({
     id: 'capture-raw',
     request: { method: 'POST', url: '/v1/responses', headers: {} },
     targetUrl: new URL('https://api.openai.com/v1/responses'),
     requestBody,
-    responseBody: Buffer.from(JSON.stringify({ object: 'response', output: [] })),
+    responseBody: Buffer.from(JSON.stringify({ id: 'resp_1', object: 'response', model: 'gpt-test', status: 'completed', output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'hello' }] }], usage: { input_tokens: 3, output_tokens: 1 } })),
     responseStatus: 200,
     responseHeaders: { 'content-type': 'application/json' },
     timing,
@@ -57,9 +57,9 @@ test('keeps an unsupported response as Raw without leaking normalized fields', (
     pathProtocol: 'openai-responses',
     headerProtocol: null,
   });
-  assert.equal(capture.adapter_id, 'unresolved');
+  assert.equal(capture.adapter_id, 'openai-responses');
   assert.equal(capture.model, 'gpt-test');
-  assert.equal(capture.prompt_input, undefined);
-  assert.equal(capture.model_output, undefined);
+  assert.equal(capture.prompt_input?.adapter_id, 'openai-responses');
+  assert.deepEqual(capture.model_output?.content, [{ type: 'text', text: 'hello' }]);
   assert.equal(capture.request?.body, requestBody.toString());
 });

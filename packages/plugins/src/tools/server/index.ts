@@ -9,9 +9,9 @@ function toolsFromInput(input: { sections: Array<{ id: string; value: JsonValue 
 export function extractTools(capture: Capture, context: Pick<ServerPluginContext, 'parseProviderRequest'>): JsonValue[] {
   const normalized = capture.prompt_input && toolsFromInput(capture.prompt_input);
   if (normalized) return normalized;
-  if (!capture.request?.body) return [];
+  if (!capture.request?.body || !capture.adapter_id || capture.adapter_id === 'unresolved') return [];
   try {
-    return toolsFromInput(context.parseProviderRequest(capture.adapter_id ?? 'anthropic', capture.request.body).input) ?? [];
+    return toolsFromInput(context.parseProviderRequest(capture.adapter_id, capture.request.body).input) ?? [];
   } catch {
     return [];
   }
@@ -30,16 +30,16 @@ export interface ToolUsage {
   invocations: ToolUsageInvocation[];
 }
 
-function visibleOutput(block: { type: string; provider_type?: string }): boolean {
-  return block.type !== 'unknown' || block.provider_type !== 'openai_delta_fields';
+function visibleOutput(block: { type: string; visibility?: 'internal' }): boolean {
+  return block.visibility !== 'internal';
 }
 
 export function extractUsedTools(capture: Capture, context: ServerPluginContext): ToolUsage[] {
   const groups = new Map<string, ToolUsage>();
   let output = capture.model_output ?? null;
-  if (!output && capture.response?.body) {
+  if (!output && capture.response?.body && capture.adapter_id && capture.adapter_id !== 'unresolved') {
     const contentType = Object.entries(capture.response.headers).find(([name]) => name.toLowerCase() === 'content-type')?.[1];
-    try { output = context.parseProviderResponse(capture.adapter_id ?? 'anthropic', capture.response.body, Array.isArray(contentType) ? contentType[0] : contentType).output; } catch { output = null; }
+    try { output = context.parseProviderResponse(capture.adapter_id, capture.response.body, Array.isArray(contentType) ? contentType[0] : contentType).output; } catch { output = null; }
   }
   const blocks = output?.content ?? [];
   for (const [index, block] of blocks.entries()) {

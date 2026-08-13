@@ -1,6 +1,6 @@
 import type http from 'node:http';
 
-export type ProviderProtocol = 'anthropic-messages' | 'openai-chat-completions';
+export type ProviderProtocol = 'anthropic-messages' | 'openai-chat-completions' | 'openai-responses';
 export type ApiFormatOption = 'auto' | ProviderProtocol | 'anthropic' | 'openai';
 export type ApiFormatResolutionSource = 'explicit' | 'upstream-url' | 'upstream-base-url' | 'request-path' | 'request-headers' | 'request-shape' | 'response-shape' | null;
 export interface ApiFormatResolution {
@@ -43,7 +43,7 @@ export interface ConversationTextBlock { type: 'text'; text: string; }
 export interface ConversationReasoningBlock { type: 'reasoning'; text: string; }
 export interface ConversationToolCallBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; input_raw?: string; }
 export interface ConversationToolResultBlock { type: 'tool_result'; tool_call_id: string | null; content: JsonValue; is_error: boolean | null; }
-export interface ConversationUnknownBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
+export interface ConversationUnknownBlock { type: 'unknown'; provider_type: string; value: JsonValue; visibility?: 'internal'; }
 export type ConversationContentBlock = ConversationTextBlock | ConversationReasoningBlock | ConversationToolCallBlock | ConversationToolResultBlock | ConversationUnknownBlock;
 export interface ConversationMessage { role: string; content: ConversationContentBlock[]; }
 
@@ -76,6 +76,8 @@ export interface UnknownOutputBlock {
   type: 'unknown';
   provider_type: string;
   value: JsonValue;
+  /** Adapter bookkeeping which should not become a product-facing block. */
+  visibility?: 'internal';
 }
 
 export type ModelOutputBlock = TextOutputBlock | ReasoningOutputBlock | ToolCallOutputBlock | UnknownOutputBlock;
@@ -155,6 +157,9 @@ export interface CaptureIndexEntry {
   prompt_input?: ModelInputSnapshot;
   /** Core Trace relationship; absent for explicit roots and unrelated captures. */
   parent_capture_id?: string;
+  trace_relation_source?: 'explicit' | 'inferred';
+  trace_relation_reason?: 'explicit_trace_id' | 'input_prefix' | 'input_with_previous_output';
+  trace_relation_version?: 1;
 }
 
 export type DiffType = 'equal' | 'insert' | 'delete';

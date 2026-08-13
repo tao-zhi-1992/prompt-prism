@@ -106,7 +106,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 | 选项 | 默认值 | 用途 |
 | --- | --- | --- |
 | `--upstream-base-url` | 无（仅动态模式） | 提供商模型 API Base URL |
-| `--api-format` | `auto` | 检测 Anthropic Messages 或 OpenAI Chat Completions |
+| `--api-format` | `auto` | 检测 Anthropic Messages、OpenAI Chat Completions 或 OpenAI Responses |
 | `--port` | `1028` | 本地代理和仪表盘端口 |
 | `--data-dir` | `./data` | 本地捕获目录 |
 | `--max-storage` | `1GB` | 捕获存储上限 |
@@ -130,7 +130,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 ## 自动协议检测
 
-`--api-format` 接受 `auto`、`anthropic-messages` 或 `openai-chat-completions`。更短的 `anthropic` 和 `openai` 别名仍然支持。
+`--api-format` 接受 `auto`、`anthropic-messages`、`openai-chat-completions` 或 `openai-responses`。更短的 `anthropic` 和 `openai` 别名仍然支持（`openai` 指 Chat Completions）。
 
 在 auto 模式下，Prism 独立检测每条捕获记录：依次考虑请求路径、头部、协议专属请求体、提供商响应，最后是显式提供的上游 URL 或已知提供商 Base URL。每条捕获记录以第一个可信信号为准，因此一种协议不会锁定或影响后续捕获。路由只使用转发前可用的信号：请求路径、头部和上游 URL 提示。没有固定上游时，动态请求使用其解码出的 Base URL 作为当前请求的提示。
 

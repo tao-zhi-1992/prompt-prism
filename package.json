@@ -18,6 +18,7 @@
     "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
     "test:e2e": "pnpm --filter prompt-prism build:all && playwright test --config=e2e/playwright.config.ts",
     "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "check:openai-openapi": "node scripts/check-openai-openapi.mjs",
     "dashboard:dev": "pnpm --filter @prompt-prism/dashboard dev"
   },
   "devDependencies": {

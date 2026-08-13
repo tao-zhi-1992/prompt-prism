@@ -47,7 +47,7 @@ async function adminRequest(
   } as unknown as http.ServerResponse;
   const apiFormat = (): ApiFormatResolution => ({ mode: 'auto', configured: 'auto', resolved: null, source: null });
   const trace = new TraceService('/tmp/prompt-prism-server-test');
-  for (const [id, value] of analyses) trace.relations.set(id, value.matched_parent_id);
+  for (const [id, value] of analyses) trace.relations.set(id, { id, parent_capture_id: value.matched_parent_id });
   const handler = createAdminHandler({
     store: { captures, readCapture: async () => null, clear: options.clear ?? (async () => {}) },
     trace,

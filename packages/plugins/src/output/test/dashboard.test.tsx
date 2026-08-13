@@ -12,7 +12,7 @@ const result: OutputCapture = {
       { type: 'text', text: '<img src=x onerror=alert(1)>\nplain output' },
       { type: 'tool_call', id: 'tool_1', name: 'read', input: { path: 'src/a.ts', options: { lines: 20 } } },
       { type: 'unknown', provider_type: 'citation', value: { url: 'https://example.com' } },
-      { type: 'unknown', provider_type: 'openai_delta_fields', value: [{ vendor_field: true }] },
+      { type: 'unknown', provider_type: 'adapter_metadata', value: [{ vendor_field: true }], visibility: 'internal' },
     ],
   },
 };
@@ -29,7 +29,7 @@ describe('OutputPanel', () => {
     expect(screen.getByText(/<img src=x/)).toBeVisible();
     expect(container.querySelector('img')).toBeNull();
     expect([...container.querySelectorAll('.output-block-toggle > strong')].map((node) => node.textContent)).toEqual(['Text', 'Thinking', 'Unknown block']);
-    expect(screen.queryByText('openai_delta_fields')).not.toBeInTheDocument();
+    expect(screen.queryByText('adapter_metadata')).not.toBeInTheDocument();
 
     const textBlock = screen.getByRole('button', { name: /^Text$/ });
     expect(textBlock).toHaveAttribute('aria-expanded', 'true');

@@ -177,7 +177,7 @@ export class CaptureStore {
     await this.evictUntilFits(incomingBytes);
     await writeFile(absolute, serialized, { flag: 'wx' });
 
-    const indexEntry = {
+    const indexEntry: CaptureIndexEntry = {
       id: capture.id,
       timestamp: capture.timestamp,
       token_hash: capture.token_hash,
@@ -190,7 +190,11 @@ export class CaptureStore {
       file_ref: fileRef,
       messages: capture.messages,
       adapter_id: capture.adapter_id,
-      prompt_input: capture.prompt_input
+      prompt_input: capture.prompt_input,
+      ...(typeof capture.parent_capture_id === 'string' ? { parent_capture_id: capture.parent_capture_id } : {}),
+      ...(capture.trace_relation_source === 'explicit' || capture.trace_relation_source === 'inferred' ? { trace_relation_source: capture.trace_relation_source } : {}),
+      ...(capture.trace_relation_reason === 'explicit_trace_id' || capture.trace_relation_reason === 'input_prefix' || capture.trace_relation_reason === 'input_with_previous_output' ? { trace_relation_reason: capture.trace_relation_reason } : {}),
+      ...(capture.trace_relation_version === 1 ? { trace_relation_version: 1 as const } : {}),
     };
     if (pending) {
       try { await appendFile(this.pendingPath, `${JSON.stringify(indexEntry)}\n`); }

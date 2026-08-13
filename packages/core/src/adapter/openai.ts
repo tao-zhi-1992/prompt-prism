@@ -351,6 +351,29 @@ export function parseResponse(body: Buffer | string, contentType = ''): Provider
   };
 }
 
-const openai: ProviderAdapter = { id: 'openai-chat-completions', parseRequest, parseResponse };
+const openai: ProviderAdapter = {
+  id: 'openai-chat-completions',
+  detection: {
+    endpointPath: '/v1/chat/completions',
+    detectPath: (pathname) => /(?:^|\/)chat\/completions\/?$/i.test(pathname),
+    detectHeaders: () => false,
+    detectRequest: (body) => {
+      try {
+        const value = asObject(JSON.parse(Buffer.isBuffer(body) ? body.toString('utf8') : body));
+        const messages = Array.isArray(value.messages) ? value.messages.map(asObject) : [];
+        const tools = Array.isArray(value.tools) ? value.tools.map(asObject) : [];
+        return tools.some((tool) => tool.type === 'function' && asObject(tool.function)) || messages.some((message) => message.role === 'developer' || message.role === 'tool' || Array.isArray(message.tool_calls));
+      } catch { return false; }
+    },
+    detectResponse: (body) => {
+      const text = Buffer.isBuffer(body) ? body.toString('utf8') : body;
+      if (/"object"\s*:\s*"chat\.completion(?:\.chunk)?"/.test(text)) return true;
+      try { const value = asObject(JSON.parse(text)); return Array.isArray(value.choices) || value.object === 'chat.completion'; } catch { return false; }
+    },
+    detectBaseUrl: (url) => ['api.openai.com', 'api.deepseek.com', 'api.groq.com', 'api.together.xyz'].includes(url.hostname.toLowerCase()) || /(?:^|\/)openai(?:\/|$)/.test(url.pathname.toLowerCase()),
+  },
+  parseRequest,
+  parseResponse,
+};
 
 export default openai;

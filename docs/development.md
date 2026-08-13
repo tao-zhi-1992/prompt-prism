@@ -69,7 +69,13 @@ Required variables:
 Optional variables:
 
 - `DEMO_BASE_URL`: defaults to `http://127.0.0.1:1028`; do not include `/v1`.
-- `DEMO_API_FORMAT`: defaults to `auto`, which uses the Demo's Anthropic client with per-capture proxy detection; use `anthropic-messages` or `openai-chat-completions` to override the client protocol.
+- `DEMO_API_FORMAT`: defaults to `auto`, which uses the Demo's Anthropic client with per-capture proxy detection; use `anthropic-messages`, `openai-chat-completions`, or `openai-responses` to override the client protocol.
+
+## Protocol fixtures
+
+Adapter compatibility fixtures live in `packages/core/test/fixtures/protocols`. They are small, offline copies of public API shapes with source URLs and revision metadata in `sources.json`; they intentionally do not vendor the full provider specifications. Update fixtures manually when a supported protocol changes, then run the adapter and integration suites.
+
+To compare the tracked OpenAI fixture revision with an official OpenAPI commit, run `pnpm check:openai-openapi -- <commit>`. This is a manual, networked maintenance command and is never run by CI. Realtime, Batch, Assistants, and managed-agent-specific protocols remain Raw captures.
 - `DEMO_PORT`: defaults to `3000`.
 
 Sessions are in memory. Generated workspaces are retained under `example/.workspaces/` and recreated by **Reset workspace**.

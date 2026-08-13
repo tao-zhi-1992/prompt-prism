@@ -15,6 +15,7 @@ test('only uses provider-specific body evidence and resolves each capture indepe
   assert.equal(detectProtocolFromBody(JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'hello' }] })), null);
   assert.equal(detectProtocolFromBody(JSON.stringify({ model: 'm', messages: [], tools: [{ name: 'read', input_schema: { type: 'object' } }] })), 'anthropic-messages');
   assert.equal(detectProtocolFromBody(JSON.stringify({ model: 'm', messages: [], tools: [{ type: 'function', function: { name: 'read' } }] })), 'openai-chat-completions');
+  assert.equal(detectProtocolFromBody(JSON.stringify({ model: 'm', input: [{ role: 'user', content: 'hello' }] })), 'openai-responses');
 
   const resolver = new ApiFormatResolver('auto', new URL('https://custom.example.com'), false);
   assert.equal(resolver.resolution.resolved, null);

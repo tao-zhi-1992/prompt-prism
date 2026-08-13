@@ -21,10 +21,10 @@ export function createOutputServerPlugin(): PromptPrismServerPlugin {
         return true;
       }
       let output = capture.model_output ?? null;
-      if (!output && capture.response) {
+      if (!output && capture.response && capture.adapter_id && capture.adapter_id !== 'unresolved') {
         try {
           output = context.parseProviderResponse(
-            capture.adapter_id ?? 'anthropic',
+            capture.adapter_id,
             capture.response.body,
             header(capture.response.headers, 'content-type'),
           ).output;

@@ -28,26 +28,13 @@ export interface InputDiffAnalysis {
   cache_hit_below_expected: boolean;
 }
 
-interface ParentMatch {
-  capture: CaptureIndexEntry;
-  input: ModelInputSnapshot;
-  score: { items: number; chars: number };
-}
-
 export function serializeValue(value: JsonValue): string {
   return JSON.stringify(value);
 }
 
-function commonSequencePrefix(left: JsonValue, right: JsonValue): number {
-  if (!Array.isArray(left) || !Array.isArray(right)) return 0;
-  let count = 0;
-  while (count < left.length && count < right.length && serializeValue(left[count] ?? null) === serializeValue(right[count] ?? null)) count++;
-  return count;
-}
-
 function legacyInput(capture: Pick<CaptureIndexEntry, 'adapter_id' | 'messages' | 'prompt_input'>): ModelInputSnapshot {
   return capture.prompt_input ?? {
-    adapter_id: capture.adapter_id ?? 'anthropic',
+    adapter_id: capture.adapter_id ?? 'unresolved',
     primary_section_id: 'messages',
     primary_sequence: capture.messages,
     sections: [{ id: 'messages', label: 'Messages', order: 10, value: capture.messages, compare_as: 'sequence', default_collapsed: false }],
@@ -62,33 +49,6 @@ function isEmpty(value: JsonValue): boolean {
   if (value === null || value === '') return true;
   if (Array.isArray(value)) return value.length === 0;
   return typeof value === 'object' && Object.keys(value).length === 0;
-}
-
-function groupKey(capture: Pick<CaptureIndexEntry, 'adapter_id' | 'model' | 'token_hash' | 'upstream_host' | 'prompt_input'>): string {
-  return JSON.stringify([
-    capture.prompt_input?.adapter_id ?? capture.adapter_id ?? 'anthropic',
-    capture.token_hash,
-    capture.upstream_host ?? '',
-    capture.model ?? '',
-  ]);
-}
-
-function indexEntry(capture: Capture): CaptureIndexEntry {
-  return {
-    id: capture.id,
-    timestamp: capture.timestamp,
-    token_hash: capture.token_hash,
-    model: capture.model,
-    usage: capture.usage,
-    response_status: capture.response?.status,
-    upstream_host: capture.upstream_host,
-    trace_id: capture.trace_id,
-    timing: capture.timing,
-    file_ref: '',
-    messages: capture.messages,
-    adapter_id: capture.adapter_id,
-    prompt_input: capture.prompt_input,
-  };
 }
 
 function buildSections(current: ModelInputSnapshot, parent: ModelInputSnapshot | null): InputDiffSection[] {
@@ -115,7 +75,6 @@ function buildSections(current: ModelInputSnapshot, parent: ModelInputSnapshot |
 
 export class InputDiffAnalyzer {
   readonly analysisPath: string;
-  readonly index = new Map<string, CaptureIndexEntry[]>();
   readonly analyses = new Map<string, InputDiffAnalysis>();
 
   constructor({ analysisPath }: { analysisPath: string }) {
@@ -153,7 +112,6 @@ export class InputDiffAnalyzer {
       }
       if (needsRewrite) await this.rewriteAnalyses();
     }
-    for (const capture of captures) this.addToIndex(capture);
   }
 
   private async rewriteAnalyses(): Promise<void> {
@@ -167,30 +125,11 @@ export class InputDiffAnalyzer {
     }
   }
 
-  findParent(capture: Capture): ParentMatch | null {
-    const current = legacyInput(capture);
-    const primary = current.primary_sequence ?? section(current, current.primary_section_id)?.value ?? [];
-    let best: ParentMatch | null = null;
-    for (const candidate of this.index.get(groupKey(capture)) ?? []) {
-      if (capture.prompt_input && !candidate.prompt_input) continue;
-      const candidateInput = legacyInput(candidate);
-      const candidatePrimary = candidateInput.primary_sequence ?? section(candidateInput, candidateInput.primary_section_id)?.value ?? [];
-      const items = commonSequencePrefix(candidatePrimary, primary);
-      if (items === 0) continue;
-      const chars = divergencePoint(serializeValue(candidatePrimary), serializeValue(primary));
-      const newer = new Date(candidate.timestamp).getTime() > new Date(best?.capture.timestamp ?? 0).getTime();
-      if (!best || items > best.score.items || (items === best.score.items && (chars > best.score.chars || (chars === best.score.chars && newer)))) {
-        best = { capture: candidate, input: candidateInput, score: { items, chars } };
-      }
-    }
-    return best;
-  }
-
-  async analyze(capture: Capture, stored: CaptureIndexEntry = indexEntry(capture), parentOverride?: CaptureIndexEntry | null): Promise<InputDiffAnalysis> {
+  async analyze(capture: Capture, _stored?: CaptureIndexEntry, parentOverride?: CaptureIndexEntry | null): Promise<InputDiffAnalysis> {
     const currentInput = legacyInput(capture);
     const currentPrimary = currentInput.primary_sequence ?? section(currentInput, currentInput.primary_section_id)?.value ?? [];
     const currentText = serializeValue(currentPrimary);
-    const parent = parentOverride === undefined ? this.findParent(capture) : parentOverride ? { capture: parentOverride, input: legacyInput(parentOverride), score: { items: commonSequencePrefix(parentOverride.prompt_input?.primary_sequence ?? parentOverride.messages, currentPrimary), chars: 0 } } : null;
+    const parent = parentOverride ? { capture: parentOverride, input: legacyInput(parentOverride), score: { items: 0, chars: 0 } } : null;
     const parentPrimary = parent ? parent.input.primary_sequence ?? section(parent.input, parent.input.primary_section_id)?.value ?? [] : [];
     const parentText = serializeValue(parentPrimary);
     const point = parent ? divergencePoint(parentText, currentText) : 0;
@@ -213,26 +152,12 @@ export class InputDiffAnalyzer {
     };
     await appendFile(this.analysisPath, `${JSON.stringify(analysis)}\n`);
     this.analyses.set(capture.id, analysis);
-    this.addToIndex(stored);
     return analysis;
   }
-
-  addToIndex(capture: CaptureIndexEntry): void {
-    const key = groupKey(capture);
-    const entries = this.index.get(key) ?? [];
-    entries.push(capture);
-    this.index.set(key, entries);
-  }
-
-  remove(entry: CaptureIndexEntry): void {
-    this.analyses.delete(entry.id);
-    const key = groupKey(entry);
-    this.index.set(key, (this.index.get(key) ?? []).filter((item) => item.id !== entry.id));
-  }
+  remove(entry: CaptureIndexEntry): void { this.analyses.delete(entry.id); }
 
   clear(): void {
     this.analyses.clear();
-    this.index.clear();
   }
 }
 

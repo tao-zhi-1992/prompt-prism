@@ -71,7 +71,7 @@ function normalizeBlock(value: unknown): ModelOutputBlock {
   const providerType = stringValue(block.type) ?? 'unknown';
   if (providerType === 'text') return { type: 'text', text: stringValue(block.text) ?? '' };
   if (providerType === 'thinking') return { type: 'reasoning', text: stringValue(block.thinking) ?? '' };
-  if (providerType === 'tool_use') {
+  if (providerType === 'tool_use' || providerType === 'server_tool_use' || providerType === 'mcp_tool_use') {
     return {
       type: 'tool_call',
       id: stringValue(block.id),
@@ -88,7 +88,7 @@ function normalizeConversationBlock(value: unknown): ConversationContentBlock {
   const providerType = stringValue(block.type) ?? 'unknown';
   if (providerType === 'text') return { type: 'text', text: stringValue(block.text) ?? '' };
   if (providerType === 'thinking') return { type: 'reasoning', text: stringValue(block.thinking) ?? '' };
-  if (providerType === 'tool_use') {
+  if (providerType === 'tool_use' || providerType === 'server_tool_use' || providerType === 'mcp_tool_use') {
     return {
       type: 'tool_call',
       id: stringValue(block.id),
@@ -96,7 +96,7 @@ function normalizeConversationBlock(value: unknown): ConversationContentBlock {
       input: block.input === undefined ? null : toJsonValue(block.input),
     };
   }
-  if (providerType === 'tool_result') {
+  if (providerType === 'tool_result' || providerType === 'mcp_tool_result') {
     return {
       type: 'tool_result',
       tool_call_id: stringValue(block.tool_use_id),
@@ -156,7 +156,7 @@ function mutableBlock(value: unknown): MutableSseBlock {
 function finalizedBlock(block: MutableSseBlock): ModelOutputBlock {
   if (block.providerType === 'text') return { type: 'text', text: block.text };
   if (block.providerType === 'thinking') return { type: 'reasoning', text: block.text };
-  if (block.providerType === 'tool_use') {
+  if (block.providerType === 'tool_use' || block.providerType === 'server_tool_use' || block.providerType === 'mcp_tool_use') {
     if (!block.inputRaw) return { type: 'tool_call', id: block.id, name: block.name, input: block.input };
     try { return { type: 'tool_call', id: block.id, name: block.name, input: toJsonValue(JSON.parse(block.inputRaw)) }; }
     catch { return { type: 'tool_call', id: block.id, name: block.name, input: null, input_raw: block.inputRaw }; }
@@ -277,6 +277,28 @@ export function parseResponse(body: Buffer | string, contentType = ''): Provider
   };
 }
 
-const anthropic: ProviderAdapter = { id: 'anthropic-messages', parseRequest, parseResponse };
+const anthropic: ProviderAdapter = {
+  id: 'anthropic-messages',
+  detection: {
+    endpointPath: '/v1/messages',
+    detectPath: (pathname) => /(?:^|\/)v1\/messages\/?$/i.test(pathname),
+    detectHeaders: (headers) => headers['anthropic-version'] !== undefined || headers['anthropic-beta'] !== undefined,
+    detectRequest: (body) => {
+      try {
+        const value = asObject(JSON.parse(Buffer.isBuffer(body) ? body.toString('utf8') : body));
+        const messages = Array.isArray(value.messages) ? value.messages.map(asObject) : [];
+        const tools = Array.isArray(value.tools) ? value.tools.map(asObject) : [];
+        return tools.some((tool) => 'input_schema' in tool) || messages.some((message) => Array.isArray(message.content) && message.content.map(asObject).some((part) => part.type === 'tool_use' || part.type === 'tool_result' || 'cache_control' in part));
+      } catch { return false; }
+    },
+    detectResponse: (body) => {
+      const text = Buffer.isBuffer(body) ? body.toString('utf8') : body;
+      return /event:\s*(?:message_start|content_block_start)|"type"\s*:\s*"message_start"/.test(text) || (() => { try { const value = asObject(JSON.parse(text)); return value.type === 'message' && Array.isArray(value.content); } catch { return false; } })();
+    },
+    detectBaseUrl: (url) => url.hostname.toLowerCase() === 'api.anthropic.com' || /(?:^|\/)anthropic(?:\/|$)/.test(url.pathname.toLowerCase()) || (url.hostname.toLowerCase() === 'api.stepfun.com' && /(?:^|\/)step_plan(?:\/|$)/.test(url.pathname.toLowerCase())),
+  },
+  parseRequest,
+  parseResponse,
+};
 
 export default anthropic;

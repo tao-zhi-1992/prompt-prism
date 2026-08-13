@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseRequest, parseResponse } from '../../src/adapter/anthropic.js';
+import { protocolFixture, sse } from '../fixtures/protocols.js';
 
 test('normalizes Anthropic model input into ordered provider-neutral sections', () => {
   const messages = [{ role: 'user', content: [{ type: 'text', text: 'hi', cache_control: { type: 'ephemeral' } }] }];
@@ -115,4 +116,33 @@ test('preserves malformed tool JSON and ignores malformed or unrecognized respon
   assert.equal(parseResponse('', 'application/json').output, null);
   assert.equal(parseResponse('{}', 'application/json').output, null);
   assert.equal(parseResponse('data: nope\n\n', 'text/event-stream').output, null);
+});
+
+test('normalizes Anthropic server and MCP tool calls while preserving tool-result extensions', () => {
+  const parsed = parseResponse(JSON.stringify({ type: 'message', id: 'msg_tools', model: 'claude', role: 'assistant', content: [
+    { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: { query: 'Prompt Prism' } },
+    { type: 'mcp_tool_use', id: 'mcp_1', name: 'read_file', input: { path: 'README.md' } },
+    { type: 'web_search_tool_result', tool_use_id: 'srv_1', content: [{ type: 'web_search_result', title: 'Prompt Prism' }] },
+  ], usage: { input_tokens: 3, output_tokens: 1 } }));
+  assert.deepEqual(parsed.output?.content.slice(0, 2), [
+    { type: 'tool_call', id: 'srv_1', name: 'web_search', input: { query: 'Prompt Prism' } },
+    { type: 'tool_call', id: 'mcp_1', name: 'read_file', input: { path: 'README.md' } },
+  ]);
+  assert.equal(parsed.output?.content[2]?.type, 'unknown');
+});
+
+test('normalizes the tracked Anthropic Messages fixture and preserves its unrecognized block', async () => {
+  const fixture = await protocolFixture('anthropic-messages');
+  const request = parseRequest(JSON.stringify(fixture.request));
+  const response = parseResponse(JSON.stringify(fixture.response));
+  const stream = parseResponse(sse(fixture.sse, true), 'text/event-stream');
+  assert.equal(request.input.adapter_id, 'anthropic-messages');
+  assert.deepEqual(request.input.conversation, [{ role: 'user', content: [{ type: 'text', text: 'Read README' }] }]);
+  assert.deepEqual(response.output?.content.slice(0, 3), [
+    { type: 'reasoning', text: 'Need a file' },
+    { type: 'tool_call', id: 'tool_1', name: 'read_file', input: { path: 'README.md' } },
+    { type: 'tool_call', id: 'srv_1', name: 'web_search', input: { query: 'Prompt Prism' } },
+  ]);
+  assert.equal(response.output?.content.at(-1)?.type, 'unknown');
+  assert.deepEqual(stream.output?.content, [{ type: 'text', text: 'done' }]);
 });

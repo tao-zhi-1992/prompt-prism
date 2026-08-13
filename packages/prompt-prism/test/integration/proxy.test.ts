@@ -11,6 +11,11 @@ import { fileURLToPath } from 'node:url';
 import { buildDynamicProxyBaseUrl, createPromptPrism, parseUpstreamBaseUrl, parseUpstreamUrl, startPromptPrism } from '../../src/index.js';
 import { close, listen, request } from './helpers/http.js';
 
+const protocolFixtures = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../core/test/fixtures/protocols');
+async function fixture(id: string): Promise<{ request: Record<string, unknown>; response: Record<string, unknown>; error: Record<string, unknown>; sse: Record<string, unknown>[] }> {
+  return JSON.parse(await readFile(path.join(protocolFixtures, `${id}.json`), 'utf8')) as Awaited<ReturnType<typeof fixture>>;
+}
+
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
 
@@ -498,7 +503,53 @@ test('Auto detects and normalizes every capture independently in both protocol o
   }
 });
 
-test('Auto request priority and Raw captures do not influence later captures', async (t) => {
+test('official protocol fixtures flow through Auto, explicit, and dynamic proxy modes without cross-capture leakage', async (t) => {
+  const [anthropic, chat, responses] = await Promise.all(['anthropic-messages', 'openai-chat-completions', 'openai-responses'].map(fixture));
+  assert.ok(anthropic && chat && responses);
+  const fixtures = new Map([
+    ['/v1/messages', { id: 'anthropic-messages', value: anthropic }],
+    ['/v1/chat/completions', { id: 'openai-chat-completions', value: chat }],
+    ['/v1/responses', { id: 'openai-responses', value: responses }],
+  ]);
+  const upstream = http.createServer((req, res) => {
+    const selected = fixtures.get(req.url ?? '');
+    req.resume();
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(selected?.value.response ?? { provider: 'raw' }));
+  });
+  const upstreamPort = await listen(upstream);
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-protocol-fixtures-'));
+  const prism = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}`, dataDir: directory });
+  const port = await listen(prism.server);
+  t.after(async () => { await close(prism.server); await close(upstream); });
+  for (const [endpoint, selected] of fixtures) {
+    const body = JSON.stringify(selected.value.request);
+    const result = await request({ port, pathname: endpoint, headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) }, body });
+    assert.equal(result.status, 200);
+  }
+  const dynamic = new URL(buildDynamicProxyBaseUrl(`http://127.0.0.1:${upstreamPort}`, `http://127.0.0.1:${port}`)).pathname;
+  const responseBody = JSON.stringify(responses.request);
+  await request({ port, pathname: `${dynamic}/v1/responses`, headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(responseBody) }, body: responseBody });
+  const rawBody = JSON.stringify({ model: 'raw-fixture', prompt: 'unrecognized' });
+  await request({ port, pathname: '/custom/generate', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(rawBody) }, body: rawBody });
+  await prism.store.pending;
+  const captures = await Promise.all(prism.store.captures.map(({ id }) => prism.store.readCapture(id)));
+  assert.deepEqual(captures.map((capture) => capture?.adapter_id), ['anthropic-messages', 'openai-chat-completions', 'openai-responses', 'openai-responses', 'unresolved']);
+  assert.equal(captures[2]?.model_output?.content.some((block) => block.type === 'tool_call'), true);
+  assert.equal(captures[3]?.prompt_input?.adapter_id, 'openai-responses');
+  assert.equal(captures[4]?.prompt_input, undefined);
+
+  const explicitDirectory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-protocol-explicit-'));
+  const explicit = await createPromptPrism({ upstreamBaseUrl: `http://127.0.0.1:${upstreamPort}`, apiFormat: 'openai-responses', dataDir: explicitDirectory });
+  const explicitPort = await listen(explicit.server);
+  t.after(() => close(explicit.server));
+  const conflictingBody = JSON.stringify(chat.request);
+  await request({ port: explicitPort, pathname: '/v1/chat/completions', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(conflictingBody) }, body: conflictingBody });
+  await explicit.store.pending;
+  assert.equal((await explicit.store.readCapture(explicit.store.captures[0]!.id))?.adapter_id, 'openai-responses');
+});
+
+test('Auto request priority and unresolved captures do not influence later captures', async (t) => {
   const anthropicBody = JSON.stringify({
     model: 'anthropic-conflict', messages: [{ role: 'user', content: 'hello' }],
     tools: [{ name: 'lookup', input_schema: { type: 'object' } }],
@@ -561,9 +612,9 @@ test('Auto request priority and Raw captures do not influence later captures', a
   assert.equal(captures[1]?.adapter_id, 'anthropic-messages');
   assert.deepEqual(captures[1]?.model_output?.content, [{ type: 'text', text: 'anthropic response' }]);
 
-  assert.equal(captures[2]?.adapter_id, 'unresolved');
-  assert.equal(captures[2]?.prompt_input, undefined);
-  assert.equal(captures[2]?.model_output, undefined);
+  assert.equal(captures[2]?.adapter_id, 'openai-responses');
+  assert.equal(captures[2]?.prompt_input?.adapter_id, 'openai-responses');
+  assert.deepEqual(captures[2]?.model_output?.content, []);
   assert.equal(captures[2]?.request?.body, responsesBody);
   assert.equal(captures[2]?.response?.body, responsesResponse);
 

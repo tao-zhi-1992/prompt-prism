@@ -191,7 +191,7 @@ function outputEvent(block: ModelOutputBlock, key: string, captureId: string, bl
 }
 
 function visibleOutput(block: ModelOutputBlock): boolean {
-  return block.type !== 'unknown' || block.provider_type !== 'openai_delta_fields';
+  return block.type !== 'unknown' || block.visibility !== 'internal';
 }
 
 function statusTone(status?: number | null) {

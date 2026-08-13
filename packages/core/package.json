@@ -13,6 +13,7 @@
     "./upstream": "./src/upstream.ts",
     "./adapter/anthropic": "./src/adapter/anthropic.ts",
     "./adapter/openai": "./src/adapter/openai.ts",
+    "./adapter/openai-responses": "./src/adapter/openai-responses.ts",
     "./adapter/detection": "./src/adapter/detection.ts"
   },
   "scripts": {

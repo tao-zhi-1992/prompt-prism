@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseRequest, parseResponse } from '../../src/adapter/openai.js';
+import { protocolFixture, sse } from '../fixtures/protocols.js';
 
 test('normalizes OpenAI chat input into provider-neutral sections and conversation blocks', () => {
   const parsed = parseRequest(JSON.stringify({
@@ -122,7 +123,7 @@ test('assembles OpenAI SSE text, reasoning, parallel tool calls, choices, and us
   ]);
   assert.equal(parsed.output?.content[4]?.type, 'unknown');
   assert.equal(parsed.output?.content[4]?.type === 'unknown' ? parsed.output.content[4].provider_type : null, 'openai_choice');
-  assert.equal(parsed.output?.content.some((block) => block.type === 'unknown' && block.provider_type === 'openai_delta_fields'), false);
+  assert.equal(parsed.output?.content.some((block) => block.type === 'unknown' && block.visibility === 'internal'), false);
 });
 
 test('supports legacy function_call and rejects malformed or unrecognized responses', () => {
@@ -132,4 +133,17 @@ test('supports legacy function_call and rejects malformed or unrecognized respon
   assert.equal(parseResponse('', 'application/json').output, null);
   assert.equal(parseResponse('{}', 'application/json').output, null);
   assert.equal(parseResponse('data: nope\n\ndata: [DONE]\n\n', 'text/event-stream').output, null);
+});
+
+test('normalizes the tracked OpenAI Chat Completions fixture', async () => {
+  const fixture = await protocolFixture('openai-chat-completions');
+  const request = parseRequest(JSON.stringify(fixture.request));
+  const response = parseResponse(JSON.stringify(fixture.response));
+  const stream = parseResponse(sse(fixture.sse), 'text/event-stream');
+  assert.equal(request.input.adapter_id, 'openai-chat-completions');
+  assert.deepEqual(request.input.conversation, [{ role: 'user', content: [{ type: 'text', text: 'Read README' }] }]);
+  assert.deepEqual(response.output?.content.slice(0, 3), [
+    { type: 'reasoning', text: 'Need a file' }, { type: 'text', text: 'Reading' }, { type: 'tool_call', id: 'call_1', name: 'read_file', input: { path: 'README.md' } },
+  ]);
+  assert.deepEqual(stream.output?.content, [{ type: 'text', text: 'done' }]);
 });

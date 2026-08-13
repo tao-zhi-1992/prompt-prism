@@ -43,14 +43,14 @@ export interface ConversationTextBlock { type: 'text'; text: string; }
 export interface ConversationReasoningBlock { type: 'reasoning'; text: string; }
 export interface ConversationToolCallBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; input_raw?: string; }
 export interface ConversationToolResultBlock { type: 'tool_result'; tool_call_id: string | null; content: JsonValue; is_error: boolean | null; }
-export interface ConversationUnknownBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
+export interface ConversationUnknownBlock { type: 'unknown'; provider_type: string; value: JsonValue; visibility?: 'internal'; }
 export type ConversationContentBlock = ConversationTextBlock | ConversationReasoningBlock | ConversationToolCallBlock | ConversationToolResultBlock | ConversationUnknownBlock;
 export interface ConversationMessage { role: string; content: ConversationContentBlock[]; }
 
 export interface TextOutputBlock { type: 'text'; text: string; }
 export interface ReasoningOutputBlock { type: 'reasoning'; text: string; }
 export interface ToolCallOutputBlock { type: 'tool_call'; id: string | null; name: string; input: JsonValue | null; input_raw?: string; }
-export interface UnknownOutputBlock { type: 'unknown'; provider_type: string; value: JsonValue; }
+export interface UnknownOutputBlock { type: 'unknown'; provider_type: string; value: JsonValue; visibility?: 'internal'; }
 export type ModelOutputBlock = TextOutputBlock | ReasoningOutputBlock | ToolCallOutputBlock | UnknownOutputBlock;
 export interface ProviderError { type: string | null; message: string; details?: JsonValue; }
 export interface ModelOutputSnapshot {

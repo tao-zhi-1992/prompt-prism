@@ -98,7 +98,7 @@ export async function createPromptPrismCore(options: PromptPrismOptions = {}, pl
   });
   const analyzer = plugins.analyzer as PromptPrismInstance['analyzer'];
   await store.recoverPending(async (capture, stored) => {
-    const finalized = await trace.prepare(capture, stored);
+    const finalized = await trace.prepare(capture, stored, (id) => store.readCapture(id), (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body), (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType));
     await plugins.onCapture({ ...capture, ...finalized }, finalized);
     trace.published([...store.captures, finalized]);
     return finalized;
@@ -193,7 +193,7 @@ export async function createPromptPrismCore(options: PromptPrismOptions = {}, pl
           headerProtocol,
         });
         void store.enqueue(capture, async (stored) => {
-          const finalized = await trace.prepare(capture, stored);
+          const finalized = await trace.prepare(capture, stored, (id) => store.readCapture(id), (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body), (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType));
           await plugins.onCapture({ ...capture, ...finalized }, finalized);
           trace.published([...store.captures, finalized]);
           return finalized;

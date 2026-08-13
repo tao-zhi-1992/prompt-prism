@@ -106,7 +106,7 @@ Defaults:
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `--upstream-base-url` | none (dynamic-only mode) | Provider model API Base URL |
-| `--api-format` | `auto` | Detect Anthropic Messages or OpenAI Chat Completions |
+| `--api-format` | `auto` | Detect Anthropic Messages, OpenAI Chat Completions, or OpenAI Responses |
 | `--port` | `1028` | Local proxy and dashboard port |
 | `--data-dir` | `./data` | Local capture directory |
 | `--max-storage` | `1GB` | Capture storage cap |
@@ -130,7 +130,7 @@ Use `--upstream-url` for a complete endpoint, including its final path and optio
 
 ## Automatic protocol detection
 
-`--api-format` accepts `auto`, `anthropic-messages`, or `openai-chat-completions`. The shorter `anthropic` and `openai` aliases remain supported.
+`--api-format` accepts `auto`, `anthropic-messages`, `openai-chat-completions`, or `openai-responses`. The shorter `anthropic` and `openai` aliases remain supported (`openai` means Chat Completions).
 
 In auto mode, Prism detects every capture independently. It considers the request path, headers, protocol-specific request body, provider response, and finally an explicitly provided upstream URL or known provider Base URL. The first confident signal for that capture wins, so one protocol never locks or influences later captures. Routing uses only signals available before forwarding: the request path, headers, and upstream URL hint. With no fixed upstream, dynamic requests use their decoded Base URL as the per-request hint.
 

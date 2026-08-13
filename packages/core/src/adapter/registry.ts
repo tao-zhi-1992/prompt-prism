@@ -1,9 +1,11 @@
 import anthropic from './anthropic.js';
 import openai from './openai.js';
+import responses from './openai-responses.js';
 import type { ProviderAdapter } from './provider.js';
 
 const adapters = new Map<string, ProviderAdapter>([
   [anthropic.id, anthropic],
+  [responses.id, responses],
   [openai.id, openai],
 ]);
 
@@ -16,9 +18,11 @@ export function normalizeProviderProtocol(id: string): string {
   return aliases.get(id) ?? id;
 }
 
-export function getProviderAdapter(id = 'anthropic-messages'): ProviderAdapter {
+export function getProviderAdapter(id: string): ProviderAdapter {
   const canonical = normalizeProviderProtocol(id);
   const adapter = adapters.get(canonical);
-  if (!adapter) throw new Error(`Unsupported API format: ${id}. Available formats: auto, anthropic-messages (anthropic), openai-chat-completions (openai)`);
+  if (!adapter) throw new Error(`Unsupported API format: ${id}. Available formats: auto, anthropic-messages (anthropic), openai-chat-completions (openai), openai-responses`);
   return adapter;
 }
+
+export function providerAdapters(): readonly ProviderAdapter[] { return [...adapters.values()]; }
