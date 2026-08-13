@@ -2,14 +2,13 @@ import { readFile } from 'node:fs/promises';
 import type http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Analysis, ApiFormatResolution, Capture, CaptureIndexEntry } from './types.js';
+import type { ApiFormatResolution, Capture, CaptureIndexEntry } from './types.js';
+import type { TraceService } from './trace-service.js';
 import type { BuiltinPluginRuntime } from './plugin-runtime.js';
 
 const dashboardDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/dashboard');
 const brandDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../assets');
 const brandFiles = new Set(['logo-mark.png', 'favicon-32.png', 'apple-touch-icon.png', 'favicon.ico']);
-type TraceGroupSource = 'explicit' | 'inferred';
-type TraceGroupMetadata = { trace_group_id: string; trace_group_source: TraceGroupSource; trace_group_index: number };
 type LogCursorPosition = { timestamp: string; id: string };
 const DEFAULT_LOG_LIMIT = 100;
 const MAX_LOG_LIMIT = 200;
@@ -74,65 +73,9 @@ async function staticFile(response: http.ServerResponse, filename: string): Prom
   } catch { json(response, 404, { error: 'Not found' }); }
 }
 
-function logSummary(capture: CaptureIndexEntry, analyzer: { analyses: Map<string, Analysis> }): Omit<CaptureIndexEntry, 'messages' | 'prompt_input'> & { analysis: Omit<Analysis, 'diff' | 'sections'> | null } {
+function logSummary(capture: CaptureIndexEntry): Omit<CaptureIndexEntry, 'messages' | 'prompt_input'> & { analysis: null } {
   const { messages: _messages, prompt_input: _promptInput, ...summary } = capture;
-  const analysis = analyzer.analyses.get(capture.id);
-  if (!analysis) return { ...summary, analysis: null };
-  const { diff: _diff, sections: _sections, ...analysisSummary } = analysis;
-  return { ...summary, analysis: analysisSummary };
-}
-
-function inferredRootId(id: string, byId: Map<string, CaptureIndexEntry>, analyses: Map<string, Analysis>, roots: Map<string, string>): string {
-  let current = id;
-  const seen = new Set<string>();
-  const path: string[] = [];
-  while (!seen.has(current)) {
-    const cached = roots.get(current);
-    if (cached) {
-      for (const item of path) roots.set(item, cached);
-      return cached;
-    }
-    seen.add(current);
-    path.push(current);
-    const parentId = analyses.get(current)?.matched_parent_id;
-    if (!parentId || !byId.has(parentId)) {
-      for (const item of path) roots.set(item, current);
-      return current;
-    }
-    current = parentId;
-  }
-  for (const item of path) roots.set(item, current);
-  return current;
-}
-
-function buildTraceGroupMetadata(captures: readonly CaptureIndexEntry[], analyses: Map<string, Analysis>): Map<string, TraceGroupMetadata> {
-  const byId = new Map(captures.map((capture) => [capture.id, capture]));
-  const inferredRoots = new Map<string, string>();
-  const groups = new Map<string, { id: string; source: TraceGroupSource; captures: CaptureIndexEntry[] }>();
-  const addToGroup = (id: string, source: TraceGroupSource, capture: CaptureIndexEntry) => {
-    const key = `${source}\0${id}`;
-    const group = groups.get(key) ?? { id, source, captures: [] };
-    group.captures.push(capture);
-    groups.set(key, group);
-  };
-
-  for (const capture of captures) {
-    if (capture.trace_id) addToGroup(capture.trace_id, 'explicit', capture);
-    else addToGroup(inferredRootId(capture.id, byId, analyses, inferredRoots), 'inferred', capture);
-  }
-
-  const metadata = new Map<string, TraceGroupMetadata>();
-  for (const group of groups.values()) {
-    if (group.source === 'inferred' && group.captures.length < 2) continue;
-    group.captures
-      .sort((left, right) => left.timestamp.localeCompare(right.timestamp) || left.id.localeCompare(right.id))
-      .forEach((capture, index) => metadata.set(capture.id, {
-        trace_group_id: group.id,
-        trace_group_source: group.source,
-        trace_group_index: index + 1,
-      }));
-  }
-  return metadata;
+  return { ...summary, analysis: null };
 }
 
 function compareLogPosition(left: LogCursorPosition, right: LogCursorPosition): number {
@@ -176,21 +119,25 @@ function firstNotNewerIndex(sorted: readonly CaptureIndexEntry[], cursor: LogCur
 
 export function createAdminHandler({
   store,
-  analyzer,
+  trace,
   plugins,
   apiFormat,
   dynamicUpstreamAllowed,
   proxyUrlPath,
 }: {
   store: { captures: CaptureIndexEntry[]; readCapture(id: string): Promise<Capture | null>; clear(): Promise<void> };
-  analyzer: { analyses: Map<string, Analysis> };
+  trace: TraceService;
   plugins: Pick<BuiltinPluginRuntime, 'handleApi'>;
   apiFormat: () => ApiFormatResolution;
   dynamicUpstreamAllowed: () => boolean;
   proxyUrlPath: (upstreamBaseUrl: string) => string;
-}): (request: http.IncomingMessage, response: http.ServerResponse) => Promise<void> {
-  type LogSummary = ReturnType<typeof logSummary> & Partial<TraceGroupMetadata>;
+}): ((request: http.IncomingMessage, response: http.ServerResponse) => Promise<void>) & { refresh(): void } {
+  type LogSummary = ReturnType<typeof logSummary> & Partial<ReturnType<TraceService['metadata']> extends Map<string, infer Metadata> ? Metadata : never>;
   let cachedSignature = '';
+  let revision = 0;
+  let previousSummaries = new Map<string, LogSummary>();
+  const changes: Array<{ revision: number; added: LogSummary[]; updated: LogSummary[]; removed_ids: string[]; total: number }> = [];
+  const listeners = new Set<http.ServerResponse>();
   let cachedSorted: CaptureIndexEntry[] = [];
   let cachedSummaries = new Map<string, LogSummary>();
   let cachedPositions = new Map<string, number>();
@@ -208,26 +155,62 @@ export function createAdminHandler({
       capture.timing,
       capture.file_ref,
     ])).join('\x01');
-    const analysisSignature = [...analyzer.analyses.entries()]
-      .map(([id, analysis]) => `${id}\0${JSON.stringify(analysis)}`)
-      .sort()
-      .join('\x01');
-    const signature = `${captureSignature}|${analysisSignature}`;
+    const traceSignature = store.captures.map((capture) => `${capture.id}\0${trace.getParentId(capture.id) ?? ''}`).join('\x01');
+    const signature = `${captureSignature}|${traceSignature}`;
     if (signature === cachedSignature) return { sorted: cachedSorted, summaries: cachedSummaries, positions: cachedPositions };
-    const traceGroups = buildTraceGroupMetadata(store.captures, analyzer.analyses);
+    const traceGroups = trace.metadata(store.captures);
     cachedSorted = [...store.captures].sort(compareLogPosition);
     cachedPositions = new Map(cachedSorted.map((capture, index) => [capture.id, index]));
     cachedSummaries = new Map(cachedSorted.map((capture) => {
-      const summary = logSummary(capture, analyzer);
+      const summary = logSummary(capture);
       const group = traceGroups.get(capture.id);
       return [capture.id, group ? { ...summary, ...group } : summary];
     }));
     cachedSignature = signature;
+    const added: LogSummary[] = [];
+    const updated: LogSummary[] = [];
+    for (const [id, summary] of cachedSummaries) {
+      const previous = previousSummaries.get(id);
+      if (!previous) added.push(summary);
+      else if (JSON.stringify(previous) !== JSON.stringify(summary)) updated.push(summary);
+    }
+    const removed_ids = [...previousSummaries.keys()].filter((id) => !cachedSummaries.has(id));
+    if (added.length || updated.length || removed_ids.length) {
+      revision++;
+      const change = { revision, added, updated, removed_ids, total: cachedSorted.length };
+      changes.push(change);
+      if (changes.length > 256) changes.shift();
+      for (const response of listeners) {
+        response.write(`id: ${revision}\nevent: change\ndata: ${JSON.stringify(change)}\n\n`);
+      }
+    }
+    previousSummaries = new Map(cachedSummaries);
     return { sorted: cachedSorted, summaries: cachedSummaries, positions: cachedPositions };
   };
 
-  return async function handleAdmin(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
+  const handleAdmin = async function handleAdmin(request: http.IncomingMessage, response: http.ServerResponse): Promise<void> {
     const url = new URL(request.url ?? '/', 'http://localhost');
+
+    if (url.pathname === '/_pp/api/logs/stream') {
+      if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
+      logSnapshot();
+      response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
+      const since = Number(request.headers['last-event-id'] ?? url.searchParams.get('since') ?? 0);
+      if (!Number.isInteger(since) || since < 0 || (changes.length && since < changes[0]!.revision - 1)) response.write(`event: reset\ndata: ${JSON.stringify({ revision })}\n\n`);
+      else for (const change of changes.filter((item) => item.revision > since)) response.write(`id: ${change.revision}\nevent: change\ndata: ${JSON.stringify(change)}\n\n`);
+      const heartbeat = setInterval(() => response.write(': ping\n\n'), 15000);
+      listeners.add(response);
+      request.on('close', () => { clearInterval(heartbeat); listeners.delete(response); });
+      return;
+    }
+    if (url.pathname === '/_pp/api/logs/changes') {
+      if (request.method !== 'GET') return json(response, 405, { error: 'Method not allowed' });
+      logSnapshot();
+      const since = Number(url.searchParams.get('since') ?? '');
+      if (!Number.isInteger(since) || since < 0) return json(response, 400, { error: 'Invalid revision' });
+      if (changes.length && since < changes[0]!.revision - 1) return json(response, 200, { reset_required: true, revision });
+      return json(response, 200, { revision, changes: changes.filter((item) => item.revision > since) });
+    }
 
     if (url.pathname === '/_pp/api/logs') {
       if (request.method === 'DELETE') {
@@ -272,6 +255,7 @@ export function createAdminHandler({
         newest_cursor: firstEntry ? encodeLogCursor(firstEntry) : null,
         has_older: lastIndex >= 0 && lastIndex < sorted.length - 1,
         has_newer: firstIndex > 0,
+        revision,
       });
     }
     if (url.pathname.startsWith('/_pp/api/logs/')) {
@@ -309,4 +293,6 @@ export function createAdminHandler({
     if (url.pathname.startsWith('/_pp/assets/')) return staticFile(response, url.pathname.slice('/_pp/'.length));
     return json(response, 404, { error: 'Not found' });
   };
+  handleAdmin.refresh = () => { logSnapshot(); };
+  return handleAdmin;
 }

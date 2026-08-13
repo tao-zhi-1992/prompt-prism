@@ -58,6 +58,7 @@ export interface ServerPluginContext {
   analysisPath: string;
   captures: readonly CaptureIndexEntry[];
   readCapture(id: string): Promise<Capture | null>;
+  getTraceParent?: (id: string) => string | null | undefined;
   parseProviderRequest(adapterId: string, body: string): ProviderRequest;
   parseProviderResponse(adapterId: string, body: string, contentType?: string): ProviderResponse;
   json(response: ServerResponse, status: number, value: unknown): void;

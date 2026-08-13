@@ -7,6 +7,7 @@ export interface PluginRuntimeContext {
   analysisPath: string;
   captures: readonly CaptureIndexEntry[];
   readCapture(id: string): Promise<Capture | null>;
+  getTraceParent?: (id: string) => string | null | undefined;
   parseProviderRequest(adapterId: string, body: string): ProviderRequest;
   parseProviderResponse(adapterId: string, body: string, contentType?: string): ProviderResponse;
   json(response: http.ServerResponse, status: number, value: unknown): void;
@@ -22,14 +23,14 @@ export interface BuiltinPluginRuntime {
   handleApi(pluginId: string, request: http.IncomingMessage, response: http.ServerResponse, subpath: string): Promise<boolean>;
 }
 
-type PluginBundle = { createBuiltinServerPluginRuntime(): BuiltinPluginRuntime };
+type PluginBundle = { createBuiltinServerPluginRuntime(options?: { getParentId?: (id: string) => string | null | undefined }): BuiltinPluginRuntime };
 
-export async function loadBuiltinPluginRuntime(): Promise<BuiltinPluginRuntime> {
+export async function loadBuiltinPluginRuntime(options?: { getParentId?: (id: string) => string | null | undefined }): Promise<BuiltinPluginRuntime> {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const bundlePath = path.basename(currentDir) === 'dist'
     ? path.join(currentDir, 'internal/plugins.js')
     : path.resolve(currentDir, '../dist/internal/plugins.js');
   const bundle = await import(pathToFileURL(bundlePath).href) as PluginBundle;
   if (typeof bundle.createBuiltinServerPluginRuntime !== 'function') throw new Error('Invalid built-in plugin bundle');
-  return bundle.createBuiltinServerPluginRuntime();
+  return bundle.createBuiltinServerPluginRuntime(options);
 }

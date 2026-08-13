@@ -186,11 +186,11 @@ export class InputDiffAnalyzer {
     return best;
   }
 
-  async analyze(capture: Capture, stored: CaptureIndexEntry = indexEntry(capture)): Promise<InputDiffAnalysis> {
+  async analyze(capture: Capture, stored: CaptureIndexEntry = indexEntry(capture), parentOverride?: CaptureIndexEntry | null): Promise<InputDiffAnalysis> {
     const currentInput = legacyInput(capture);
     const currentPrimary = currentInput.primary_sequence ?? section(currentInput, currentInput.primary_section_id)?.value ?? [];
     const currentText = serializeValue(currentPrimary);
-    const parent = this.findParent(capture);
+    const parent = parentOverride === undefined ? this.findParent(capture) : parentOverride ? { capture: parentOverride, input: legacyInput(parentOverride), score: { items: commonSequencePrefix(parentOverride.prompt_input?.primary_sequence ?? parentOverride.messages, currentPrimary), chars: 0 } } : null;
     const parentPrimary = parent ? parent.input.primary_sequence ?? section(parent.input, parent.input.primary_section_id)?.value ?? [] : [];
     const parentText = serializeValue(parentPrimary);
     const point = parent ? divergencePoint(parentText, currentText) : 0;

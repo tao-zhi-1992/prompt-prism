@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CaptureStore } from './store.js';
+import { TraceService } from './trace-service.js';
 import { getProviderAdapter } from './adapter/registry.js';
 import { ApiFormatResolver, detectProtocolFromPath } from './adapter/detection.js';
 import { createAdminHandler, json } from './server.js';
@@ -75,29 +76,39 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
     console.warn(`[prompt-prism] API format ${resolver.resolution.resolved} conflicts with upstream endpoint ${pathProtocol}; using the explicit format.`);
   }
   const store = await new CaptureStore({ dataDir: options.dataDir ?? path.resolve('data'), maxBytes: options.maxBytes }).init();
-  const plugins = await loadBuiltinPluginRuntime();
+  const trace = new TraceService(store.dataDir);
+  await trace.init(store.captures);
+  const plugins = await loadBuiltinPluginRuntime({ getParentId: trace.getParentId });
   await plugins.init({
     analysisPath: store.analysisPath,
     captures: store.captures,
     readCapture: (id) => store.readCapture(id),
+    getTraceParent: trace.getParentId,
     parseProviderRequest: (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body),
     parseProviderResponse: (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType),
     json,
     reportError: (pluginId, error) => console.error(`[prompt-prism:${pluginId}]`, error instanceof Error ? error.message : String(error)),
   });
   const analyzer = plugins.analyzer;
-  store.onEvict = (item) => plugins.onEvict(item);
-  store.onClear = () => plugins.onClear();
+  await store.recoverPending(async (capture, stored) => {
+    const finalized = await trace.prepare(capture, stored);
+    await plugins.onCapture({ ...capture, ...finalized }, finalized);
+    trace.published([...store.captures, finalized]);
+    return finalized;
+  });
+  store.onEvict = (item) => { trace.remove(item); plugins.onEvict(item); };
+  store.onClear = () => { trace.clear(); return plugins.onClear(); };
   let server: http.Server;
   const dynamicUpstreamAllowed = () => options.allowRemoteDynamicUpstream === true || isLoopbackListener(server);
   const admin = createAdminHandler({
     store,
-    analyzer,
+    trace,
     plugins,
     apiFormat: () => ({ ...resolver.resolution }),
     dynamicUpstreamAllowed,
     proxyUrlPath: (value) => new URL(buildDynamicProxyBaseUrl(value)).pathname,
   });
+  store.onChange = () => admin.refresh();
 
   server = http.createServer((request, response) => {
     if (serveRootBrandAsset(request, response)) return;
@@ -174,7 +185,12 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
           pathProtocol,
           headerProtocol,
         });
-        void store.enqueue(capture, (stored) => plugins.onCapture({ ...capture, ...stored }, stored)).catch(() => {});
+        void store.enqueue(capture, async (stored) => {
+          const finalized = await trace.prepare(capture, stored);
+          await plugins.onCapture({ ...capture, ...finalized }, finalized);
+          trace.published([...store.captures, finalized]);
+          return finalized;
+        }).catch(() => {});
       });
       upstreamResponse.on('error', (error) => response.destroy(error));
       // pipe() applies downstream backpressure while the data listener above only

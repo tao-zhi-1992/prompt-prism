@@ -97,15 +97,14 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(parsedLogs[0].trace_group_source, 'explicit');
   assert.equal(parsedLogs[0].trace_group_index, 1);
   assert.ok(parsedLogs[0].timing.duration_ms >= 80);
-  assert.equal(parsedLogs[0].analysis.actual_cache_read_tokens, 4);
+  assert.equal(parsedLogs[0].analysis, null);
   assert.equal('messages' in parsedLogs[0], false, 'list responses should not repeat complete prompts');
   assert.equal('prompt_input' in parsedLogs[0], false, 'list responses should not repeat normalized input');
   assert.equal('model_output' in parsedLogs[0], false, 'list responses should not include normalized output');
-  assert.equal('diff' in parsedLogs[0].analysis, false, 'list responses should not include detail diff data');
-  assert.equal('sections' in parsedLogs[0].analysis, false, 'list responses should not include section diff data');
   const detail = await request({ port: proxyPort, pathname: `/_pp/api/input-diff/${parsedLogs[0].id}` });
   const parsedDetail = JSON.parse(detail.body);
   assert.equal(parsedDetail.id, parsedLogs[0].id);
+  assert.equal(parsedDetail.actual_cache_read_tokens, 4);
   assert.deepEqual(parsedDetail.sections.map(({ id }: { id: string }) => id), ['messages', 'system', 'tools', 'options']);
   const removedDiffRoute = await request({ port: proxyPort, pathname: `/_pp/api/diff/${parsedLogs[0].id}` });
   assert.equal(removedDiffRoute.status, 404);
@@ -738,7 +737,7 @@ test('unrecognized base routes remain transparent and create Raw-only captures',
   assert.equal(capture?.model, 'ambiguous-model');
   assert.equal(capture?.prompt_input, undefined);
   assert.equal(capture?.request?.body, body);
-  assert.equal((await request({ port: proxyPort, pathname: `/_pp/api/input-diff/${entry.id}` })).status, 404);
+  assert.equal((await request({ port: proxyPort, pathname: `/_pp/api/input-diff/${entry.id}` })).status, 422);
 });
 
 test('Prism validates provider-style Base URLs', () => {

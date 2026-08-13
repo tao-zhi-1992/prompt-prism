@@ -87,16 +87,21 @@ export class CaptureStore {
   readonly maxBytes: number;
   readonly capturesPath: string;
   readonly analysisPath: string;
+  readonly pendingPath: string;
   captures: CaptureIndexEntry[] = [];
+  pendingCaptures: CaptureIndexEntry[] = [];
   pending: Promise<unknown> = Promise.resolve();
+  private deferPublish = false;
   onEvict: ((item: CaptureIndexEntry) => void) | null = null;
   onClear: (() => Promise<void> | void) | null = null;
+  onChange: (() => void) | null = null;
 
   constructor({ dataDir, maxBytes = 1024 ** 3 }: { dataDir: string; maxBytes?: number }) {
     this.dataDir = path.resolve(dataDir);
     this.maxBytes = maxBytes;
     this.capturesPath = path.join(this.dataDir, 'captures.jsonl');
     this.analysisPath = path.join(this.dataDir, 'analysis.jsonl');
+    this.pendingPath = path.join(this.dataDir, 'pending.jsonl');
   }
 
   async init(): Promise<this> {
@@ -119,6 +124,12 @@ export class CaptureStore {
       this.captures = captures;
       if (needsRewrite) await this.rewriteCaptures();
     }
+    const pending = await readOptionalFile(this.pendingPath);
+    if (pending !== null) {
+      const { entries, recoveredTail } = parseCaptureIndex(pending);
+      this.pendingCaptures = entries.filter((item) => !this.captures.some((capture) => capture.id === item.id));
+      if (recoveredTail || this.pendingCaptures.length !== entries.length) await this.rewritePending();
+    }
     return this;
   }
 
@@ -132,9 +143,15 @@ export class CaptureStore {
 
   enqueue(capture: Capture, afterWrite?: (stored: CaptureIndexEntry) => Promise<unknown> | unknown): Promise<CaptureIndexEntry | null> {
     return this.runExclusive('capture', async () => {
-      const stored = await this.persistCapture(capture);
-      if (stored && afterWrite) await afterWrite(stored);
-      return stored;
+      this.deferPublish = true;
+      let stored: CaptureIndexEntry | null;
+      try { stored = await this.persistCapture(capture); }
+      finally { this.deferPublish = false; }
+      if (!stored) return null;
+      let finalized = stored;
+      if (afterWrite) finalized = (await afterWrite(stored) as CaptureIndexEntry | undefined) ?? stored;
+      await this.publish(finalized);
+      return finalized;
     });
   }
 
@@ -142,10 +159,10 @@ export class CaptureStore {
     return this.runExclusive('capture', () => this.persistCapture(capture));
   }
 
-  protected async persistCapture(capture: Capture): Promise<CaptureIndexEntry | null> {
+  protected async persistCapture(capture: Capture, pending = this.deferPublish): Promise<CaptureIndexEntry | null> {
     assertSafePathSegment(capture.token_hash, 'Capture token hash');
     assertSafePathSegment(capture.id, 'Capture ID');
-    if (this.captures.some(({ id }) => id === capture.id)) throw new Error(`Capture ID already exists: ${capture.id}`);
+    if (this.captures.some(({ id }) => id === capture.id) || this.pendingCaptures.some(({ id }) => id === capture.id)) throw new Error(`Capture ID already exists: ${capture.id}`);
     const timestamp = new Date(capture.timestamp);
     if (Number.isNaN(timestamp.getTime())) throw new Error('Capture timestamp must be a valid date');
     const folder = resolveDataFile(this.dataDir, capture.token_hash);
@@ -175,13 +192,53 @@ export class CaptureStore {
       adapter_id: capture.adapter_id,
       prompt_input: capture.prompt_input
     };
+    if (pending) {
+      try { await appendFile(this.pendingPath, `${JSON.stringify(indexEntry)}\n`); }
+      catch (error: unknown) {
+        await unlink(absolute).catch((cleanupError: unknown) => { if (!isMissingFile(cleanupError)) throw cleanupError; });
+        throw error;
+      }
+      this.pendingCaptures.push(indexEntry);
+      return indexEntry;
+    }
     try { await appendFile(this.capturesPath, `${JSON.stringify(indexEntry)}\n`); }
     catch (error: unknown) {
       await unlink(absolute).catch((cleanupError: unknown) => { if (!isMissingFile(cleanupError)) throw cleanupError; });
       throw error;
     }
     this.captures.push(indexEntry);
+    this.onChange?.();
     return indexEntry;
+  }
+
+  async recoverPending(afterWrite: (capture: Capture, stored: CaptureIndexEntry) => Promise<CaptureIndexEntry | void>): Promise<void> {
+    await this.runExclusive('recover pending captures', async () => {
+      for (const stored of [...this.pendingCaptures]) {
+        const capture = await this.readEntryCapture(stored);
+        if (!capture) { this.pendingCaptures = this.pendingCaptures.filter((item) => item.id !== stored.id); continue; }
+        const finalized = (await afterWrite(capture, stored)) ?? stored;
+        await this.publish(finalized);
+      }
+      await this.rewritePending();
+    });
+  }
+
+  private async publish(entry: CaptureIndexEntry): Promise<void> {
+    await appendFile(this.capturesPath, `${JSON.stringify(entry)}\n`);
+    this.pendingCaptures = this.pendingCaptures.filter((item) => item.id !== entry.id);
+    this.captures.push(entry);
+    await this.rewritePending();
+    this.onChange?.();
+  }
+
+  private async readEntryCapture(item: CaptureIndexEntry): Promise<Capture | null> {
+    try { return JSON.parse(await readFile(resolveDataFile(this.dataDir, item.file_ref), 'utf8')) as Capture; }
+    catch (error: unknown) { if (isMissingFile(error)) return null; throw error; }
+  }
+
+  async rewritePending(): Promise<void> {
+    const content = this.pendingCaptures.map((item) => JSON.stringify(item)).join('\n');
+    await replaceFile(this.pendingPath, content ? `${content}\n` : '');
   }
 
   async evictUntilFits(incomingBytes: number): Promise<void> {
@@ -219,7 +276,9 @@ export class CaptureStore {
       await rm(this.dataDir, { recursive: true, force: true });
       await mkdir(this.dataDir, { recursive: true });
       this.captures.length = 0;
+      this.pendingCaptures.length = 0;
       await this.onClear?.();
+      this.onChange?.();
     });
   }
 }

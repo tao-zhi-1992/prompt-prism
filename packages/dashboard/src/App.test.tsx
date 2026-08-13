@@ -5,6 +5,13 @@ import type { InputDiffAnalysis, OutputCapture, RawCapture } from '@prompt-prism
 import App from './App';
 import type { CaptureSummary } from './types';
 
+class EventSourceMock extends EventTarget {
+  static instances: EventSourceMock[] = [];
+  constructor(readonly url: string) { super(); EventSourceMock.instances.push(this); }
+  close() {}
+  emit(type: string, value?: unknown) { this.dispatchEvent(new MessageEvent(type, { data: JSON.stringify(value) })); }
+}
+
 const captures: CaptureSummary[] = [
   {
     id: 'newest-capture', timestamp: '2026-08-09T07:00:00.000Z', token_hash: 'aaaaaaaaaaaaaaaa',
@@ -58,6 +65,7 @@ const outputDetails: Record<string, OutputCapture> = {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  EventSourceMock.instances = [];
   window.localStorage.removeItem('prompt-prism-locale');
   document.documentElement.lang = '';
   window.history.replaceState(null, '', '/_pp/');
@@ -145,23 +153,22 @@ describe('App', () => {
     expect(await screen.findByRole('tab', { name: 'Trace' })).toHaveAttribute('data-active');
   });
 
-  it('stages polled captures while browsing history and merges them on demand', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+  it('stages SSE captures while browsing history and merges them on demand', async () => {
     const incoming = { ...captures[0], id: 'polled-capture', model: 'polled-model', timestamp: '2026-08-10T07:00:00.000Z' };
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/_pp/api/logs?limit=100') return new Response(JSON.stringify(capturePage(captures.slice(0, 1))));
-      if (url === '/_pp/api/logs?limit=100&after=newest-cursor') return new Response(JSON.stringify(capturePage([incoming], { total: 2, oldest_cursor: 'polled-cursor', newest_cursor: 'polled-cursor' })));
       throw new Error(`unexpected request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('EventSource', EventSourceMock);
     const { container } = render(<App />);
     await screen.findByRole('button', { name: /newest-model/i });
     const viewport = container.querySelector<HTMLElement>('.request-scroll .scroll-viewport')!;
     viewport.scrollTop = 100;
     fireEvent.scroll(viewport);
 
-    await vi.advanceTimersByTimeAsync(3000);
+    EventSourceMock.instances[0]!.emit('change', { revision: 1, added: [incoming], updated: [], removed_ids: [], total: 2 });
     expect(await screen.findByRole('button', { name: '1 new requests' })).toBeVisible();
     expect(screen.queryByText('polled-model')).not.toBeInTheDocument();
 
@@ -171,42 +178,30 @@ describe('App', () => {
     expect(viewport.scrollTop).toBe(0);
   });
 
-  it('continues polling when the initial capture page is empty', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage([]))))
-      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage(captures.slice(0, 1)))));
+  it('receives captures through SSE when the initial capture page is empty', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(capturePage([]))));
     vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('EventSource', EventSourceMock);
     render(<App />);
     expect(await screen.findByText('No requests yet')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Proxy URL' })).toBeVisible();
 
-    await vi.advanceTimersByTimeAsync(3000);
+    EventSourceMock.instances[0]!.emit('change', { revision: 1, added: captures.slice(0, 1), updated: [], removed_ids: [], total: 1 });
 
     expect(await screen.findByRole('button', { name: /newest-model/i })).toBeVisible();
-    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
-      '/_pp/api/logs?limit=100',
-      '/_pp/api/logs?limit=100',
-    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps loaded requests and recovers after a polling error', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage(captures.slice(0, 1)))))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'temporary failure' }), { status: 503 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(capturePage([], { total: 1 }))));
+  it('keeps loaded requests after an SSE connection error', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(capturePage(captures.slice(0, 1)))));
     vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('EventSource', EventSourceMock);
     render(<App />);
     expect(await screen.findByRole('button', { name: /newest-model/i })).toBeVisible();
 
-    await vi.advanceTimersByTimeAsync(3000);
-    expect(await screen.findByText('Refresh paused · temporary failure')).toBeVisible();
+    EventSourceMock.instances[0]!.dispatchEvent(new Event('error'));
     expect(screen.getByText('newest-model')).toBeVisible();
-
-    await vi.advanceTimersByTimeAsync(3000);
-    await waitFor(() => expect(screen.queryByText(/Refresh paused/)).not.toBeInTheDocument());
-    expect(screen.getByText('newest-model')).toBeVisible();
+    expect(screen.queryByText(/Refresh paused/)).not.toBeInTheDocument();
   });
 
   it('keeps the selected Input Diff tab when selecting a capture from the list', async () => {

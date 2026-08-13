@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAdminHandler, decodeLogCursor, encodeLogCursor } from '../../src/server.js';
 import type { Analysis, ApiFormatResolution, CaptureIndexEntry } from '../../src/types.js';
+import { TraceService } from '../../src/trace-service.js';
 
 function entry(id: string, timestamp: string, traceId?: string): CaptureIndexEntry {
   return {
@@ -45,9 +46,11 @@ async function adminRequest(
     end: (value: string) => { body = JSON.parse(value) as unknown; },
   } as unknown as http.ServerResponse;
   const apiFormat = (): ApiFormatResolution => ({ mode: 'auto', configured: 'auto', resolved: null, source: null });
+  const trace = new TraceService('/tmp/prompt-prism-server-test');
+  for (const [id, value] of analyses) trace.relations.set(id, value.matched_parent_id);
   const handler = createAdminHandler({
     store: { captures, readCapture: async () => null, clear: options.clear ?? (async () => {}) },
-    analyzer: { analyses },
+    trace,
     plugins: { handleApi: async () => false },
     apiFormat,
     dynamicUpstreamAllowed: () => true,

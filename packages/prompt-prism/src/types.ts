@@ -153,6 +153,8 @@ export interface CaptureIndexEntry {
   messages: Message[];
   adapter_id?: string;
   prompt_input?: ModelInputSnapshot;
+  /** Core Trace relationship; absent for explicit roots and unrelated captures. */
+  parent_capture_id?: string;
 }
 
 export type DiffType = 'equal' | 'insert' | 'delete';

@@ -7,10 +7,10 @@ import { ServerPluginRegistry } from './registry/server.js';
 import { createInsightsServerPlugin } from './insights/server/index.js';
 import { createToolsServerPlugin } from './tools/server/index.js';
 
-export function createBuiltinServerPluginRuntime() {
+export function createBuiltinServerPluginRuntime({ getParentId = () => null }: { getParentId?: (id: string) => string | null | undefined } = {}) {
   const inputDiff = createInputDiffServerPlugin();
-  const trace = createTraceServerPlugin({ getParentId: (id) => inputDiff.getAnalyzer().analyses.get(id)?.matched_parent_id });
-  const insights = createInsightsServerPlugin({ getParentId: (id) => inputDiff.getAnalyzer().analyses.get(id)?.matched_parent_id });
+  const trace = createTraceServerPlugin({ getParentId });
+  const insights = createInsightsServerPlugin({ getParentId });
   const registry = new ServerPluginRegistry([inputDiff, createOutputServerPlugin(), createToolsServerPlugin(), trace, createRawServerPlugin(), createSystemPromptServerPlugin(), insights]);
   return {
     init: registry.init.bind(registry),
