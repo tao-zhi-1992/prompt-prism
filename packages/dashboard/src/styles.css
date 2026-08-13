@@ -153,7 +153,9 @@ button:focus-visible {
 .brand h1 { margin: 0 0 2px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .brand div > span { color: var(--muted); font-size: 11px; }
 
-.logo-mark { display: block; width: 44px; height: 44px; flex: 0 0 auto; object-fit: contain; }
+.logo-link { display: block; width: 44px; height: 44px; flex: 0 0 auto; border-radius: 3px; }
+.logo-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.logo-mark { display: block; width: 44px; height: 44px; object-fit: contain; }
 
 .header-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
 

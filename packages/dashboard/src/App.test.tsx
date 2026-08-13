@@ -268,6 +268,8 @@ describe('App', () => {
 
     const { container } = render(<App />);
     expect(container.querySelector('.logo-mark')).toHaveAttribute('src', '/_pp/brand/logo-mark.png');
+    expect(container.querySelector('.logo-link')).toHaveAttribute('href', 'https://tao-zhi-1992.github.io/prompt-prism/');
+    expect(container.querySelector('.logo-link')).toHaveAttribute('aria-label', 'Prompt Prism website');
     expect(container.querySelector('.app-header .logo-mark')).toBeVisible();
     expect(screen.getByText('Prompt Prism')).toBeVisible();
     expect(screen.getByText(`v${__PROMPT_PRISM_VERSION__}`)).toBeVisible();
