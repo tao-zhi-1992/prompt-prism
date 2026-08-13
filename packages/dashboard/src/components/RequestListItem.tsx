@@ -1,6 +1,6 @@
 import type { CaptureSummary } from '../types';
 import { formatHttpStatus, formatTime, httpStatusTone } from '../format';
-import { useI18n } from '@prompt-prism/plugins/dashboard';
+import { traceDisplayName, useI18n } from '@prompt-prism/plugins/dashboard';
 
 type Props = {
   capture: CaptureSummary;
@@ -15,6 +15,7 @@ export function RequestListItem({ capture, selected, onSelect, onTraceClick }: P
   const traceGroupId = capture.trace_group_id ?? capture.trace_id;
   const traceGroupSource = capture.trace_group_source ?? 'explicit';
   const traceGroupIndex = capture.trace_group_index ?? 1;
+  const traceName = traceGroupId ? traceDisplayName(traceGroupId) : null;
 
   return <div className="request-item-shell">
     <button
@@ -42,8 +43,8 @@ export function RequestListItem({ capture, selected, onSelect, onTraceClick }: P
       type="button"
       className={`trace-badge trace-badge--${traceGroupSource}`}
       title={traceGroupId}
-      aria-label={t('trace.openFirstRequest', { id: traceGroupId.slice(0, 8), index: traceGroupIndex })}
+      aria-label={t('trace.openFirstRequest', { id: traceName!, index: traceGroupIndex })}
       onClick={() => onTraceClick(capture.id)}
-    >trace:{traceGroupId.slice(0, 8)} #{traceGroupIndex}</button>}
+    >trace:{traceName} #{traceGroupIndex}</button>}
   </div>;
 }

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { RequestListItem } from './RequestListItem';
 import type { CaptureSummary } from '../types';
+import { traceDisplayName } from '@prompt-prism/plugins/dashboard';
 
 const capture: CaptureSummary = {
   id: 'capture-123456789',
@@ -39,8 +40,9 @@ describe('RequestListItem', () => {
     expect(screen.getByText('HTTP 200')).toHaveClass('status-label--good');
     expect(screen.getByText('capture-')).toHaveAttribute('title', capture.id);
     expect(screen.getByText('api.stepfun.com')).toHaveAttribute('title', 'api.stepfun.com');
-    const traceBadge = screen.getByRole('button', { name: /Open trace session: request 2 from its first request/ });
-    expect(traceBadge).toHaveTextContent('trace:session: #2');
+    const traceName = traceDisplayName('session:one');
+    const traceBadge = screen.getByRole('button', { name: new RegExp(`Open trace ${traceName} request 2 from its first request`) });
+    expect(traceBadge).toHaveTextContent(`trace:${traceName} #2`);
     expect(traceBadge.querySelector('.trace-marker-icon')).toBeNull();
     expect(traceBadge).toHaveAttribute('title', 'session:one');
     expect(traceBadge).not.toHaveAttribute('style');
@@ -52,7 +54,7 @@ describe('RequestListItem', () => {
     expect(screen.queryByText(/cached/i)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /<img/i }));
     expect(onSelect).toHaveBeenCalledWith(capture.id);
-    await userEvent.click(screen.getByRole('button', { name: /Open trace session: request 2 from its first request/ }));
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(`Open trace ${traceName} request 2 from its first request`) }));
     expect(onTraceClick).toHaveBeenCalledWith(capture.id);
   });
 
@@ -63,8 +65,9 @@ describe('RequestListItem', () => {
       onSelect={vi.fn()}
       onTraceClick={vi.fn()}
     />);
-    const traceBadge = screen.getByRole('button', { name: /Open trace root-cap request 1 from its first request/ });
-    expect(traceBadge).toHaveTextContent('trace:root-cap #1');
+    const traceName = traceDisplayName('root-capture');
+    const traceBadge = screen.getByRole('button', { name: new RegExp(`Open trace ${traceName} request 1 from its first request`) });
+    expect(traceBadge).toHaveTextContent(`trace:${traceName} #1`);
     expect(traceBadge.querySelector('.trace-marker-icon')).toBeNull();
   });
 

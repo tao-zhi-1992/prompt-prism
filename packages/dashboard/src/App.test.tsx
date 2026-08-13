@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { InputDiffAnalysis, OutputCapture, RawCapture } from '@prompt-prism/plugins/dashboard';
+import { traceDisplayName, type InputDiffAnalysis, type OutputCapture, type RawCapture } from '@prompt-prism/plugins/dashboard';
 import App from './App';
 import type { CaptureSummary } from './types';
 
@@ -142,7 +142,7 @@ describe('App', () => {
 
     render(<App />);
     await screen.findByRole('button', { name: /newest-trace-model/i });
-    await userEvent.click(screen.getAllByRole('button', { name: /Open trace session- request [12] from its first request/ })[0]!);
+    await userEvent.click(screen.getAllByRole('button', { name: new RegExp(`Open trace ${traceDisplayName('session-one')} request [12] from its first request`) })[0]!);
 
     await waitFor(() => {
       expect(new URLSearchParams(window.location.search).get('capture')).toBe(first.id);

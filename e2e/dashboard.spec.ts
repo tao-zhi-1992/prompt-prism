@@ -4,6 +4,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
+import { traceDisplayName } from '../packages/plugins/src/trace/dashboard/displayName.js';
 
 type CreatePromptPrism = (typeof import('../packages/prompt-prism/dist/proxy.js'))['createPromptPrism'];
 
@@ -146,7 +147,7 @@ test('uses coordinated green selection styling across themes', async ({ page }) 
   await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 189, 73');
   await expect(request.locator('.status-label')).toHaveClass(/status-label--good/);
   const traceBadge = page.locator('.trace-badge[title="trace-selection"]');
-  await expect(traceBadge).toHaveText('trace:trace-se #1');
+  await expect(traceBadge).toHaveText(`trace:${traceDisplayName('trace-selection')} #1`);
   await expect(traceBadge.locator('svg')).toHaveCount(0);
   expect(await traceBadge.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(darkStyles.background);
 
@@ -176,8 +177,8 @@ test('opens a trace at its first capture with a unified trace style', async ({ p
   await expect(traceABadges.first()).toContainText('#2');
   await expect(traceABadges.last()).toContainText('#1');
   await expect(traceBBadge).toContainText('#1');
-  await expect(traceABadges.first()).toContainText('trace:trace-a #2');
-  await expect(traceBBadge).toContainText('trace:trace-b #1');
+  await expect(traceABadges.first()).toContainText(`trace:${traceDisplayName('trace-a')} #2`);
+  await expect(traceBBadge).toContainText(`trace:${traceDisplayName('trace-b')} #1`);
   const traceAStyles = await traceABadges.first().evaluate((element) => {
     return {
       color: getComputedStyle(element).color,
@@ -200,7 +201,7 @@ test('opens a trace at its first capture with a unified trace style', async ({ p
   await traceABadges.last().click();
   await expect(page.locator('.request-item[data-selected]')).toContainText('e2e-trace-first');
   await expect(page.getByRole('tab', { name: 'Trace' })).toHaveAttribute('data-active');
-  await expect(page.locator('.trace-summary-id')).toContainText('trace:trace-a');
+  await expect(page.locator('.trace-summary-id')).toContainText(`trace:${traceDisplayName('trace-a')}`);
   await expect(page.locator('.trace-summary-id svg')).toHaveCount(0);
   const callMarker = page.locator('.trace-call').first();
   await expect(callMarker).not.toHaveClass(/trace-call-marker/);
