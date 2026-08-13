@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.1](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.3.0...v0.3.1) (2026-08-13)
+
+
+### Features
+
+* **ci:** add release preparation workflow ([a4baa16](https://github.com/tao-zhi-1992/prompt-prism/commit/a4baa16b8bd24ab802a74b29b18385da2c2b905e))
+
+
+### Bug Fixes
+
+* **core:** harden capture persistence lifecycle ([c28c619](https://github.com/tao-zhi-1992/prompt-prism/commit/c28c619688b4ec5179390a9ff8755224e8c6caa9))
+
+
+### Documentation
+
+* simplify Agent proxy flow ([d4af336](https://github.com/tao-zhi-1992/prompt-prism/commit/d4af3362bc809d283bf2124df246d06f7dc75c0e))
+
 ## [0.3.0](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.2.0...v0.3.0) (2026-08-12)
 
 

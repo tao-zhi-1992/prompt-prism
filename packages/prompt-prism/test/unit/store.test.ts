@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, access } from 'node:fs/promises';
+import { mkdtemp, readFile, access, appendFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CaptureStore } from '../../src/store.js';
@@ -42,6 +42,62 @@ test('clears captures and detail files', async () => {
   await assert.rejects(access(path.join(dir, written.file_ref)));
 });
 
+test('serializes captures queued after clear and preserves their index and detail file', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-'));
+  const events: string[] = [];
+  let releaseFirst!: () => void;
+  let firstCallbackStarted!: () => void;
+  const firstGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  const callbackStarted = new Promise<void>((resolve) => { firstCallbackStarted = resolve; });
+
+  class ObservedStore extends CaptureStore {
+    protected override async persistCapture(value: Capture) {
+      events.push(`write:${value.id}`);
+      return super.persistCapture(value);
+    }
+  }
+
+  const store = await new ObservedStore({ dataDir: dir }).init();
+  store.onClear = async () => {
+    events.push('clear:start');
+    await Promise.resolve();
+    events.push('clear:complete');
+  };
+  const first = store.enqueue(capture('before-clear', '2026-01-01T00:00:00.000Z'), async () => {
+    firstCallbackStarted();
+    await firstGate;
+  });
+  await callbackStarted;
+
+  const clearing = store.clear();
+  const after = store.enqueue(capture('after-clear', '2026-01-02T00:00:00.000Z'), () => {
+    events.push('analyze:after-clear');
+  });
+  releaseFirst();
+
+  await Promise.all([first, clearing, after]);
+  assert.deepEqual(events, ['write:before-clear', 'clear:start', 'clear:complete', 'write:after-clear', 'analyze:after-clear']);
+  assert.deepEqual(store.captures.map((item) => item.id), ['after-clear']);
+  assert.equal((await store.readCapture('after-clear'))?.id, 'after-clear');
+
+  const restarted = await new CaptureStore({ dataDir: dir }).init();
+  assert.deepEqual(restarted.captures.map((item) => item.id), ['after-clear']);
+  assert.equal((await restarted.readCapture('after-clear'))?.id, 'after-clear');
+});
+
+test('recovers the operation queue after a clear callback fails', async (context) => {
+  context.mock.method(console, 'error', () => {});
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  store.onClear = () => { throw new Error('plugin clear failed'); };
+
+  await assert.rejects(store.clear(), /plugin clear failed/);
+  const stored = await store.enqueue(capture('after-failed-clear', '2026-01-02T00:00:00.000Z'));
+
+  assert.equal(stored?.id, 'after-failed-clear');
+  assert.equal((await store.readCapture('after-failed-clear'))?.id, 'after-failed-clear');
+});
+
 test('persists HTTP status, upstream host, trace ID, and timing in the capture index across restarts', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-'));
   const store = await new CaptureStore({ dataDir: dir }).init();
@@ -68,4 +124,92 @@ test('persists HTTP status, upstream host, trace ID, and timing in the capture i
   assert.equal(restarted.captures[0]?.timing?.time_to_first_byte_ms, 30);
   assert.equal(restarted.captures[0]?.adapter_id, 'anthropic-messages');
   assert.equal(restarted.captures[0]?.prompt_input?.primary_section_id, 'messages');
+});
+
+test('repairs an incomplete final capture index record before appending again', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-recovery-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  await store.writeCapture(capture('valid', '2026-01-01T00:00:00.000Z'));
+  await appendFile(store.capturesPath, '{"id":"partial"');
+
+  const recovered = await new CaptureStore({ dataDir: dir }).init();
+  assert.deepEqual(recovered.captures.map(({ id }) => id), ['valid']);
+  assert.doesNotMatch(await readFile(recovered.capturesPath, 'utf8'), /partial/);
+  await recovered.writeCapture(capture('next', '2026-01-02T00:00:00.000Z'));
+
+  const restarted = await new CaptureStore({ dataDir: dir }).init();
+  assert.deepEqual(restarted.captures.map(({ id }) => id), ['valid', 'next']);
+});
+
+test('normalizes a complete capture index record without a final newline', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-newline-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  await store.writeCapture(capture('valid', '2026-01-01T00:00:00.000Z'));
+  const content = await readFile(store.capturesPath, 'utf8');
+  await writeFile(store.capturesPath, content.trimEnd());
+
+  const recovered = await new CaptureStore({ dataDir: dir }).init();
+  await recovered.writeCapture(capture('next', '2026-01-02T00:00:00.000Z'));
+
+  const restarted = await new CaptureStore({ dataDir: dir }).init();
+  assert.deepEqual(restarted.captures.map(({ id }) => id), ['valid', 'next']);
+});
+
+test('rejects corruption before the incomplete tail of the capture index', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-corrupt-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  await writeFile(store.capturesPath, '{bad}\n{"id":"partial"');
+
+  await assert.rejects(new CaptureStore({ dataDir: dir }).init(), /Invalid capture index record at line 1/);
+});
+
+test('rejects syntactically valid capture index records with missing fields', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-invalid-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  await writeFile(store.capturesPath, '{"id":"incomplete"}');
+
+  await assert.rejects(new CaptureStore({ dataDir: dir }).init(), /Invalid capture index record at line 1/);
+});
+
+test('rejects capture writes and historical index entries outside the data directory', async (context) => {
+  context.mock.method(console, 'error', () => {});
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-paths-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  await assert.rejects(store.writeCapture({ ...capture('escape', '2026-01-01T00:00:00.000Z'), token_hash: '../outside' }), /safe path segment/);
+  await assert.rejects(store.writeCapture(capture('../escape', '2026-01-01T00:00:00.000Z')), /Capture ID must be a safe path segment/);
+  await assert.rejects(store.writeCapture(capture('invalid-time', 'not-a-date')), /Capture timestamp must be a valid date/);
+
+  const malicious = {
+    id: 'malicious', timestamp: '2026-01-01T00:00:00.000Z', token_hash: 'hash', model: 'test',
+    usage: {}, file_ref: '../outside.json', messages: [],
+  };
+  await writeFile(store.capturesPath, `${JSON.stringify(malicious)}\n`);
+  await assert.rejects(new CaptureStore({ dataDir: dir }).init(), /stay within the data directory/);
+});
+
+test('removes index entries whose capture detail file disappeared during an interrupted eviction', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-missing-detail-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  const missing = await store.writeCapture(capture('missing', '2026-01-01T00:00:00.000Z'));
+  const retained = await store.writeCapture(capture('retained', '2026-01-02T00:00:00.000Z'));
+  assert.ok(missing && retained);
+  await rm(path.join(dir, missing.file_ref));
+
+  const recovered = await new CaptureStore({ dataDir: dir }).init();
+
+  assert.deepEqual(recovered.captures.map(({ id }) => id), ['retained']);
+  const persisted = (await readFile(recovered.capturesPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line).id);
+  assert.deepEqual(persisted, ['retained']);
+});
+
+test('rejects duplicate capture IDs at runtime and during startup', async (context) => {
+  context.mock.method(console, 'error', () => {});
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-duplicate-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  await store.writeCapture(capture('duplicate', '2026-01-01T00:00:00.000Z'));
+  await assert.rejects(store.writeCapture(capture('duplicate', '2026-01-02T00:00:00.000Z')), /Capture ID already exists/);
+
+  const firstLine = (await readFile(store.capturesPath, 'utf8')).trim();
+  await appendFile(store.capturesPath, `${firstLine}\n`);
+  await assert.rejects(new CaptureStore({ dataDir: dir }).init(), /Duplicate capture ID at line 2/);
 });

@@ -18,6 +18,7 @@ export interface BuiltinPluginRuntime {
   init(context: PluginRuntimeContext): Promise<void>;
   onCapture(capture: Capture, entry: CaptureIndexEntry): Promise<void>;
   onEvict(entry: CaptureIndexEntry): void;
+  onClear(): Promise<void>;
   handleApi(pluginId: string, request: http.IncomingMessage, response: http.ServerResponse, subpath: string): Promise<boolean>;
 }
 

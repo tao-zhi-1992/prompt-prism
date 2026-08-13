@@ -19,11 +19,13 @@ export interface HttpResult {
 export function request({
   port,
   pathname = '/v1/messages',
+  method,
   headers = {},
   body,
 }: {
   port: number;
   pathname?: string;
+  method?: string;
   headers?: http.OutgoingHttpHeaders;
   body?: string;
 }): Promise<HttpResult> {
@@ -31,7 +33,7 @@ export function request({
     const started = Date.now();
     const chunks: Buffer[] = [];
     const times: number[] = [];
-    const request = http.request({ host: '127.0.0.1', port, path: pathname, method: body ? 'POST' : 'GET', headers }, (response) => {
+    const request = http.request({ host: '127.0.0.1', port, path: pathname, method: method ?? (body ? 'POST' : 'GET'), headers }, (response) => {
       response.on('data', (chunk) => { chunks.push(chunk); times.push(Date.now() - started); });
       response.on('end', () => resolve({ status: response.statusCode, headers: response.headers, body: Buffer.concat(chunks).toString(), times }));
     });

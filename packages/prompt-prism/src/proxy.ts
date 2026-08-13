@@ -87,6 +87,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
   });
   const analyzer = plugins.analyzer;
   store.onEvict = (item) => plugins.onEvict(item);
+  store.onClear = () => plugins.onClear();
   let server: http.Server;
   const dynamicUpstreamAllowed = () => options.allowRemoteDynamicUpstream === true || isLoopbackListener(server);
   const admin = createAdminHandler({
@@ -173,7 +174,7 @@ export async function createPromptPrism(options: PromptPrismOptions = {}): Promi
           pathProtocol,
           headerProtocol,
         });
-        setImmediate(() => store.enqueue(capture, (stored) => plugins.onCapture({ ...capture, ...stored }, stored)).catch(() => {}));
+        void store.enqueue(capture, (stored) => plugins.onCapture({ ...capture, ...stored }, stored)).catch(() => {});
       });
       upstreamResponse.on('error', (error) => response.destroy(error));
       // pipe() applies downstream backpressure while the data listener above only

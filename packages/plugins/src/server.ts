@@ -16,6 +16,7 @@ export function createBuiltinServerPluginRuntime() {
     init: registry.init.bind(registry),
     onCapture: registry.onCapture.bind(registry),
     onEvict: registry.onEvict.bind(registry),
+    onClear: registry.onClear.bind(registry),
     handleApi: registry.handleApi.bind(registry),
     get analyzer() { return inputDiff.getAnalyzer(); },
   };

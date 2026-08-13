@@ -1,0 +1,90 @@
+name: Create release tag
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag versioned main commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Read and validate release metadata
+        id: release
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
+            echo "CI did not pass; no release tag will be created."
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          current_version="$(node -p "require('./packages/prompt-prism/package.json').version")"
+          previous_version="$(git show "${RELEASE_SHA}^:packages/prompt-prism/package.json" 2>/dev/null | node -e "let input=''; process.stdin.on('data', chunk => input += chunk).on('end', () => { try { process.stdout.write(JSON.parse(input).version); } catch { process.stdout.write(''); } });")"
+
+          if [[ ! "$current_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Invalid stable package version: $current_version" >&2
+            exit 1
+          fi
+
+          if [[ "$current_version" == "$previous_version" ]]; then
+            echo "Package version is unchanged ($current_version); no release tag is needed."
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ -n "$previous_version" ]] && ! node - "$current_version" "$previous_version" <<'NODE'
+          const [current, previous] = process.argv.slice(2).map((value) => value.split('.').map(Number));
+          if (current.length !== 3 || previous.length !== 3 || current.some(Number.isNaN) || previous.some(Number.isNaN)) process.exit(1);
+          const comparison = current.findIndex((part, index) => part !== previous[index]);
+          process.exit(comparison === -1 || current[comparison] < previous[comparison] ? 1 : 0);
+          NODE
+            echo "Package version $current_version is not greater than previous version $previous_version" >&2
+            exit 1
+          fi
+
+          if ! grep -Eq "^## \[$current_version\](\(|$)" CHANGELOG.md; then
+            echo "CHANGELOG.md has no entry for $current_version" >&2
+            exit 1
+          fi
+
+          tag="v$current_version"
+          if git show-ref --tags --verify --quiet "refs/tags/$tag"; then
+            tag_commit="$(git rev-list -n 1 "refs/tags/$tag")"
+            if [[ "$tag_commit" != "$RELEASE_SHA" ]]; then
+              echo "$tag already exists at $tag_commit, not $RELEASE_SHA" >&2
+              exit 1
+            fi
+            echo "$tag already points at $RELEASE_SHA; nothing to do."
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "version=$current_version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "should_tag=true" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push annotated tag
+        if: steps.release.outputs.should_tag == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --annotate "$RELEASE_TAG" "$RELEASE_SHA" --message "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
