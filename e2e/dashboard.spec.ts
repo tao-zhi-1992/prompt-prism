@@ -147,6 +147,7 @@ test('uses coordinated green selection styling across themes', async ({ page }) 
   await expect(request.locator('.status-label')).toHaveClass(/status-label--good/);
   const traceBadge = page.locator('.trace-badge[title="trace-selection"]');
   await expect(traceBadge).toHaveText('trace:trace-se #1');
+  await expect(traceBadge.locator('svg')).toHaveCount(0);
   expect(await traceBadge.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(darkStyles.background);
 
   await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
@@ -154,14 +155,14 @@ test('uses coordinated green selection styling across themes', async ({ page }) 
   const lightStyles = await readSelectionStyles();
   expect(lightStyles.selectedBg).toMatch(/0, 138, 53|#008a35/i);
   expect(lightStyles.background).toContain('rgba(0, 138, 53');
-  expect(lightStyles.border).toMatch(/rgba?\(138, 179, 154/);
+  expect(lightStyles.border).toMatch(/rgba?\((?:12[0-9]|13[0-9]|14[0-9]), (?:16[0-9]|17[0-9]|18[0-9]), (?:14[0-9]|15[0-9]|16[0-9])/);
   expect(lightStyles.indicator).toBe('rgb(0, 138, 53)');
   await request.hover();
   await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 138, 53');
   await expect(request.locator('.status-label')).toHaveClass(/status-label--good/);
 });
 
-test('opens a trace at its first capture and keeps trace colors stable', async ({ page }) => {
+test('opens a trace at its first capture with a unified trace style', async ({ page }) => {
   await sendCapture('e2e-trace-first', 'trace-a');
   await new Promise((resolve) => setTimeout(resolve, 10));
   await sendCapture('e2e-trace-second', 'trace-a');
@@ -175,16 +176,39 @@ test('opens a trace at its first capture and keeps trace colors stable', async (
   await expect(traceABadges.first()).toContainText('#2');
   await expect(traceABadges.last()).toContainText('#1');
   await expect(traceBBadge).toContainText('#1');
-  const traceAClass = await traceABadges.first().getAttribute('class');
-  const traceBClass = await traceBBadge.getAttribute('class');
-  expect(traceAClass).toMatch(/trace-color-[0-7]/);
-  expect(traceBClass).toMatch(/trace-color-[0-7]/);
-  expect(traceBClass).not.toBe(traceAClass);
+  await expect(traceABadges.first()).toContainText('trace:trace-a #2');
+  await expect(traceBBadge).toContainText('trace:trace-b #1');
+  const traceAStyles = await traceABadges.first().evaluate((element) => {
+    return {
+      color: getComputedStyle(element).color,
+      border: getComputedStyle(element).borderTopColor,
+      background: getComputedStyle(element).backgroundColor,
+    };
+  });
+  const traceBStyles = await traceBBadge.evaluate((element) => {
+    return {
+      color: getComputedStyle(element).color,
+      border: getComputedStyle(element).borderTopColor,
+      background: getComputedStyle(element).backgroundColor,
+    };
+  });
+  expect(traceAStyles.color).toBe(traceBStyles.color);
+  expect(traceAStyles.border).toBe(traceBStyles.border);
+  expect(traceAStyles.background).toBe(traceBStyles.background);
+  await expect(traceABadges.first().locator('svg')).toHaveCount(0);
 
   await traceABadges.last().click();
   await expect(page.locator('.request-item[data-selected]')).toContainText('e2e-trace-first');
   await expect(page.getByRole('tab', { name: 'Trace' })).toHaveAttribute('data-active');
-  await expect(page.locator('.trace-panel')).toHaveClass(new RegExp(traceAClass!.match(/trace-color-[0-7]/)![0]));
+  await expect(page.locator('.trace-summary-id')).toContainText('trace:trace-a');
+  await expect(page.locator('.trace-summary-id svg')).toHaveCount(0);
+  const callMarker = page.locator('.trace-call').first();
+  await expect(callMarker).not.toHaveClass(/trace-call-marker/);
+  const markerStyles = await callMarker.evaluate((element) => {
+    const style = getComputedStyle(element, '::after');
+    return { color: style.backgroundColor };
+  });
+  expect(markerStyles.color).not.toBe('rgba(0, 0, 0, 0)');
 });
 
 test('renders expanded structured trace content with a single outer border', async ({ page }) => {

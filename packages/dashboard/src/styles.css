@@ -45,14 +45,6 @@
   --json-null: #ff9a86;
   --scrollbar-thumb: #2c4b37;
   --menu-shadow: 0 14px 35px rgba(0, 0, 0, 0.42);
-  --trace-0-fg: #86c7a0; --trace-0-border: #416d53; --trace-0-bg: rgba(100, 181, 135, 0.16);
-  --trace-1-fg: #8dbdb0; --trace-1-border: #466f69; --trace-1-bg: rgba(102, 174, 164, 0.16);
-  --trace-2-fg: #93b6c9; --trace-2-border: #4e7080; --trace-2-bg: rgba(115, 167, 192, 0.16);
-  --trace-3-fg: #b1c28f; --trace-3-border: #667547; --trace-3-bg: rgba(162, 184, 111, 0.16);
-  --trace-4-fg: #c3ad80; --trace-4-border: #79653e; --trace-4-bg: rgba(190, 157, 90, 0.16);
-  --trace-5-fg: #9ab4a1; --trace-5-border: #536f5c; --trace-5-bg: rgba(126, 164, 139, 0.16);
-  --trace-6-fg: #89b8ae; --trace-6-border: #46736a; --trace-6-bg: rgba(100, 178, 164, 0.16);
-  --trace-7-fg: #b0b7a0; --trace-7-border: #69725b; --trace-7-bg: rgba(159, 173, 135, 0.16);
 }
 
 :root[data-theme="light"] {
@@ -94,14 +86,6 @@
   --json-null: #a31d05;
   --scrollbar-thumb: #8bad96;
   --menu-shadow: 0 14px 35px rgba(16, 23, 18, 0.17);
-  --trace-0-fg: #276b49; --trace-0-border: #86b89c; --trace-0-bg: rgba(100, 181, 135, 0.13);
-  --trace-1-fg: #24665f; --trace-1-border: #86b5ae; --trace-1-bg: rgba(102, 174, 164, 0.13);
-  --trace-2-fg: #315d73; --trace-2-border: #8baabd; --trace-2-bg: rgba(115, 167, 192, 0.13);
-  --trace-3-fg: #5b6b2c; --trace-3-border: #aeba83; --trace-3-bg: rgba(162, 184, 111, 0.13);
-  --trace-4-fg: #7b5d2b; --trace-4-border: #c4ab79; --trace-4-bg: rgba(190, 157, 90, 0.13);
-  --trace-5-fg: #3f674f; --trace-5-border: #9bb9a4; --trace-5-bg: rgba(126, 164, 139, 0.13);
-  --trace-6-fg: #2d6a63; --trace-6-border: #8ebbb3; --trace-6-bg: rgba(100, 178, 164, 0.13);
-  --trace-7-fg: #58614b; --trace-7-border: #aeb8a0; --trace-7-bg: rgba(159, 173, 135, 0.13);
 }
 
 * { box-sizing: border-box; }
@@ -239,17 +223,9 @@ button:focus-visible {
 .request-line--host { min-height: 12px; padding-left: 18px; overflow: hidden; color: var(--faint); font: 10px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; }
 .request-line--secondary { gap: 8px; padding-left: 18px; color: var(--muted); font-size: 10px; }
 .request-id { flex: 0 0 auto; color: var(--faint); font: 500 10px "DM Mono", monospace; }
-.trace-badge { position: absolute; right: 12px; bottom: 12px; z-index: 1; max-width: calc(100% - 24px); padding: 3px 5px; overflow: hidden; color: var(--trace-fg, var(--accent-strong)); border: 1px solid var(--trace-border, var(--line-strong)); background: var(--trace-bg, var(--green-bg)); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-.trace-badge:hover { color: var(--text); border-color: var(--trace-fg, var(--control-hover-border)); background: var(--surface-3); }
-.trace-badge:focus-visible { outline: 2px solid var(--trace-fg, var(--accent)); outline-offset: 1px; }
-.trace-color-0 { --trace-fg: var(--trace-0-fg); --trace-border: var(--trace-0-border); --trace-bg: var(--trace-0-bg); }
-.trace-color-1 { --trace-fg: var(--trace-1-fg); --trace-border: var(--trace-1-border); --trace-bg: var(--trace-1-bg); }
-.trace-color-2 { --trace-fg: var(--trace-2-fg); --trace-border: var(--trace-2-border); --trace-bg: var(--trace-2-bg); }
-.trace-color-3 { --trace-fg: var(--trace-3-fg); --trace-border: var(--trace-3-border); --trace-bg: var(--trace-3-bg); }
-.trace-color-4 { --trace-fg: var(--trace-4-fg); --trace-border: var(--trace-4-border); --trace-bg: var(--trace-4-bg); }
-.trace-color-5 { --trace-fg: var(--trace-5-fg); --trace-border: var(--trace-5-border); --trace-bg: var(--trace-5-bg); }
-.trace-color-6 { --trace-fg: var(--trace-6-fg); --trace-border: var(--trace-6-border); --trace-bg: var(--trace-6-bg); }
-.trace-color-7 { --trace-fg: var(--trace-7-fg); --trace-border: var(--trace-7-border); --trace-bg: var(--trace-7-bg); }
+.trace-badge { position: absolute; right: 12px; bottom: 12px; z-index: 1; max-width: calc(100% - 24px); padding: 3px 5px; overflow: hidden; color: var(--accent-strong); border: 1px solid var(--line-strong); background: var(--green-bg); font: 9px "DM Mono", monospace; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.trace-badge:hover { color: var(--text); border-color: var(--control-hover-border); background: var(--surface-3); }
+.trace-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .status-label--bad { color: var(--red); }
 .status-label--good { color: var(--green); }
 

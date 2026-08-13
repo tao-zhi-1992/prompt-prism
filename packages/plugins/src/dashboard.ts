@@ -29,7 +29,6 @@ export type { SystemPromptData } from './system-prompt/dashboard/SystemPromptPan
 export type { RawCapture, RawHeaders } from './raw/dashboard/RawPanel.js';
 export type { OutputCapture } from './output/dashboard/OutputPanel.js';
 export type { TraceCall, TraceInputRelation, TraceResult } from './trace/dashboard/TracePanel.js';
-export { traceColorIndex } from './trace/dashboard/colors.js';
 export type { ToolUsage, ToolUsageInvocation, ToolsData } from './tools/dashboard/ToolsPanel.js';
 
 import { inputDiffDashboardPlugin } from './input-diff/dashboard/index.js';

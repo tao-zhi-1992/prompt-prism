@@ -1,6 +1,6 @@
 import type { CaptureSummary } from '../types';
 import { formatHttpStatus, formatTime, httpStatusTone } from '../format';
-import { traceColorIndex, useI18n } from '@prompt-prism/plugins/dashboard';
+import { useI18n } from '@prompt-prism/plugins/dashboard';
 
 type Props = {
   capture: CaptureSummary;
@@ -40,7 +40,7 @@ export function RequestListItem({ capture, selected, onSelect, onTraceClick }: P
     </button>
     {traceGroupId && <button
       type="button"
-      className={`trace-badge trace-badge--${traceGroupSource} trace-color-${traceColorIndex(traceGroupId)}`}
+      className={`trace-badge trace-badge--${traceGroupSource}`}
       title={traceGroupId}
       aria-label={t('trace.openFirstRequest', { id: traceGroupId.slice(0, 8), index: traceGroupIndex })}
       onClick={() => onTraceClick(capture.id)}

@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TracePanel, type TraceResult } from '../dashboard/TracePanel.js';
-import { traceColorIndex } from '../dashboard/colors.js';
 
 const trace: TraceResult = {
   id: 'session-123', source: 'explicit', selected_capture_id: 'capture-two', truncated: false,
@@ -32,8 +31,9 @@ describe('TracePanel', () => {
     expect(container.querySelector('.trace-summary-id')).toHaveTextContent('trace:session');
     expect(container.querySelector('.trace-summary-id')).toHaveAttribute('title', 'session-123');
     expect(container.querySelector('.trace-summary-id')).not.toHaveAttribute('style');
-    expect(container.querySelector('.trace-panel')).toHaveClass(`trace-color-${traceColorIndex(trace.id)}`);
     expect(container.querySelector('.trace-summary-id')?.className).toMatch(/trace-summary-id/);
+    expect(container.querySelector('.trace-summary-id svg')).toBeNull();
+    expect(container.querySelector('.trace-call-marker')).toBeNull();
     expect(screen.queryByText('Fix the endpoint')).not.toBeInTheDocument();
     expect(screen.queryByText('Done')).not.toBeInTheDocument();
     expect(screen.queryByText('Unknown output')).not.toBeInTheDocument();

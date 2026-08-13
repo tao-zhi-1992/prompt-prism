@@ -41,9 +41,9 @@ describe('RequestListItem', () => {
     expect(screen.getByText('api.stepfun.com')).toHaveAttribute('title', 'api.stepfun.com');
     const traceBadge = screen.getByRole('button', { name: /Open trace session: request 2 from its first request/ });
     expect(traceBadge).toHaveTextContent('trace:session: #2');
+    expect(traceBadge.querySelector('.trace-marker-icon')).toBeNull();
     expect(traceBadge).toHaveAttribute('title', 'session:one');
     expect(traceBadge).not.toHaveAttribute('style');
-    expect(traceBadge.className).toMatch(/trace-color-[0-7]/);
     expect([...container.querySelector('.request-line--secondary')!.children].map((child) => child.textContent)).toEqual([
       'HTTP 200',
       'capture-',
@@ -63,7 +63,9 @@ describe('RequestListItem', () => {
       onSelect={vi.fn()}
       onTraceClick={vi.fn()}
     />);
-    expect(screen.getByRole('button', { name: /Open trace root-cap request 1 from its first request/ })).toHaveTextContent('trace:root-cap #1');
+    const traceBadge = screen.getByRole('button', { name: /Open trace root-cap request 1 from its first request/ });
+    expect(traceBadge).toHaveTextContent('trace:root-cap #1');
+    expect(traceBadge.querySelector('.trace-marker-icon')).toBeNull();
   });
 
   it.each([
