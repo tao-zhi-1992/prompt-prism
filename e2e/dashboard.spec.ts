@@ -118,6 +118,49 @@ test('loads a capture and opens its normalized output', async ({ page }) => {
   await expect(page.getByText('hello from e2e-model')).toBeVisible();
 });
 
+test('uses coordinated green selection styling across themes', async ({ page }) => {
+  await sendCapture('e2e-selected-good', 'trace-selection');
+  await page.goto('./');
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+
+  const request = page.locator('.request-item').filter({ hasText: 'e2e-selected-good' });
+  await request.click();
+  await expect(request).toHaveAttribute('data-selected', 'true');
+  const readSelectionStyles = () => request.evaluate((element) => {
+    const root = getComputedStyle(document.documentElement);
+    const item = getComputedStyle(element);
+    return {
+      selectedBg: root.getPropertyValue('--selected-bg').trim(),
+      background: item.backgroundColor,
+      border: item.borderTopColor,
+      indicator: getComputedStyle(element, '::before').backgroundColor,
+    };
+  });
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 189, 73');
+  const darkStyles = await readSelectionStyles();
+  expect(darkStyles.selectedBg).toMatch(/0, 189, 73|#00bd49/i);
+  expect(darkStyles.background).toContain('rgba(0, 189, 73');
+  expect(darkStyles.border).toMatch(/rgba?\(63, 107, 76/);
+  expect(darkStyles.indicator).toBe('rgb(0, 189, 73)');
+  await request.hover();
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 189, 73');
+  await expect(request.locator('.status-label')).toHaveClass(/status-label--good/);
+  const traceBadge = page.locator('.trace-badge[title="trace-selection"]');
+  await expect(traceBadge).toHaveText('trace:trace-se #1');
+  expect(await traceBadge.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(darkStyles.background);
+
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 138, 53');
+  const lightStyles = await readSelectionStyles();
+  expect(lightStyles.selectedBg).toMatch(/0, 138, 53|#008a35/i);
+  expect(lightStyles.background).toContain('rgba(0, 138, 53');
+  expect(lightStyles.border).toMatch(/rgba?\(138, 179, 154/);
+  expect(lightStyles.indicator).toBe('rgb(0, 138, 53)');
+  await request.hover();
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 138, 53');
+  await expect(request.locator('.status-label')).toHaveClass(/status-label--good/);
+});
+
 test('opens a trace at its first capture and keeps trace colors stable', async ({ page }) => {
   await sendCapture('e2e-trace-first', 'trace-a');
   await new Promise((resolve) => setTimeout(resolve, 10));

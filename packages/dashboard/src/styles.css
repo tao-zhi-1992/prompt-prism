@@ -32,8 +32,8 @@
   --tab-bg: rgba(5, 7, 5, 0.72);
   --viewer-bg: rgba(8, 12, 9, 0.82);
   --hover-bg: rgba(255, 255, 255, 0.025);
-  --selected-bg: rgba(255, 255, 255, 0.045);
-  --selected-border: #536159;
+  --selected-bg: rgba(0, 189, 73, 0.10);
+  --selected-border: #3f6b4c;
   --secondary-separator: #3e4653;
   --code: #bec9c1;
   --code-equal: #b4c1b8;
@@ -81,8 +81,8 @@
   --tab-bg: rgba(244, 247, 245, 0.84);
   --viewer-bg: rgba(255, 255, 255, 0.9);
   --hover-bg: rgba(0, 76, 30, 0.045);
-  --selected-bg: rgba(16, 23, 18, 0.06);
-  --selected-border: #718178;
+  --selected-bg: rgba(0, 138, 53, 0.08);
+  --selected-border: #8ab39a;
   --secondary-separator: #8ba095;
   --code: #283c30;
   --code-equal: #334b3d;
@@ -224,6 +224,7 @@ button:focus-visible {
 
 .request-item:hover { background: var(--surface-3); }
 .request-item[data-selected] { background: var(--selected-bg); border-color: var(--selected-border); }
+.request-item[data-selected]:hover { background: var(--selected-bg); }
 .request-item[data-selected]::before { content: ""; position: absolute; inset: 9px auto 9px -1px; width: 2px; background: var(--accent); }
 
 .status-dot { width: 6px; height: 6px; background: var(--faint); }
