@@ -13,7 +13,7 @@
 .tools-used-group > summary::-webkit-details-marker { display: none; }
 .tools-used-group > summary::after { content: "▸"; float: right; margin-left: 6px; color: var(--muted); }
 .tools-used-group[open] > summary::after { content: "▾"; }
-.tools-used-call-list { display: grid; gap: 3px; margin-top: 3px; padding-left: 8px; border-left: 1px solid var(--line-strong); }
+.tools-used-call-list { display: grid; gap: 3px; margin-top: 3px; padding-left: 8px; border-left: 1px solid var(--line); }
 .tools-used-call { display: block; padding: 3px 5px; color: var(--accent-strong); font: 9px "DM Mono", monospace; text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; white-space: nowrap; }
 .tools-used-call:hover { color: var(--text); }
 .tools-summary-empty { color: var(--faint); font: 9px "DM Mono", monospace; }
