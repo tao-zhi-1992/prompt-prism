@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DetailTabRegistry, defineDetailTab } from '@prompt-prism/dashboard-kit';
+import { DetailTabRegistry, defineDetailTab } from './dashboard.js';
 
 const plugin = (id: string, order: number) => defineDetailTab({ id, label: id, order, Panel: () => null });
 

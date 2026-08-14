@@ -4,11 +4,19 @@
   "version": "0.1.0",
   "type": "module",
   "exports": { "./server": "./src/server.ts", "./dashboard": "./src/dashboard.ts" },
-  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run --config vite.config.ts" },
   "dependencies": {
     "@prompt-prism/core": "workspace:*",
     "@prompt-prism/dashboard-kit": "workspace:*",
     "@prompt-prism/plugins": "workspace:*"
   },
-  "devDependencies": { "@types/node": "^24.0.0", "typescript": "^7.0.2" }
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.18",
+    "@vitejs/plugin-react": "^6.0.5",
+    "react": "^19.2.8",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  }
 }
