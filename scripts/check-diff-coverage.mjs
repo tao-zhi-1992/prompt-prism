@@ -63,9 +63,19 @@ const sourceRoots = [
   'packages/prompt-prism/src/',
   'packages/ui/src/',
 ];
+// These files are exercised through the packaged CLI and child-process
+// integration tests. c8 cannot attribute coverage from those processes, and
+// the package coverage command intentionally excludes them from instrumentation.
+const intentionallyUninstrumented = new Set([
+  'packages/prompt-prism/src/cli.ts',
+  'packages/prompt-prism/src/index.ts',
+  'packages/prompt-prism/src/insights-cli.ts',
+  'packages/prompt-prism/src/update-check.ts',
+]);
 
 function isCoveredSourceFile(file) {
   return sourceRoots.some((root) => file.startsWith(root))
+    && !intentionallyUninstrumented.has(file)
     && !/(?:\.test\.|\.spec\.|\/test\/|\/fixtures\/|\.d\.ts$)/.test(file)
     && !/(?:^|\/)(?:contracts|types|provider)\.ts$/.test(file)
     && !/(?:^|\/)vite\.config\.ts$/.test(file);

@@ -25,6 +25,8 @@ cd ../..
 gh release create "v<version>" --title "v<version>" --generate-notes
 ```
 
+The `prepack` hook removes private workspace-only dependencies from the published manifest, and `postpack` restores the repository manifest. This keeps `npm publish` compatible with npm consumers; verify the tarball locally with `npm pack --dry-run` before publishing.
+
 Authenticate with npm and GitHub before running these commands. The tag already exists because it was created after the Release PR merge; create the GitHub Release after npm publishing succeeds if you want a failed publish to leave no GitHub Release behind.
 
 The tag is created automatically after the PR merge; do not recreate it locally. GitHub Release creation and npm publishing remain manual. Conventional Commits are used by the Skill to calculate the next version, but ordinary commits do not trigger a release.

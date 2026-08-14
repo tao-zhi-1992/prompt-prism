@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.1](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.4.0...v0.4.1) (2026-08-14)
+
+### Bug Fixes
+
+* **release:** make npm tarballs installable when publishing from the workspace
+
 ## [0.4.0](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.3.2...v0.4.0) (2026-08-14)
 
 ### Features
