@@ -277,7 +277,10 @@ importers:
         version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0))
 
   packages/prompt-prism:
-    dependencies:
+    devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.91.1
+        version: 0.91.1(zod@4.4.3)
       '@prompt-prism/builtins':
         specifier: workspace:*
         version: link:../builtins
@@ -287,10 +290,6 @@ importers:
       '@prompt-prism/core':
         specifier: workspace:*
         version: link:../core
-    devDependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.91.1
-        version: 0.91.1(zod@4.4.3)
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3

@@ -1,17 +1,12 @@
-const PRIVATE_WORKSPACE_DEPENDENCIES = new Set([
-  '@prompt-prism/builtins',
-  '@prompt-prism/core',
-  '@prompt-prism/contracts',
-]);
+const PRIVATE_WORKSPACE_PREFIX = '@prompt-prism/';
 
-export function createPublishManifest(packageJson) {
-  const manifest = { ...packageJson };
-  if (packageJson.dependencies) {
-    const dependencies = Object.fromEntries(
-      Object.entries(packageJson.dependencies).filter(([name]) => !PRIVATE_WORKSPACE_DEPENDENCIES.has(name)),
-    );
-    if (Object.keys(dependencies).length > 0) manifest.dependencies = dependencies;
-    else delete manifest.dependencies;
+export function assertPublishManifest(packageJson) {
+  for (const [name, specifier] of Object.entries(packageJson.dependencies ?? {})) {
+    if (name.startsWith(PRIVATE_WORKSPACE_PREFIX)) {
+      throw new Error(`Published dependencies must not include private workspace package ${name}`);
+    }
+    if (typeof specifier !== 'string' || specifier.startsWith('workspace:')) {
+      throw new Error(`Published dependency ${name} must not use a workspace protocol`);
+    }
   }
-  return manifest;
 }

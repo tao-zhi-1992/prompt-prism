@@ -14,6 +14,7 @@
     "test": "pnpm --filter @prompt-prism/dashboard-kit test && pnpm --filter @prompt-prism/builtins test && pnpm --filter @prompt-prism/plugins test && pnpm --filter @prompt-prism/core test && pnpm --filter prompt-prism test && pnpm --filter @prompt-prism/dashboard test && pnpm --filter @prompt-prism/ui test && pnpm --filter @prompt-prism/example typecheck && pnpm --filter @prompt-prism/example test",
     "test:unit": "pnpm --filter @prompt-prism/dashboard-kit test && pnpm --filter @prompt-prism/builtins test && pnpm --filter @prompt-prism/plugins test && pnpm --filter @prompt-prism/core test && pnpm --filter prompt-prism test:unit && pnpm --filter @prompt-prism/dashboard test && pnpm --filter @prompt-prism/ui test",
     "test:integration": "pnpm --filter prompt-prism test:integration && pnpm --filter @prompt-prism/example test",
+    "test:package": "pnpm --filter prompt-prism test:package",
     "test:coverage": "pnpm --filter @prompt-prism/dashboard-kit test:coverage && pnpm --filter @prompt-prism/builtins test:coverage && pnpm --filter @prompt-prism/plugins test:coverage && pnpm --filter prompt-prism test:coverage && pnpm --filter @prompt-prism/core test:coverage && pnpm --filter @prompt-prism/dashboard test:coverage && pnpm --filter @prompt-prism/ui test:coverage && node scripts/check-diff-coverage.mjs",
     "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
     "test:e2e": "pnpm --filter prompt-prism build:all && playwright test --config=e2e/playwright.config.ts",

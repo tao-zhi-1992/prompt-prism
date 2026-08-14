@@ -19,13 +19,14 @@ Release PR 合并且 `v<version>` tag 已存在后，在干净且已同步到 `m
 ```bash
 test "$(node -p "require('./packages/prompt-prism/package.json').version")" = "<version>"
 pnpm test
+pnpm test:package
 cd packages/prompt-prism
 npm publish --access public
 cd ../..
 gh release create "v<version>" --title "v<version>" --generate-notes
 ```
 
-`prepack` 会从发布 manifest 中移除仅供 workspace 使用的私有依赖，`postpack` 会恢复仓库中的 manifest，因此可以直接使用 `npm publish`。发布前可运行 `npm pack --dry-run` 检查 tarball。
+`pnpm test:package` 会创建 npm tarball，验证其运行时 manifest 没有 workspace 依赖，在隔离临时目录安装，并运行 `p2 --version`。`prepublishOnly` 也会在 npm 向 registry 发送包元数据前拒绝任何运行时 workspace 依赖。
 
 执行前需要分别登录 npm 和 GitHub。tag 已由合并后的 workflow 自动创建，不要在本地重复创建。GitHub Release 和 npm 发布仍然手动执行。
 
