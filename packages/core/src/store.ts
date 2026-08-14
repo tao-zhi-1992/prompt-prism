@@ -186,15 +186,16 @@ export class CaptureStore {
       response_status: capture.response?.status,
       upstream_host: capture.upstream_host,
       trace_id: capture.trace_id,
+      ...(typeof capture.trace_parent_capture_id === 'string' ? { trace_parent_capture_id: capture.trace_parent_capture_id } : {}),
       timing: capture.timing,
       file_ref: fileRef,
       messages: capture.messages,
       adapter_id: capture.adapter_id,
       prompt_input: capture.prompt_input,
       ...(typeof capture.parent_capture_id === 'string' ? { parent_capture_id: capture.parent_capture_id } : {}),
-      ...(capture.trace_relation_source === 'explicit' || capture.trace_relation_source === 'inferred' ? { trace_relation_source: capture.trace_relation_source } : {}),
-      ...(capture.trace_relation_reason === 'explicit_trace_id' || capture.trace_relation_reason === 'input_prefix' || capture.trace_relation_reason === 'input_with_previous_output' ? { trace_relation_reason: capture.trace_relation_reason } : {}),
-      ...(capture.trace_relation_version === 1 ? { trace_relation_version: 1 as const } : {}),
+      ...(capture.trace_relation_source === 'explicit' || capture.trace_relation_source === 'reference' || capture.trace_relation_source === 'inferred' ? { trace_relation_source: capture.trace_relation_source } : {}),
+      ...(capture.trace_relation_reason === 'explicit_trace_id' || capture.trace_relation_reason === 'explicit_parent_capture' || capture.trace_relation_reason === 'tool_result_reference' || capture.trace_relation_reason === 'input_prefix' || capture.trace_relation_reason === 'input_with_previous_output' ? { trace_relation_reason: capture.trace_relation_reason } : {}),
+      ...(capture.trace_relation_version === 1 || capture.trace_relation_version === 2 ? { trace_relation_version: capture.trace_relation_version } : {}),
     };
     if (pending) {
       try { await appendFile(this.pendingPath, `${JSON.stringify(indexEntry)}\n`); }

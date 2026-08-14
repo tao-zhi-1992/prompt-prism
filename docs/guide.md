@@ -146,7 +146,8 @@ The Requests list initially loads the latest 100 captures, fetches older pages a
 
 The **Proxy URL** action remains available before the first capture. It validates an upstream Base URL, generates a URL for the current Dashboard origin, and copies it without saving or changing server configuration.
 
-- Trace groups explicitly marked requests by `x-prompt-prism-trace-id`, or infers a group from Input Diff ancestry.
+- Trace groups requests marked by `x-prompt-prism-trace-id`, accepts an optional `x-prompt-prism-parent-capture-id`, and otherwise uses conservative normalized tool/result and prompt-continuation signals. Input Diff consumes the resulting parent relation; it does not create Trace groups.
+- For the most reliable Agent run tracking, send the same `x-prompt-prism-trace-id` on every model request. Use `x-prompt-prism-parent-capture-id` when the Agent knows the exact preceding capture.
 - Input Diff compares normalized Messages, System, Tools, and request options.
 - Tools shows declared tool definitions and links actual calls to their parameters in Trace.
 - Output presents provider-neutral text, reasoning, usage, errors, and tool calls.

@@ -146,7 +146,8 @@ OpenAI 将缓存提示 token 报告为 `prompt_tokens` 的子集。Prism 将其�
 
 第一条 capture 出现前，详情栏仍会显示 **代理地址** 操作。它会验证上游 Base URL，按照当前仪表盘 origin 生成并复制地址，不保存或修改服务端配置。
 
-- Trace 按显式的 `x-prompt-prism-trace-id` 请求头分组，或从 Input Diff 祖先推断分组。
+- Trace 按 `x-prompt-prism-trace-id` 分组，也支持可选的 `x-prompt-prism-parent-capture-id`；没有显式上下文时，再使用规范化后的工具结果、输入延续等保守信号推断。Input Diff 只消费已确定的 parent，不负责创建 Trace 分组。
+- 要稳定追踪一次 Agent 运行，建议在每个模型请求中发送相同的 `x-prompt-prism-trace-id`；如果 Agent 知道准确的前一个 capture，可额外发送 `x-prompt-prism-parent-capture-id`。
 - Input Diff 比较规范化后的 Messages、System、Tools 和请求选项。
 - Tools 展示声明的工具定义，并把实际调用链接到 Trace 中的参数。
 - Output 呈现提供商无关的文本、推理、用量、错误和工具调用。

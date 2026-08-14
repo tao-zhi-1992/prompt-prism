@@ -39,6 +39,8 @@ export interface Capture {
   prompt_input?: ModelInputSnapshot;
   model_output?: ModelOutputSnapshot;
   trace_id?: string;
+  /** Explicit parent requested by the Agent through Prompt Prism's internal header. */
+  trace_parent_capture_id?: string;
   usage: Usage;
   upstream_host?: string;
   timing?: CaptureTiming;
@@ -56,15 +58,16 @@ export interface CaptureIndexEntry {
   response_status?: number | null;
   upstream_host?: string;
   trace_id?: string;
+  trace_parent_capture_id?: string;
   timing?: CaptureTiming;
   file_ref: string;
   messages: Message[];
   adapter_id?: string;
   prompt_input?: ModelInputSnapshot;
   parent_capture_id?: string;
-  trace_relation_source?: 'explicit' | 'inferred';
-  trace_relation_reason?: 'explicit_trace_id' | 'input_prefix' | 'input_with_previous_output';
-  trace_relation_version?: 1;
+  trace_relation_source?: 'explicit' | 'reference' | 'inferred';
+  trace_relation_reason?: 'explicit_trace_id' | 'explicit_parent_capture' | 'tool_result_reference' | 'input_prefix' | 'input_with_previous_output';
+  trace_relation_version?: 1 | 2;
 }
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';
@@ -77,6 +80,9 @@ export interface TraceCall {
   input_relation: TraceInputRelation;
   input_delta: ConversationMessage[];
   output: ModelOutputSnapshot | null;
+  parent_capture_id?: string;
+  relation_source?: 'explicit' | 'reference' | 'inferred';
+  relation_reason?: 'explicit_trace_id' | 'explicit_parent_capture' | 'tool_result_reference' | 'input_prefix' | 'input_with_previous_output';
 }
 export interface TraceResult {
   id: string;

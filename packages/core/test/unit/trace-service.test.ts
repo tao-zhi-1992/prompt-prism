@@ -12,7 +12,7 @@ function capture(id: string, timestamp: string, messages: unknown[], overrides: 
   const input = parseRequest(JSON.stringify(request)).input;
   return { id, timestamp, token_hash: 'same-token', model: 'gpt-test', messages: messages as Capture['messages'], adapter_id: 'openai-chat-completions', prompt_input: input, usage: {}, upstream_host: 'api.example.com', request: { method: 'POST', url: '/v1/chat/completions', headers: {}, body: JSON.stringify(request) }, response: { status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ object: 'chat.completion', choices: [{ message: { role: 'assistant', content: 'done' }, finish_reason: 'stop' }] }) }, ...overrides };
 }
-function entry(value: Capture): CaptureIndexEntry { return { id: value.id, timestamp: value.timestamp, token_hash: value.token_hash, model: value.model, usage: value.usage, upstream_host: value.upstream_host, file_ref: `${value.id}.json`, messages: value.messages, adapter_id: value.adapter_id, prompt_input: value.prompt_input, trace_id: value.trace_id }; }
+function entry(value: Capture): CaptureIndexEntry { return { id: value.id, timestamp: value.timestamp, token_hash: value.token_hash, model: value.model, usage: value.usage, upstream_host: value.upstream_host, file_ref: `${value.id}.json`, messages: value.messages, adapter_id: value.adapter_id, prompt_input: value.prompt_input, trace_id: value.trace_id, trace_parent_capture_id: value.trace_parent_capture_id }; }
 const parse = (id: string, body: string) => parseRequest(body);
 const output = (id: string, body: string, contentType?: string) => parseResponse(body, contentType);
 
@@ -24,8 +24,8 @@ test('Trace relations require a unique recent, compatible prefix candidate and p
   const stored = await service.prepare(child, entry(child), async (id) => id === root.id ? root : null, parse, output);
   assert.equal(stored.parent_capture_id, 'root');
   assert.equal(stored.trace_relation_source, 'inferred');
-  assert.equal(stored.trace_relation_reason, 'input_prefix');
-  assert.equal(stored.trace_relation_version, 1);
+  assert.equal(stored.trace_relation_reason, 'input_with_previous_output');
+  assert.equal(stored.trace_relation_version, 2);
 });
 
 test('Trace inference refuses ambiguous or stale candidates', async () => {
@@ -40,6 +40,84 @@ test('Trace inference refuses ambiguous or stale candidates', async () => {
   const stale = capture('stale', '2026-08-14T01:00:01.000Z', [...messages, { role: 'user', content: 'next' }]);
   const staleResult = await service.prepare(stale, entry(stale), async () => null, parse, output);
   assert.equal(staleResult.parent_capture_id, undefined);
+});
+
+test('explicit parent references take precedence and survive model changes', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'hello' }]);
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [{ role: 'user', content: 'unrelated' }], { model: 'gpt-other', trace_parent_capture_id: 'root' });
+  const service = new TraceService(directory); await service.init([entry(root)]);
+  const stored = await service.prepare(child, entry(child), async (id) => id === root.id ? root : null, parse, output);
+  assert.equal(stored.parent_capture_id, 'root');
+  assert.equal(stored.trace_relation_source, 'reference');
+  assert.equal(stored.trace_relation_reason, 'explicit_parent_capture');
+  assert.equal(stored.trace_relation_version, 2);
+});
+
+test('ignores an unknown explicit parent without blocking capture persistence', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [{ role: 'user', content: 'next' }], { trace_parent_capture_id: 'missing' });
+  const service = new TraceService(directory); await service.init([]);
+  const stored = await service.prepare(child, entry(child), async () => null, parse, output);
+  assert.equal(stored.parent_capture_id, undefined);
+  assert.equal(stored.trace_relation_source, undefined);
+});
+
+test('an explicit parent joins a trace-id group even when the child has no trace header', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'hello' }], { trace_id: 'run-1' });
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [{ role: 'user', content: 'next' }], { trace_parent_capture_id: 'root' });
+  const service = new TraceService(directory); await service.init([entry(root)]);
+  await service.prepare(child, entry(child), async (id) => id === root.id ? root : null, parse, output);
+  const metadata = service.metadata([entry(root), entry(child)]);
+  assert.deepEqual(metadata.get('root'), { trace_group_id: 'run-1', trace_group_source: 'explicit', trace_group_index: 1 });
+  assert.deepEqual(metadata.get('child'), { trace_group_id: 'run-1', trace_group_source: 'explicit', trace_group_index: 2 });
+});
+
+test('does not require the same model for a unique heuristic continuation', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'hello' }]);
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [{ role: 'user', content: 'hello' }, { role: 'assistant', content: 'done' }, { role: 'user', content: 'next' }], { model: 'gpt-other' });
+  const service = new TraceService(directory); await service.init([entry(root)]);
+  const stored = await service.prepare(child, entry(child), async (id) => id === root.id ? root : null, parse, output);
+  assert.equal(stored.parent_capture_id, 'root');
+});
+
+test('matches a normalized tool result to the unique prior tool call', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'inspect' }], {
+    model_output: { adapter_id: 'openai-chat-completions', id: 'out-root', model: 'gpt-test', role: 'assistant', stop_reason: 'tool_calls', content: [{ type: 'tool_call', id: 'call-1', name: 'read', input: { path: 'a.ts' } }], usage: {} },
+  });
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [{ role: 'user', content: 'inspect' }, { role: 'tool', tool_call_id: 'call-1', content: 'file contents' }]);
+  const service = new TraceService(directory); await service.init([entry(root)]);
+  const stored = await service.prepare(child, entry(child), async (id) => id === root.id ? root : null, parse, output);
+  assert.equal(stored.parent_capture_id, 'root');
+  assert.equal(stored.trace_relation_source, 'reference');
+  assert.equal(stored.trace_relation_reason, 'tool_result_reference');
+});
+
+test('backfills a child whose parent completed later by timestamp', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'hello' }]);
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [{ role: 'user', content: 'hello' }, { role: 'assistant', content: 'done' }, { role: 'user', content: 'next' }]);
+  const values = new Map([[root.id, root], [child.id, child]]);
+  const service = new TraceService(directory); await service.init([]);
+  const childStored = await service.prepare(child, entry(child), async (id) => values.get(id) ?? null, parse, output);
+  assert.equal(childStored.parent_capture_id, undefined);
+  service.published([entry(child)]);
+  await service.prepare(root, entry(root), async (id) => values.get(id) ?? null, parse, output);
+  service.published([entry(child), entry(root)]);
+  const changed = await service.reconcile([entry(child), entry(root)], async (id) => values.get(id) ?? null, parse, output);
+  assert.deepEqual(changed, ['child']);
+  assert.equal(service.getParentId('child'), 'root');
+});
+
+test('does not infer anonymous requests into one another', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'hello' }], { token_hash: 'anonymous' });
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [{ role: 'user', content: 'hello' }, { role: 'user', content: 'next' }], { token_hash: 'anonymous' });
+  const service = new TraceService(directory); await service.init([entry(root)]);
+  assert.equal((await service.prepare(child, entry(child), async () => root, parse, output)).parent_capture_id, undefined);
 });
 
 test('restores valid persisted relations and ignores records for evicted captures', async () => {
@@ -87,6 +165,7 @@ test('projects explicit and inferred traces, including append, rewritten, and tr
   assert.equal(explicitResult?.source, 'explicit');
   assert.equal(explicitResult?.calls.length, 2);
   assert.equal(explicitResult?.calls[0]?.input_relation, 'root');
+  assert.equal(explicitResult?.calls[0]?.relation_source, 'explicit');
   assert.equal(explicitResult?.calls[1]?.input_relation, 'rewritten');
 
   const inferredResult = await service.result('child', all, async (id) => ({ root, 'inferred-root': inferredRoot, child, rewritten, orphan }[id] ?? null), parse, output);
@@ -94,6 +173,7 @@ test('projects explicit and inferred traces, including append, rewritten, and tr
   assert.equal(inferredResult?.truncated, false);
   assert.equal(inferredResult?.calls[0]?.input_relation, 'root');
   assert.equal(inferredResult?.calls[1]?.input_relation, 'append');
+  assert.equal(inferredResult?.calls[1]?.parent_capture_id, 'inferred-root');
 
   assert.equal(await service.result('orphan', all, async () => null, parse, output), null);
   service.relations.set('orphan', { id: 'orphan', parent_capture_id: 'gone', source: 'inferred', reason: 'input_prefix', version: 1 });

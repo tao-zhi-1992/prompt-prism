@@ -133,6 +133,7 @@ export interface Capture {
   prompt_input?: ModelInputSnapshot;
   model_output?: ModelOutputSnapshot;
   trace_id?: string;
+  trace_parent_capture_id?: string;
   usage: Usage;
   upstream_host?: string;
   timing?: CaptureTiming;
@@ -157,9 +158,10 @@ export interface CaptureIndexEntry {
   prompt_input?: ModelInputSnapshot;
   /** Core Trace relationship; absent for explicit roots and unrelated captures. */
   parent_capture_id?: string;
-  trace_relation_source?: 'explicit' | 'inferred';
-  trace_relation_reason?: 'explicit_trace_id' | 'input_prefix' | 'input_with_previous_output';
-  trace_relation_version?: 1;
+  trace_parent_capture_id?: string;
+  trace_relation_source?: 'explicit' | 'reference' | 'inferred';
+  trace_relation_reason?: 'explicit_trace_id' | 'explicit_parent_capture' | 'tool_result_reference' | 'input_prefix' | 'input_with_previous_output';
+  trace_relation_version?: 1 | 2;
 }
 
 export type DiffType = 'equal' | 'insert' | 'delete';

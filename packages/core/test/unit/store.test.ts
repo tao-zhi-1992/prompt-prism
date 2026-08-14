@@ -140,6 +140,7 @@ test('persists HTTP status, upstream host, trace ID, and timing in the capture i
     },
     upstream_host: 'provider.example.com:8443',
     trace_id: 'session:one',
+    trace_parent_capture_id: 'parent-capture',
     timing: {
       started_at: '2026-01-01T00:00:00.000Z', completed_at: '2026-01-01T00:00:00.100Z',
       duration_ms: 100, time_to_headers_ms: 20, time_to_first_byte_ms: 30,
@@ -151,6 +152,7 @@ test('persists HTTP status, upstream host, trace ID, and timing in the capture i
   assert.equal(restarted.captures[0]?.response_status, 429);
   assert.equal(restarted.captures[0]?.upstream_host, 'provider.example.com:8443');
   assert.equal(restarted.captures[0]?.trace_id, 'session:one');
+  assert.equal(restarted.captures[0]?.trace_parent_capture_id, 'parent-capture');
   assert.equal(restarted.captures[0]?.timing?.time_to_first_byte_ms, 30);
   assert.equal(restarted.captures[0]?.adapter_id, 'anthropic-messages');
   assert.equal(restarted.captures[0]?.prompt_input?.primary_section_id, 'messages');

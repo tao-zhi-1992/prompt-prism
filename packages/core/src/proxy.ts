@@ -16,7 +16,7 @@ import { isLoopbackListener, resolveProxyTarget } from './proxy-target.js';
 import type { PromptPrismInstance, PromptPrismOptions, StartedPromptPrism } from './types.js';
 
 const HOP_BY_HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade']);
-const INTERNAL_HEADERS = new Set(['x-prompt-prism-trace-id']);
+const INTERNAL_HEADERS = new Set(['x-prompt-prism-trace-id', 'x-prompt-prism-parent-capture-id']);
 const rootBrandFiles = new Map([
   ['/favicon.ico', { file: 'favicon.ico', contentType: 'image/x-icon' }],
   ['/apple-touch-icon.png', { file: 'apple-touch-icon.png', contentType: 'image/png' }]
@@ -99,8 +99,10 @@ export async function createPromptPrismCore(options: PromptPrismOptions = {}, pl
   const analyzer = plugins.analyzer as PromptPrismInstance['analyzer'];
   await store.recoverPending(async (capture, stored) => {
     const finalized = await trace.prepare(capture, stored, (id) => store.readCapture(id), (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body), (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType));
+    const candidates = [...store.captures, finalized];
+    trace.published(candidates);
+    await trace.reconcile(candidates, (id) => store.readCapture(id), (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body), (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType), finalized.id);
     await plugins.onCapture({ ...capture, ...finalized }, finalized);
-    trace.published([...store.captures, finalized]);
     return finalized;
   });
   store.onEvict = (item) => { trace.remove(item); plugins.onEvict(item); };
@@ -194,8 +196,10 @@ export async function createPromptPrismCore(options: PromptPrismOptions = {}, pl
         });
         void store.enqueue(capture, async (stored) => {
           const finalized = await trace.prepare(capture, stored, (id) => store.readCapture(id), (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body), (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType));
+          const candidates = [...store.captures, finalized];
+          trace.published(candidates);
+          await trace.reconcile(candidates, (id) => store.readCapture(id), (adapterId, body) => getProviderAdapter(adapterId).parseRequest(body), (adapterId, body, contentType) => getProviderAdapter(adapterId).parseResponse(body, contentType), finalized.id);
           await plugins.onCapture({ ...capture, ...finalized }, finalized);
-          trace.published([...store.captures, finalized]);
           return finalized;
         }).catch(() => {});
       });

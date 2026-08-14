@@ -25,6 +25,9 @@ export interface TraceCall {
   input_relation: TraceInputRelation;
   input_delta: ConversationMessage[];
   output: ModelOutputSnapshot | null;
+  parent_capture_id?: string;
+  relation_source?: 'explicit' | 'reference' | 'inferred';
+  relation_reason?: 'explicit_trace_id' | 'explicit_parent_capture' | 'tool_result_reference' | 'input_prefix' | 'input_with_previous_output';
 }
 export interface TraceResult {
   id: string;

@@ -31,6 +31,12 @@ function traceIdentity(headers: http.IncomingHttpHeaders): string | undefined {
   return typeof candidate === 'string' && TRACE_ID.test(candidate) ? candidate : undefined;
 }
 
+function traceParentIdentity(headers: http.IncomingHttpHeaders): string | undefined {
+  const value = headers['x-prompt-prism-parent-capture-id'];
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return typeof candidate === 'string' && TRACE_ID.test(candidate) ? candidate : undefined;
+}
+
 function shallowModel(body: Buffer): string | null {
   try {
     const value = JSON.parse(body.toString('utf8')) as { model?: unknown };
@@ -84,6 +90,7 @@ export function buildCapture({
     } catch { /* Preserve a Raw-only capture when provider extensions cannot be normalized. */ }
   }
   const traceId = traceIdentity(request.headers);
+  const traceParentCaptureId = traceParentIdentity(request.headers);
   return {
     id,
     timestamp: timing.completedAt,
@@ -95,6 +102,7 @@ export function buildCapture({
     usage: parsedResponse?.usage ?? {},
     ...(parsedResponse?.output ? { model_output: parsedResponse.output } : {}),
     ...(traceId ? { trace_id: traceId } : {}),
+    ...(traceParentCaptureId ? { trace_parent_capture_id: traceParentCaptureId } : {}),
     upstream_host: targetUrl.host,
     timing: {
       started_at: timing.startedAt,

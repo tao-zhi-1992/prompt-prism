@@ -20,12 +20,12 @@ const run = promisify(execFile);
 const cli = fileURLToPath(new URL('../../bin/pp.js', import.meta.url));
 
 test('proxy uses the configured endpoint, preserves auth, streams SSE, captures asynchronously, and serves APIs', async (t) => {
-  let seen: { url: string | undefined; key: string | string[] | undefined; traceId: string | string[] | undefined; body: string } | undefined;
+  let seen: { url: string | undefined; key: string | string[] | undefined; traceId: string | string[] | undefined; parentId: string | string[] | undefined; body: string } | undefined;
   const upstream = http.createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
-      seen = { url: req.url, key: req.headers['x-api-key'], traceId: req.headers['x-prompt-prism-trace-id'], body: Buffer.concat(chunks).toString() };
+      seen = { url: req.url, key: req.headers['x-api-key'], traceId: req.headers['x-prompt-prism-trace-id'], parentId: req.headers['x-prompt-prism-parent-capture-id'], body: Buffer.concat(chunks).toString() };
       res.writeHead(200, { 'content-type': 'text/event-stream', 'x-upstream': 'yes' });
       res.write([
         'event: message_start',
@@ -56,12 +56,13 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(prism.store.captures.length, 0);
 
   const body = JSON.stringify({ model: 'claude-test', messages: [{ role: 'user', content: 'hello' }] });
-  const result = await request({ port: proxyPort, pathname: '/v1/messages?beta=1', headers: { 'content-type': 'application/json', 'x-api-key': 'top-secret', 'x-prompt-prism-trace-id': 'agent.session:one', 'content-length': Buffer.byteLength(body) }, body });
+  const result = await request({ port: proxyPort, pathname: '/v1/messages?beta=1', headers: { 'content-type': 'application/json', 'x-api-key': 'top-secret', 'x-prompt-prism-trace-id': 'agent.session:one', 'x-prompt-prism-parent-capture-id': 'parent-capture', 'content-length': Buffer.byteLength(body) }, body });
   assert.equal(result.status, 200);
   assert.equal(result.headers['x-upstream'], 'yes');
   assert.equal(seen?.url, '/api/v1/messages?configured=1');
   assert.equal(seen?.key, 'top-secret');
   assert.equal(seen?.traceId, undefined);
+  assert.equal(seen?.parentId, undefined);
   assert.ok((result.times[0] ?? Number.POSITIVE_INFINITY) < 70, `first streamed chunk arrived after ${result.times[0]}ms`);
   assert.ok((result.times.at(-1) ?? 0) >= 80);
 
@@ -81,6 +82,7 @@ test('proxy uses the configured endpoint, preserves auth, streams SSE, captures 
   assert.equal(stored.upstream_host, `127.0.0.1:${upstreamPort}`);
   assert.equal(stored.adapter_id, 'anthropic-messages');
   assert.equal(stored.trace_id, 'agent.session:one');
+  assert.equal(stored.trace_parent_capture_id, 'parent-capture');
   assert.equal(stored.timing?.started_at, firstCapture.timing?.started_at);
   assert.equal(stored.timing?.completed_at, stored.timestamp);
   assert.ok((stored.timing?.duration_ms ?? 0) >= 80);
