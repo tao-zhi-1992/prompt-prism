@@ -103,7 +103,7 @@ Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic
 
 ## Data and privacy
 
-Captures stay on your machine under `./data` by default. API keys, authorization headers, and cookies are replaced with `[REDACTED]`; request and response bodies remain local because they are required for analysis. The default storage cap is 1 GB and the oldest captures are evicted first.
+By default, Prompt Prism saves captures in a `data` folder inside the directory where you run `p2 start` (`./data`). For example, running it from `/path/to/your-agent` stores the data in `/path/to/your-agent/data`. Use `p2 start --data-dir PATH` to choose a different local folder. API keys, authorization headers, and cookies are replaced with `[REDACTED]`; request and response bodies remain on your machine because they are required for analysis. The default storage cap is 1 GB and the oldest captures are evicted first.
 
 See the [Guide](docs/guide.md#data-and-privacy) before using Prompt Prism with sensitive projects.
 
