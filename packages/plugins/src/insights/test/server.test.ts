@@ -132,6 +132,38 @@ describe('Insights server plugin', () => {
     expect(await buildInsightEvidence(second.id, 'missing', 100, pluginContext)).toBeNull();
   });
 
+  it('parses raw provider request and response data when normalized fields are absent', async () => {
+    const { first, second, pluginContext } = fixture();
+    second.prompt_input = undefined;
+    const raw: Capture = {
+      ...second,
+      prompt_input: undefined,
+      model_output: undefined,
+      request: { method: 'POST', url: '/v1/messages', headers: {}, body: '{}' },
+      response: { status: 200, headers: { 'content-type': 'application/json' }, body: '{}' },
+    };
+    pluginContext.readCapture = vi.fn(async (id) => id === second.id ? raw : null);
+    pluginContext.parseProviderRequest = vi.fn(() => ({ model: 'model', messages: [], input: input('RAW_SYSTEM', [{ role: 'user', content: [{ type: 'text', text: 'raw' }] }]) }));
+    pluginContext.parseProviderResponse = vi.fn(() => ({ usage: {}, output: firstOutput }));
+
+    const report = await buildInsightReport(second.id, pluginContext);
+    expect(report).not.toBeNull();
+    expect(pluginContext.parseProviderRequest).toHaveBeenCalledWith('anthropic', '{}');
+
+    const output = await buildInsightEvidence(second.id, 'output', 1024, pluginContext);
+    expect(output?.section).toBe('output');
+    const tools = await buildInsightEvidence(second.id, 'tool-events', 1024, pluginContext);
+    expect(tools?.section).toBe('tool-events');
+    const system = await buildInsightEvidence(second.id, 'system', 1024, pluginContext);
+    expect(system?.section).toBe('system');
+
+    pluginContext.parseProviderRequest = vi.fn(() => { throw new Error('bad request'); });
+    pluginContext.parseProviderResponse = vi.fn(() => { throw new Error('bad response'); });
+    await expect(buildInsightEvidence(second.id, 'tool-events', 1024, pluginContext)).resolves.toMatchObject({ section: 'tool-events' });
+    await expect(buildInsightEvidence(second.id, 'output', 1024, pluginContext)).resolves.toMatchObject({ section: 'output' });
+    await expect(buildInsightEvidence(second.id, 'system', 1024, pluginContext)).resolves.toBeNull();
+  });
+
   it('validates API routes and returns reports', async () => {
     const { second, pluginContext } = fixture();
     const plugin = createInsightsServerPlugin();

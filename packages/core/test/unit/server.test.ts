@@ -1,4 +1,5 @@
 import type http from 'node:http';
+import { EventEmitter } from 'node:events';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAdminHandler, decodeLogCursor, encodeLogCursor } from '../../src/server.js';
@@ -163,4 +164,69 @@ test('returns stable JSON responses when clearing captures succeeds or fails', a
     method: 'DELETE', clear: async () => { throw new Error('private failure'); },
   });
   assert.deepEqual(failure, { status: 500, body: { error: 'Failed to clear captures' } });
+});
+
+test('replays log changes over SSE and serves the changes fallback protocol', async () => {
+  const captures = [entry('first', '2026-08-09T00:00:00.000Z')];
+  const trace = new TraceService('/tmp/prompt-prism-server-stream-test');
+  const handler = createAdminHandler({
+    store: { captures, readCapture: async () => null, clear: async () => {} },
+    trace,
+    plugins: { handleApi: async () => false },
+    apiFormat: () => ({ mode: 'auto', configured: 'auto', resolved: null, source: null }),
+    dynamicUpstreamAllowed: () => true,
+    proxyUrlPath: () => '/_proxy/test',
+  });
+  const request = (url: string, method = 'GET') => {
+    const value = new EventEmitter() as EventEmitter & { method: string; url: string; headers: Record<string, string> };
+    value.method = method;
+    value.url = url;
+    value.headers = {};
+    return value as unknown as http.IncomingMessage;
+  };
+  const response = () => {
+    const writes: string[] = [];
+    let status = 0;
+    let body: string | undefined;
+    const value = {
+      writeHead: (next: number) => { status = next; return value; },
+      write: (chunk: string) => { writes.push(chunk); return true; },
+      end: (next?: string) => { body = next; },
+    } as unknown as http.ServerResponse;
+    return { value, writes, get status() { return status; }, get body() { return body; } };
+  };
+
+  const initialResponse = response();
+  await handler(request('/_pp/api/logs?limit=1'), initialResponse.value);
+  const streamRequest = request('/_pp/api/logs/stream?since=0');
+  const streamResponse = response();
+  const originalSetInterval = globalThis.setInterval;
+  globalThis.setInterval = ((callback: TimerHandler) => { if (typeof callback === 'function') callback(); return 1 as unknown as ReturnType<typeof setInterval>; }) as unknown as typeof setInterval;
+  try {
+    await handler(streamRequest, streamResponse.value);
+  } finally {
+    globalThis.setInterval = originalSetInterval;
+  }
+  streamRequest.emit('close');
+  assert.equal(streamResponse.status, 200);
+  assert.ok(streamResponse.writes.some((chunk) => chunk.includes('event: change')));
+  assert.ok(streamResponse.writes.some((chunk) => chunk.includes(': ping')));
+
+  captures.push(entry('second', '2026-08-09T00:00:01.000Z'));
+  handler.refresh();
+  const changesResponse = response();
+  await handler(request('/_pp/api/logs/changes?since=1'), changesResponse.value);
+  assert.equal(changesResponse.status, 200);
+  assert.equal((JSON.parse(changesResponse.body ?? '{}') as { changes: unknown[] }).changes.length, 1);
+  assert.equal((await adminRequest('/_pp/api/logs/changes?since=bad', captures)).status, 400);
+  assert.equal((await adminRequest('/_pp/api/logs/changes?since=0', captures)).status, 200);
+  assert.equal((await adminRequest('/_pp/api/logs/changes?since=-1', captures)).status, 400);
+  const resetRequest = request('/_pp/api/logs/stream?since=-1');
+  const resetResponse = response();
+  await handler(resetRequest, resetResponse.value);
+  resetRequest.emit('close');
+  assert.equal(resetResponse.status, 200);
+  assert.ok(resetResponse.writes.some((chunk) => chunk.includes('event: reset')));
+  assert.equal((await adminRequest('/_pp/api/logs/stream', captures, new Map(), { method: 'POST' })).status, 405);
+  assert.equal((await adminRequest('/_pp/api/logs/changes', captures, new Map(), { method: 'POST' })).status, 405);
 });

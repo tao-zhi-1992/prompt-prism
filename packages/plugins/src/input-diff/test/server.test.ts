@@ -190,4 +190,39 @@ describe('Input Diff server plugin', () => {
       { type: 'insert', value: 'new' },
     ]);
   });
+
+  it('computes Input Diff on demand and serves cached, missing, and unavailable captures', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-api-'));
+    const parent = capture('parent', '2026-01-01T00:00:00.000Z', [{ role: 'user', content: 'before' }], { prompt_input: input([{ role: 'user', content: 'before' }], 'system', [], 100) });
+    const current = capture('current', '2026-01-02T00:00:00.000Z', [{ role: 'user', content: 'after' }], { prompt_input: input([{ role: 'user', content: 'after' }], 'system', [], 100) });
+    const unavailable = capture('unavailable', '2026-01-03T00:00:00.000Z', [{ role: 'user', content: 'raw' }]);
+    const byId = new Map([parent, current, unavailable].map((item) => [item.id, item]));
+    const context: ServerPluginContext = {
+      analysisPath: path.join(dir, 'analysis.jsonl'), captures: [
+        { ...parent, file_ref: 'parent.json' },
+        { ...current, file_ref: 'current.json' },
+        { ...unavailable, file_ref: 'unavailable.json' },
+      ], readCapture: vi.fn(async (id) => byId.get(id) ?? null),
+      getTraceParent: (id) => id === 'current' ? 'parent' : null,
+      parseProviderRequest: vi.fn(), parseProviderResponse: vi.fn(), json: vi.fn(), reportError: vi.fn(),
+    };
+    const plugin = createInputDiffServerPlugin();
+    await plugin.init!(context);
+    const response = {} as never;
+
+    await plugin.handleApi!({ method: 'POST' } as never, response, 'current', context);
+    expect(context.json).toHaveBeenLastCalledWith(response, 405, { error: 'Method not allowed' });
+    await plugin.handleApi!({ method: 'GET' } as never, response, 'missing', context);
+    expect(context.json).toHaveBeenLastCalledWith(response, 404, { error: 'Capture not found' });
+    await plugin.handleApi!({ method: 'GET' } as never, response, 'unavailable', context);
+    expect(context.json).toHaveBeenLastCalledWith(response, 422, { error: 'Input diff is unavailable for this capture' });
+
+    await plugin.handleApi!({ method: 'GET' } as never, response, 'current', context);
+    expect(context.json).toHaveBeenLastCalledWith(response, 200, expect.objectContaining({ matched_parent_id: 'parent' }));
+    await plugin.handleApi!({ method: 'GET' } as never, response, 'current', context);
+    expect(context.json).toHaveBeenLastCalledWith(response, 200, expect.objectContaining({ matched_parent_id: 'parent' }));
+
+    plugin.onEvict!({ ...current, file_ref: 'current.json' }, context);
+    expect(plugin.getAnalyzer().analyses.has('current')).toBe(false);
+  });
 });

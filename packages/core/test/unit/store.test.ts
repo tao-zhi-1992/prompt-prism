@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, access, appendFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, access, appendFile, writeFile, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CaptureStore } from '../../src/store.js';
@@ -96,6 +96,36 @@ test('recovers the operation queue after a clear callback fails', async (context
 
   assert.equal(stored?.id, 'after-failed-clear');
   assert.equal((await store.readCapture('after-failed-clear'))?.id, 'after-failed-clear');
+});
+
+test('removes the detail file when the pending journal cannot be appended', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-pending-write-'));
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  (store as unknown as { pendingPath: string }).pendingPath = path.join(dir, 'missing', 'pending.jsonl');
+
+  await assert.rejects(store.enqueue(capture('pending-write', '2026-01-01T00:00:00.000Z')), /ENOENT/);
+  assert.equal(store.captures.length, 0);
+  await assert.rejects(access(path.join(dir, 'hash', '2026-01-01T00-00-00-000Z_pending-write.json')));
+});
+
+test('recovers pending entries with missing and valid detail files', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-store-pending-recovery-'));
+  const missing = capture('missing-pending', '2026-01-01T00:00:00.000Z');
+  const valid = capture('valid-pending', '2026-01-02T00:00:00.000Z');
+  const missingEntry = { ...missing, file_ref: 'hash/missing-pending.json' };
+  const validEntry = { ...valid, file_ref: 'hash/valid-pending.json' };
+  await writeFile(path.join(dir, 'pending.jsonl'), `${JSON.stringify(missingEntry)}\n${JSON.stringify(validEntry)}\n`);
+  await mkdir(path.join(dir, 'hash'), { recursive: true });
+  await writeFile(path.join(dir, validEntry.file_ref), JSON.stringify(valid));
+
+  const store = await new CaptureStore({ dataDir: dir }).init();
+  assert.deepEqual(store.pendingCaptures.map(({ id }) => id), ['missing-pending', 'valid-pending']);
+  const seen: string[] = [];
+  await store.recoverPending(async (value, entry) => { seen.push(`${value.id}:${entry.id}`); return entry; });
+
+  assert.deepEqual(seen, ['valid-pending:valid-pending']);
+  assert.deepEqual(store.captures.map(({ id }) => id), ['valid-pending']);
+  assert.deepEqual(store.pendingCaptures, []);
 });
 
 test('persists HTTP status, upstream host, trace ID, and timing in the capture index across restarts', async () => {

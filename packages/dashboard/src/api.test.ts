@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { generateProxyUrl, getNewCaptureBatch } from './api';
+import { generateProxyUrl, getCaptureChanges, getNewCaptureBatch } from './api';
 import type { CaptureSummary } from './types';
 
 function capture(id: string): CaptureSummary {
@@ -51,5 +51,15 @@ describe('generateProxyUrl', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ upstream_base_url: 'https://provider.example.com/v1' }),
     });
+  });
+});
+
+describe('getCaptureChanges', () => {
+  it('requests changes after the supplied revision without caching', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ revision: 3, changes: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getCaptureChanges(2)).resolves.toEqual({ revision: 3, changes: [] });
+    expect(fetchMock).toHaveBeenCalledWith('/_pp/api/logs/changes?since=2', { signal: undefined, cache: 'no-store' });
   });
 });
