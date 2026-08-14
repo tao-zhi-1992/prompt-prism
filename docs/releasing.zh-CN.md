@@ -25,6 +25,8 @@ cd ../..
 gh release create "v<version>" --title "v<version>" --generate-notes
 ```
 
+`prepack` 会从发布 manifest 中移除仅供 workspace 使用的私有依赖，`postpack` 会恢复仓库中的 manifest，因此可以直接使用 `npm publish`。发布前可运行 `npm pack --dry-run` 检查 tarball。
+
 执行前需要分别登录 npm 和 GitHub。tag 已由合并后的 workflow 自动创建，不要在本地重复创建。GitHub Release 和 npm 发布仍然手动执行。
 
 Skill 使用 Conventional Commits 计算下一个版本，但普通提交不会自动触发发布。
