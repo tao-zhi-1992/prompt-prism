@@ -36,6 +36,17 @@ function props(items: CaptureSummary[]) {
 }
 
 describe('RequestList', () => {
+  it('keeps the initial loading state visually quiet until the result is known', () => {
+    const handlers = props([]);
+    const { container, rerender } = render(<RequestList {...handlers} loading />);
+
+    expect(container.querySelector('.request-skeletons')).not.toBeInTheDocument();
+    expect(screen.queryByText('No requests yet')).not.toBeInTheDocument();
+
+    rerender(<RequestList {...handlers} loading={false} />);
+    expect(screen.getByText('No requests yet')).toBeVisible();
+  });
+
   it('keeps thousands of captures to a viewport-sized number of DOM rows', async () => {
     const handlers = props(captures(5_000));
     const { container } = render(<RequestList {...handlers} />);

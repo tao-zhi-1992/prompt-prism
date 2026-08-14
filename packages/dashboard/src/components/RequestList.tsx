@@ -58,11 +58,6 @@ export function RequestList({ captures, selectedId, loading, error, hasOlder, ol
             </div>
           )}
           {error && captures.length > 0 && <div className="list-warning">{t('requests.refreshPaused', { error })}</div>}
-          {!error && loading && captures.length === 0 && (
-            <div className="request-skeletons" aria-label={t('requests.loading')}>
-              {Array.from({ length: 5 }, (_, index) => <span key={index} />)}
-            </div>
-          )}
           {!error && !loading && captures.length === 0 && (
             <div className="list-message">
               <span className="empty-prism" aria-hidden="true">◇</span>

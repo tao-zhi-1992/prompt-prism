@@ -250,10 +250,6 @@ button:focus-visible {
 .empty-prism { margin-bottom: 5px; color: var(--faint); font-size: 30px; }
 .empty-prism--large { font-size: 52px; }
 
-.request-skeletons { display: grid; gap: 5px; padding-top: 4px; }
-.request-skeletons span { display: block; height: 62px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2)); background-size: 240% 100%; animation: shimmer 1.7s infinite; }
-@keyframes shimmer { to { background-position: -240% 0; } }
-
 .detail-empty {
   display: flex;
   flex-direction: column;
