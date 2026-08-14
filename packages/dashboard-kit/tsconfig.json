@@ -4,5 +4,5 @@
     "noUncheckedIndexedAccess": true, "skipLibCheck": true, "module": "ESNext",
     "moduleResolution": "Bundler", "jsx": "react-jsx", "verbatimModuleSyntax": true
   },
-  "include": ["src"]
+  "include": ["src", "test", "vite.config.ts"]
 }
