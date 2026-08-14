@@ -21,12 +21,12 @@ pnpm build         # type-check and build all production artifacts
 pnpm test          # run all unit and integration tests
 pnpm test:unit     # run unit/component tests
 pnpm test:integration # run proxy, CLI, SDK, and example integration tests
-pnpm test:coverage # run Vitest tests with global and changed-line coverage gates
+pnpm test:coverage # run package gates, Core proxy coverage, and changed-line coverage gates
 pnpm typecheck:e2e # type-check Playwright tests
 pnpm test:e2e      # build Prism and run Chromium Dashboard tests
 ```
 
-The test suite has three layers: Node unit/integration tests exercise adapters, storage, proxy forwarding, CLI behavior, and SDK compatibility; Vitest/jsdom tests exercise Dashboard, plugin, and shared UI components; Playwright tests exercise the compiled Dashboard against a real local Prompt Prism server. Coverage has package-level regression floors and a 90% minimum for changed executable lines, including core proxy and storage code.
+The test suite has three layers: Node unit/integration tests exercise adapters, storage, proxy forwarding, CLI behavior, and SDK compatibility; Vitest/jsdom tests exercise Dashboard, plugin, and shared UI components; Playwright tests exercise the compiled Dashboard against a real local Prompt Prism server. Coverage runs Core with the proxy integration suite (90% statements, functions, and lines; 75% branches), then applies package regression floors and a 90% minimum to changed executable lines. Type-only contract files are excluded from executable coverage.
 
 CI runs the unit/integration suite on Node.js 20, 22, and 24. Coverage and Chromium E2E run once on Node.js 24, with their reports uploaded as workflow artifacts.
 

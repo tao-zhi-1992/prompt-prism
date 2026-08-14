@@ -75,7 +75,10 @@ jobs:
         with:
           name: coverage-node-24
           path: |
+            packages/dashboard-kit/coverage
+            packages/builtins/coverage
             packages/plugins/coverage
+            packages/core/coverage
             packages/prompt-prism/coverage
             packages/dashboard/coverage
             packages/ui/coverage

@@ -21,12 +21,12 @@ pnpm build         # 类型检查并构建所有生产产物
 pnpm test          # 运行全部 unit 和 integration 测试
 pnpm test:unit     # 运行单元/组件测试
 pnpm test:integration # 运行代理、CLI、SDK 和 example 集成测试
-pnpm test:coverage # 运行全局和变更行 coverage 门禁的 Vitest 测试
+pnpm test:coverage # 运行包级门禁、Core 代理覆盖率和变更行 coverage 门禁
 pnpm typecheck:e2e # 类型检查 Playwright 测试
 pnpm test:e2e      # 构建 Prism 并运行 Chromium 仪表盘测试
 ```
 
-测试套件分为三层：Node unit/integration 测试适配器、存储、代理转发、CLI 行为和 SDK 兼容性；Vitest/jsdom 测试仪表盘、插件和共享 UI 组件；Playwright 测试针对真实本地 Prompt Prism 服务运行编译后的仪表盘。Coverage 同时包含包级回归底线，以及包括核心代理和存储代码在内的变更可执行代码行至少 90% 的门禁。
+测试套件分为三层：Node unit/integration 测试适配器、存储、代理转发、CLI 行为和 SDK 兼容性；Vitest/jsdom 测试仪表盘、插件和共享 UI 组件；Playwright 测试针对真实本地 Prompt Prism 服务运行编译后的仪表盘。Coverage 会让 Core 覆盖率同时运行代理集成测试，并要求语句、函数和行达到 90%、分支达到 75%；随后执行包级回归底线，以及包括核心代理和存储代码在内的变更可执行代码行至少 90% 的门禁。仅包含类型的 contracts 文件不计入可执行覆盖率。
 
 CI 会在 Node.js 20、22 和 24 上运行 unit/integration 测试；coverage 和 Chromium E2E 只在 Node.js 24 上运行一次，并将报告上传为 workflow artifact。
 

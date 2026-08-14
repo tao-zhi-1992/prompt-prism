@@ -54,8 +54,28 @@ function lineCounts(entry) {
 }
 
 const changed = changedLines();
+const sourceRoots = [
+  'packages/builtins/src/',
+  'packages/core/src/',
+  'packages/dashboard-kit/src/',
+  'packages/dashboard/src/',
+  'packages/plugins/src/',
+  'packages/prompt-prism/src/',
+  'packages/ui/src/',
+];
+
+function isCoveredSourceFile(file) {
+  return sourceRoots.some((root) => file.startsWith(root))
+    && !/(?:\.test\.|\.spec\.|\/test\/|\/fixtures\/|\.d\.ts$)/.test(file)
+    && !/(?:^|\/)(?:contracts|types|provider)\.ts$/.test(file)
+    && !/(?:^|\/)vite\.config\.ts$/.test(file);
+}
+
 const coverageFiles = [
+  'packages/dashboard-kit/coverage/coverage-final.json',
+  'packages/builtins/coverage/coverage-final.json',
   'packages/plugins/coverage/coverage-final.json',
+  'packages/core/coverage/coverage-final.json',
   'packages/prompt-prism/coverage/coverage-final.json',
   'packages/dashboard/coverage/coverage-final.json',
   'packages/ui/coverage/coverage-final.json',
@@ -72,7 +92,10 @@ let covered = 0;
 const failures = [];
 for (const [file, lines] of changed) {
   const counts = coverage.get(file);
-  if (!counts) continue;
+  if (!counts) {
+    if (isCoveredSourceFile(file)) failures.push(`${file}: no coverage record`);
+    continue;
+  }
   let fileExecutable = 0;
   let fileCovered = 0;
   for (const line of lines) {
