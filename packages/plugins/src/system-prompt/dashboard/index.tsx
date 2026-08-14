@@ -1,4 +1,4 @@
-import { defineDetailTab } from '../../registry/dashboard.js';
+import { defineDetailTab } from '@prompt-prism/dashboard-kit';
 import { systemPromptPluginMeta } from '../index.js';
 import { SystemPromptPanel, type SystemPromptData } from './SystemPromptPanel.js';
 import './styles.css';

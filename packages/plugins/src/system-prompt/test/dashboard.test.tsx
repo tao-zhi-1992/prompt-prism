@@ -25,6 +25,7 @@ describe('SystemPromptPanel', () => {
   it('renders openai system/developer messages with role labels', () => {
     render(<SystemPromptPanel data={{ id: 'abc', system: [{ role: 'developer', content: 'Follow the schema.' }] }} loading={false} error={null} onRetry={vi.fn()} />);
     expect(screen.getByText('developer')).toBeVisible();
+    expect(screen.getByText('developer')).toHaveClass('system-prompt-message-role');
     expect(screen.getByText('Follow the schema.')).toBeVisible();
   });
 

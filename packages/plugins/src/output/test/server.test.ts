@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { ModelOutputSnapshot, ServerPluginContext } from '../../contracts/server.js';
+import type { ModelOutputSnapshot, ServerPluginContext } from '@prompt-prism/contracts/server';
 import { createOutputServerPlugin } from '../server/index.js';
 
 const request = (method = 'GET') => ({ method }) as never;

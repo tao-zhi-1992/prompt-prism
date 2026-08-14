@@ -7,8 +7,8 @@ import type {
   ToolCallOutputBlock,
   UnknownOutputBlock,
   Usage,
-} from '../../contracts/dashboard.js';
-import { useI18n, type TranslationKey } from '../../i18n/index.js';
+} from '@prompt-prism/dashboard-kit';
+import { useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 import { StructuredContent } from '../../content/StructuredContent.js';
 
@@ -106,7 +106,7 @@ export function OutputPanel({ result, loading, error, onRetry }: { result: Outpu
   if (!result) return null;
   if (!result.output) return <div className="detail-message"><strong>{t('output.unavailable')}</strong><span>{t('output.unavailableDescription')}</span></div>;
   const output = result.output;
-  const visibleContent = output.content.filter((block) => block.type !== 'unknown' || block.provider_type !== 'openai_delta_fields');
+  const visibleContent = output.content.filter((block) => block.type !== 'unknown' || block.visibility !== 'internal');
   const orderedContent = [...visibleContent.filter((block) => block.type === 'text'), ...visibleContent.filter((block) => block.type !== 'text')];
   return (
     <div className="output-panel">

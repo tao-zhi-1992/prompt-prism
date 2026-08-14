@@ -1,7 +1,7 @@
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import type { ReactNode } from 'react';
 import { JsonView } from 'react-json-view-lite';
-import { useI18n } from '../../i18n/index.js';
+import { useI18n } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 import { ContentCopyButton } from '../../content/StructuredContent.js';
 

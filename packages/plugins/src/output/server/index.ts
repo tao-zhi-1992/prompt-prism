@@ -1,5 +1,5 @@
-import type { RawHeaders } from '../../contracts/server.js';
-import type { PromptPrismServerPlugin } from '../../contracts/server.js';
+import type { RawHeaders } from '@prompt-prism/contracts/server';
+import type { PromptPrismServerPlugin } from '@prompt-prism/contracts/server';
 import { outputPluginMeta } from '../index.js';
 
 function header(headers: RawHeaders, name: string): string | undefined {
@@ -21,10 +21,10 @@ export function createOutputServerPlugin(): PromptPrismServerPlugin {
         return true;
       }
       let output = capture.model_output ?? null;
-      if (!output && capture.response) {
+      if (!output && capture.response && capture.adapter_id && capture.adapter_id !== 'unresolved') {
         try {
           output = context.parseProviderResponse(
-            capture.adapter_id ?? 'anthropic',
+            capture.adapter_id,
             capture.response.body,
             header(capture.response.headers, 'content-type'),
           ).output;

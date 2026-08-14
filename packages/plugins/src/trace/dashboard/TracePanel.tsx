@@ -9,10 +9,11 @@ import type {
   ModelOutputBlock,
   ModelOutputSnapshot,
   Usage,
-} from '../../contracts/dashboard.js';
-import { useI18n, type TranslationKey } from '../../i18n/index.js';
+} from '@prompt-prism/dashboard-kit';
+import { useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
 import { StructuredContent } from '../../content/StructuredContent.js';
+import { traceDisplayName } from '@prompt-prism/dashboard-kit';
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';
 export interface TraceCall {
@@ -190,7 +191,7 @@ function outputEvent(block: ModelOutputBlock, key: string, captureId: string, bl
 }
 
 function visibleOutput(block: ModelOutputBlock): boolean {
-  return block.type !== 'unknown' || block.provider_type !== 'openai_delta_fields';
+  return block.type !== 'unknown' || block.visibility !== 'internal';
 }
 
 function statusTone(status?: number | null) {
@@ -416,7 +417,7 @@ export function TracePanel({ trace, loading, error, refreshError, onRetry, selec
     <div className="trace-panel">
       <div className="trace-overview">
         <header className="trace-summary">
-          <div><span>{t('tab.trace')}</span><code className="trace-summary-id" title={trace.id}>trace:{trace.id.slice(0, 8)}</code></div>
+          <div><span>{t('tab.trace')}</span><code className="trace-summary-id" title={trace.id}>trace:{traceDisplayName(trace.id)}</code></div>
           <TraceSource source={trace.source} />
           <div><span>{t('trace.calls')}</span><b>{trace.calls.length}</b></div>
         </header>

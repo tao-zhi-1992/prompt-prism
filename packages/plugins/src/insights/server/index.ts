@@ -9,18 +9,22 @@ import type {
   PromptPrismServerPlugin,
   ServerPluginContext,
   Usage,
-} from '../../contracts/server.js';
+} from '@prompt-prism/contracts/server';
 import { insightsPluginMeta } from '../index.js';
-import {
-  buildTraceResult,
-  explicitTraceEntries,
-  inferredTraceEntries,
-  readCaptureConversation,
-  readCaptureOutput,
-  type ParentLookup,
-  type TraceInputRelation,
-  type TraceResult,
-} from '../../trace/server/index.js';
+import type { TraceInputRelation, TraceResult } from '@prompt-prism/contracts/server';
+type ParentLookup = (id: string) => string | null | undefined;
+
+function parseConversation(capture: Capture, context: ServerPluginContext) {
+  if (!capture.request?.body || !capture.adapter_id || capture.adapter_id === 'unresolved') return [];
+  try { return context.parseProviderRequest(capture.adapter_id, capture.request.body).input.conversation ?? []; }
+  catch { return []; }
+}
+function parseOutput(capture: Capture, context: ServerPluginContext) {
+  if (!capture.response?.body || !capture.adapter_id || capture.adapter_id === 'unresolved') return null;
+  const contentType = Object.entries(capture.response.headers).find(([name]) => name.toLowerCase() === 'content-type')?.[1];
+  try { return context.parseProviderResponse(capture.adapter_id, capture.response.body, Array.isArray(contentType) ? contentType[0] : contentType).output; }
+  catch { return null; }
+}
 
 const SCHEMA_VERSION = 1 as const;
 const DEFAULT_LIMIT = 20;
@@ -266,8 +270,10 @@ export function listInsightRuns(captures: readonly CaptureIndexEntry[], getParen
   const parentIds = new Set(untraced.map((entry) => getParentId(entry.id)).filter((id): id is string => Boolean(id)));
   const leaves = untraced.filter((entry) => !parentIds.has(entry.id));
   for (const leaf of leaves) {
-    const inferred = inferredTraceEntries(leaf, captures, getParentId);
-    runs.push(summary(inferred.entries, 'inferred', inferred.truncated));
+    const byId = new Map(captures.map((item) => [item.id, item]));
+    const entries: CaptureIndexEntry[] = []; let current: CaptureIndexEntry | undefined = leaf; const seen = new Set<string>(); let truncated = false;
+    while (current && !seen.has(current.id)) { entries.push(current); seen.add(current.id); const parent = getParentId(current.id); if (!parent) break; current = byId.get(parent); if (!current) truncated = true; }
+    runs.push(summary(entries.reverse(), 'inferred', truncated));
   }
   return runs.sort((left, right) => right.completed_at.localeCompare(left.completed_at) || right.run_id.localeCompare(left.run_id)).slice(0, limit);
 }
@@ -290,8 +296,8 @@ function finding(code: string, scope: string, severity: InsightFinding['severity
   return { code, scope, severity, summary: summaryText, recommendation, evidence };
 }
 
-export async function buildInsightReport(selectedId: string, context: ServerPluginContext, getParentId: ParentLookup): Promise<InsightReport | null> {
-  const trace = await buildTraceResult(selectedId, context, getParentId);
+export async function buildInsightReport(selectedId: string, context: ServerPluginContext): Promise<InsightReport | null> {
+  const trace = context.getTraceResult ? await context.getTraceResult(selectedId) : null;
   if (!trace) return null;
   const entries = entriesForTrace(trace, context.captures);
   if (!entries.length) return null;
@@ -308,7 +314,7 @@ export async function buildInsightReport(selectedId: string, context: ServerPlug
     const capture = await context.readCapture(call.capture_id);
     let promptInput = entry.prompt_input ?? capture?.prompt_input;
     if (!promptInput && capture?.request?.body) {
-      try { promptInput = context.parseProviderRequest(capture.adapter_id ?? 'anthropic', capture.request.body).input; }
+      if (capture.adapter_id && capture.adapter_id !== 'unresolved') try { promptInput = context.parseProviderRequest(capture.adapter_id, capture.request.body).input; }
       catch { promptInput = undefined; }
     }
     const sections = (promptInput?.sections ?? []).map(sectionSize);
@@ -451,6 +457,7 @@ export async function buildInsightReport(selectedId: string, context: ServerPlug
   return { schema_version: SCHEMA_VERSION, run, sections, tools, calls, findings };
 }
 
+
 function delta(before: number | null, after: number | null): InsightMetricDelta {
   if (before === null || after === null) return { before, after, absolute: null, percent: null };
   const absolute = after - before;
@@ -523,10 +530,10 @@ export async function buildInsightEvidence(captureId: string, sectionId: string,
   const capture = await context.readCapture(captureId);
   if (!capture) return null;
   let value: unknown;
-  if (sectionId === 'output') value = readCaptureOutput(capture, context);
+  if (sectionId === 'output') value = capture.model_output ?? parseOutput(capture, context);
   else if (sectionId === 'tool-events') {
-    const conversation = readCaptureConversation(capture, context);
-    const output = readCaptureOutput(capture, context);
+    const conversation = capture.prompt_input?.conversation ?? parseConversation(capture, context);
+    const output = capture.model_output ?? parseOutput(capture, context);
     value = {
       input: conversation.flatMap((message) => message.content.filter((block) => block.type === 'tool_call' || block.type === 'tool_result')),
       output: output?.content.filter((block) => block.type === 'tool_call') ?? [],
@@ -534,7 +541,7 @@ export async function buildInsightEvidence(captureId: string, sectionId: string,
   } else {
     let input = capture.prompt_input;
     if (!input && capture.request?.body) {
-      try { input = context.parseProviderRequest(capture.adapter_id ?? 'anthropic', capture.request.body).input; }
+      if (capture.adapter_id && capture.adapter_id !== 'unresolved') try { input = context.parseProviderRequest(capture.adapter_id, capture.request.body).input; }
       catch { input = undefined; }
     }
     const section = input?.sections.find((item) => item.id === sectionId);
@@ -562,7 +569,7 @@ function positiveInteger(value: string | null, fallback: number, maximum: number
   return Number.isInteger(parsed) && parsed > 0 && parsed <= maximum ? parsed : null;
 }
 
-export function createInsightsServerPlugin({ getParentId }: { getParentId: ParentLookup }): PromptPrismServerPlugin {
+export function createInsightsServerPlugin(): PromptPrismServerPlugin {
   return {
     id: insightsPluginMeta.id,
     async handleApi(request, response, subpath, context) {
@@ -574,11 +581,11 @@ export function createInsightsServerPlugin({ getParentId }: { getParentId: Paren
       if (subpath === 'runs') {
         const limit = positiveInteger(url.searchParams.get('limit'), DEFAULT_LIMIT, MAX_LIMIT);
         if (limit === null) context.json(response, 400, { error: `limit must be between 1 and ${MAX_LIMIT}`, code: 'invalid_argument' });
-        else context.json(response, 200, { schema_version: SCHEMA_VERSION, runs: listInsightRuns(context.captures, getParentId, limit) });
+        else context.json(response, 200, { schema_version: SCHEMA_VERSION, runs: listInsightRuns(context.captures, context.getTraceParent ?? (() => null), limit) });
         return true;
       }
       if (subpath.startsWith('report/')) {
-        const report = await buildInsightReport(decodeURIComponent(subpath.slice('report/'.length)), context, getParentId);
+        const report = await buildInsightReport(decodeURIComponent(subpath.slice('report/'.length)), context);
         if (!report) context.json(response, 404, { error: 'Run not found', code: 'run_not_found' });
         else context.json(response, 200, report);
         return true;
@@ -591,8 +598,8 @@ export function createInsightsServerPlugin({ getParentId }: { getParentId: Paren
           return true;
         }
         const [baseline, candidate] = await Promise.all([
-          buildInsightReport(baselineId, context, getParentId),
-          buildInsightReport(candidateId, context, getParentId),
+          buildInsightReport(baselineId, context),
+          buildInsightReport(candidateId, context),
         ]);
         if (!baseline || !candidate) context.json(response, 404, { error: 'Run not found', code: 'run_not_found' });
         else context.json(response, 200, compareInsightReports(baseline, candidate));

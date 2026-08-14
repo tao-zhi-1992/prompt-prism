@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createSystemPromptServerPlugin } from '../server/index.js';
-import type { ServerPluginContext } from '../../contracts/server.js';
+import type { ServerPluginContext } from '@prompt-prism/contracts/server';
 
 const request = (method = 'GET') => ({ method }) as never;
 const response = {} as never;

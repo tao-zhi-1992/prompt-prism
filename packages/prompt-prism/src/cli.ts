@@ -1,7 +1,8 @@
 import { parseArgs } from 'node:util';
-import { startPromptPrism } from './proxy.js';
+import { startPromptPrism } from './index.js';
 import { runInsightsCli } from './insights-cli.js';
-import { buildDynamicProxyBaseUrl } from './upstream.js';
+import { buildDynamicProxyBaseUrl } from '@prompt-prism/core';
+import { checkForUpdate, formatUpdateNotice, runAutomaticUpdateCheck, shouldRunAutomaticUpdateCheck } from './update-check.js';
 import packageJson from '../package.json' with { type: 'json' };
 
 function usage(): void {
@@ -10,14 +11,16 @@ function usage(): void {
 Usage:
   p2 --version
   p2 -v
+  p2 update-check
   p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
            [--port NUMBER] [--data-dir PATH] [--max-storage SIZE] [--open | --no-open]
+           [--no-update-check]
   p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
   p2 insights <list|report|compare|evidence> [OPTIONS]
 
 Defaults:
   upstream          dynamic-only (use p2 url or --upstream-base-url)
-  api-format        auto (available: auto, anthropic-messages, openai-chat-completions)
+  api-format        auto (available: auto, anthropic-messages, openai-chat-completions, openai-responses)
   port         1028
   data-dir     ./data
   max-storage  1GB`);
@@ -44,6 +47,11 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   }
   if (command === 'insights') {
     await runInsightsCli(args.slice(1));
+    return;
+  }
+  if (command === 'update-check') {
+    const update = await checkForUpdate({ currentVersion: packageJson.version, force: true });
+    console.log(formatUpdateNotice(update, true) ?? `Prompt Prism is up to date (${update.currentVersion}) [${update.registry}]`);
     return;
   }
   if (command === 'url') {
@@ -73,6 +81,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
       'data-dir': { type: 'string', default: './data' },
       'max-storage': { type: 'string', default: '1GB' },
       open: { type: 'boolean', default: true },
+      'no-update-check': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h' }
     },
     allowNegative: true
@@ -87,10 +96,11 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   await startPromptPrism({
     upstreamBaseUrl: values['upstream-base-url'],
     upstreamUrl: values['upstream-url'],
-    apiFormat: values['api-format'] as import('./types.js').ApiFormatOption,
+    apiFormat: values['api-format'] as import('@prompt-prism/core').ApiFormatOption,
     port,
     dataDir: values['data-dir'],
     maxBytes: parseBytes(values['max-storage']),
     open: values.open
   });
+  if (!values['no-update-check'] && shouldRunAutomaticUpdateCheck()) void runAutomaticUpdateCheck(packageJson.version);
 }

@@ -21,12 +21,12 @@ pnpm build         # 类型检查并构建所有生产产物
 pnpm test          # 运行全部 unit 和 integration 测试
 pnpm test:unit     # 运行单元/组件测试
 pnpm test:integration # 运行代理、CLI、SDK 和 example 集成测试
-pnpm test:coverage # 运行全局和变更行 coverage 门禁的 Vitest 测试
+pnpm test:coverage # 运行包级门禁、Core 代理覆盖率和变更行 coverage 门禁
 pnpm typecheck:e2e # 类型检查 Playwright 测试
 pnpm test:e2e      # 构建 Prism 并运行 Chromium 仪表盘测试
 ```
 
-测试套件分为三层：Node unit/integration 测试适配器、存储、代理转发、CLI 行为和 SDK 兼容性；Vitest/jsdom 测试仪表盘、插件和共享 UI 组件；Playwright 测试针对真实本地 Prompt Prism 服务运行编译后的仪表盘。Coverage 同时包含包级回归底线，以及包括核心代理和存储代码在内的变更可执行代码行至少 90% 的门禁。
+测试套件分为三层：Node unit/integration 测试适配器、存储、代理转发、CLI 行为和 SDK 兼容性；Vitest/jsdom 测试仪表盘、插件和共享 UI 组件；Playwright 测试针对真实本地 Prompt Prism 服务运行编译后的仪表盘。Coverage 会让 Core 覆盖率同时运行代理集成测试，并要求语句、函数和行达到 90%、分支达到 75%；随后执行包级回归底线，以及包括核心代理和存储代码在内的变更可执行代码行至少 90% 的门禁。仅包含类型的 contracts 文件不计入可执行覆盖率。
 
 CI 会在 Node.js 20、22 和 24 上运行 unit/integration 测试；coverage 和 Chromium E2E 只在 Node.js 24 上运行一次，并将报告上传为 workflow artifact。
 
@@ -69,7 +69,13 @@ pnpm demo
 可选变量：
 
 - `DEMO_BASE_URL`：默认为 `http://127.0.0.1:1028`；不要包含 `/v1`。
-- `DEMO_API_FORMAT`：默认为 `auto`，使用演示的 Anthropic 客户端配合按捕获记录进行的代理检测；用 `anthropic-messages` 或 `openai-chat-completions` 覆盖客户端协议。
+- `DEMO_API_FORMAT`：默认为 `auto`，使用演示的 Anthropic 客户端配合按捕获记录进行的代理检测；用 `anthropic-messages`、`openai-chat-completions` 或 `openai-responses` 覆盖客户端协议。
+
+## 协议 Fixture
+
+Adapter 兼容性 fixture 位于 `packages/core/test/fixtures/protocols`。它们是公开 API 形态的精简、离线副本；`sources.json` 记录来源 URL 和 revision，不会 vendor 完整的 provider 规范。支持的协议变更时，手动更新 fixture 后运行 adapter 与集成测试。
+
+用 `pnpm check:openai-openapi -- <commit>` 可把当前 fixture 对照官方 OpenAI OpenAPI commit。该命令仅用于人工维护，会访问网络，CI 不会运行它。Realtime、Batch、Assistants 和 managed-agent 专用协议仍作为 Raw capture 保存。
 - `DEMO_PORT`：默认为 `3000`。
 
 会话保存在内存中。生成的工作区保留在 `example/.workspaces/` 下，可通过**重置工作区**重建。

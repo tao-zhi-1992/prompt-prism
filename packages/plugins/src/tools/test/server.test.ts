@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Capture, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '../../contracts/server.js';
+import type { Capture, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '@prompt-prism/contracts/server';
 import { createToolsServerPlugin } from '../server/index.js';
 
 const response = {} as never;
@@ -77,7 +77,7 @@ describe('Tools server plugin', () => {
       adapter_id: 'openai-chat-completions', id: 'message', model: 'model', role: 'assistant', stop_reason: 'tool_calls', usage: {},
       content: [{ type: 'tool_call', id: 'one', name: 'bash', input: {} }],
     };
-    const pluginContext = context(capture({ request: { method: 'POST', url: '/v1/chat/completions', headers: { 'content-type': 'application/json' }, body: '{}' }, response: { status: 200, headers: { 'content-type': 'application/json' }, body: '{}' } }), input([]), output);
+    const pluginContext = context(capture({ adapter_id: 'openai-chat-completions', request: { method: 'POST', url: '/v1/chat/completions', headers: { 'content-type': 'application/json' }, body: '{}' }, response: { status: 200, headers: { 'content-type': 'application/json' }, body: '{}' } }), input([]), output);
 
     await createToolsServerPlugin().handleApi!(request(), response, 'abc', pluginContext);
 

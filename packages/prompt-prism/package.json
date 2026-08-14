@@ -1,6 +1,6 @@
 {
   "name": "prompt-prism",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "A transparent local proxy that explains prompt-cache misses.",
   "type": "module",
   "bin": {
@@ -15,9 +15,8 @@
     "./assets/*": "./assets/*"
   },
   "scripts": {
-    "build:core": "node scripts/clean-build.js && tsc -p tsconfig.build.json",
-    "build:plugins": "pnpm --dir ../plugins build:server",
-    "build": "pnpm build:core && pnpm build:plugins",
+    "build:core": "node scripts/clean-build.js && tsc -p tsconfig.build.json && node scripts/bundle-runtime.mjs",
+    "build": "pnpm --filter @prompt-prism/contracts typecheck && pnpm --filter @prompt-prism/core typecheck && pnpm --filter @prompt-prism/builtins typecheck && pnpm build:core",
     "typecheck": "pnpm build && tsc -p tsconfig.json",
     "build:all": "pnpm --dir ../plugins typecheck && pnpm build && pnpm --dir ../dashboard build",
     "prepare": "pnpm build:all",
@@ -28,7 +27,7 @@
     "test:unit": "pnpm typecheck && tsx --test test/unit/*.test.ts",
     "test:integration": "pnpm build:all && pnpm typecheck && tsx --test test/integration/*.test.ts",
     "pretest:coverage": "pnpm build:all",
-    "test:coverage": "c8 --clean --all --include='src/**/*.ts' --exclude='src/**/*.test.ts' --exclude='src/**/test/**' --exclude='src/cli.ts' --exclude='src/index.ts' --exclude='src/insights-cli.ts' --exclude='src/types.ts' --exclude='src/adapter/provider.ts' --reporter=text --reporter=json --reporter=html --report-dir=coverage --check-coverage --statements=90 --branches=75 --functions=90 --lines=90 tsx --test test/unit/*.test.ts test/integration/*.test.ts",
+    "test:coverage": "c8 --clean --all --include='src/**/*.ts' --exclude='src/**/*.test.ts' --exclude='src/**/test/**' --exclude='src/cli.ts' --exclude='src/index.ts' --exclude='src/insights-cli.ts' --exclude='src/update-check.ts' --reporter=text --reporter=json --reporter=html --report-dir=coverage --check-coverage --statements=90 --branches=75 --functions=90 --lines=90 tsx --test test/unit/*.test.ts test/integration/*.test.ts",
     "test:live": "pnpm build:all && pnpm typecheck && node --env-file-if-exists=.env --import tsx --test test/live/*.test.ts",
     "prepack": "pnpm build:all && node scripts/prepare-package.js"
   },
@@ -61,10 +60,16 @@
     "README.md",
     "LICENSE"
   ],
+  "dependencies": {
+    "@prompt-prism/builtins": "workspace:*",
+    "@prompt-prism/core": "workspace:*",
+    "@prompt-prism/contracts": "workspace:*"
+  },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
     "@types/node": "^24.0.0",
     "c8": "^10.1.3",
+    "esbuild": "0.28.2",
     "openai": "^6.26.0",
     "tsx": "^4.20.0",
     "typescript": "^7.0.2"

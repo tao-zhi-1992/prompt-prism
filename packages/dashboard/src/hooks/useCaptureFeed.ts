@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { clearCaptures, getCapturePage, getNewCaptureBatch, type CapturePage } from '../api';
+import { clearCaptures, getCaptureChanges, getCapturePage, type CaptureChange, type CapturePage } from '../api';
 import type { CaptureSummary } from '../types';
 
 const POLL_INTERVAL = 3000;
@@ -27,12 +27,13 @@ export interface CaptureFeedState {
   listLoading: boolean;
   listError: string | null;
   generation: number;
+  revision: number;
 }
 
 export const initialCaptureFeedState: CaptureFeedState = {
   captures: [], pendingCaptures: [], totalCaptures: 0, oldestCursor: null, newestCursor: null,
   hasOlder: false, olderLoading: false, olderError: null, isAtTop: true,
-  listLoading: true, listError: null, generation: 0,
+  listLoading: true, listError: null, generation: 0, revision: 0,
 };
 
 type CaptureFeedAction =
@@ -41,6 +42,7 @@ type CaptureFeedAction =
   | { type: 'initialFailed'; error: string }
   | { type: 'pollLoaded'; items: CaptureSummary[]; total: number; newestCursor: string; page?: CapturePage; stage: boolean }
   | { type: 'pollFailed'; error: string }
+  | { type: 'changeApplied'; change: CaptureChange; stage: boolean }
   | { type: 'olderLoading' }
   | { type: 'olderLoaded'; page: CapturePage }
   | { type: 'olderFailed'; error: string }
@@ -62,6 +64,7 @@ export function captureFeedReducer(state: CaptureFeedState, action: CaptureFeedA
       olderError: null,
       listLoading: false,
       listError: null,
+      revision: action.page.revision ?? state.revision,
     };
     case 'initialFailed': return { ...state, listLoading: false, listError: action.error };
     case 'pollLoaded': {
@@ -78,6 +81,19 @@ export function captureFeedReducer(state: CaptureFeedState, action: CaptureFeedA
       };
     }
     case 'pollFailed': return { ...state, listError: action.error };
+    case 'changeApplied': {
+      const removed = new Set(action.change.removed_ids);
+      const replace = (items: CaptureSummary[]) => mergeCaptures(items.filter((item) => !removed.has(item.id)), action.change.updated);
+      const added = action.change.added;
+      return {
+        ...state,
+        captures: action.stage ? replace(state.captures) : mergeCaptures(replace(state.captures), added),
+        pendingCaptures: action.stage ? mergeCaptures(replace(state.pendingCaptures), added) : replace(state.pendingCaptures),
+        totalCaptures: action.change.total,
+        revision: action.change.revision,
+        listError: null,
+      };
+    }
     case 'olderLoading': return { ...state, olderLoading: true, olderError: null };
     case 'olderLoaded': return {
       ...state,
@@ -118,17 +134,11 @@ export function useCaptureFeed() {
     void loadInitial();
   }, [loadInitial]);
 
-  const refreshNew = useCallback(async (signal?: AbortSignal) => {
-    const cursor = stateRef.current.newestCursor;
-    if (!cursor) {
-      const page = await getCapturePage({ signal });
-      if (signal?.aborted || !mounted.current) return;
-      dispatch({ type: 'pollLoaded', items: page.items, total: page.total, newestCursor: page.newest_cursor ?? '', page, stage: !stateRef.current.isAtTop });
-      return;
-    }
-    const batch = await getNewCaptureBatch(cursor, signal);
-    if (signal?.aborted || !mounted.current) return;
-    dispatch({ type: 'pollLoaded', items: batch.items, total: batch.total, newestCursor: batch.newestCursor, stage: !stateRef.current.isAtTop });
+  const applyChange = useCallback((change: CaptureChange) => {
+    if (!mounted.current) return;
+    const current = stateRef.current;
+    if (change.revision <= current.revision) return;
+    dispatch({ type: 'changeApplied', change, stage: !current.isAtTop });
   }, []);
 
   const loadOlder = useCallback(async () => {
@@ -166,26 +176,29 @@ export function useCaptureFeed() {
 
   useEffect(() => {
     if (state.listLoading) return;
-    let stopped = false;
-    let timer: number | undefined;
-    let controller: AbortController | undefined;
-    const poll = async () => {
-      controller = new AbortController();
-      try { await refreshNew(controller.signal); }
-      catch (error) { if (!controller.signal.aborted && mounted.current) dispatch({ type: 'pollFailed', error: errorMessage(error) }); }
-      if (!stopped) timer = window.setTimeout(poll, POLL_INTERVAL);
+    let source: EventSource | null = null;
+    let fallback: number | undefined;
+    let failures = 0;
+    const fallbackPoll = async () => {
+      try {
+        const value = await getCaptureChanges(stateRef.current.revision);
+        if (value.reset_required) { await loadInitial(); return; }
+        for (const change of value.changes ?? []) applyChange(change);
+      } catch (error) { if (mounted.current) dispatch({ type: 'pollFailed', error: errorMessage(error) }); }
     };
-    timer = window.setTimeout(poll, POLL_INTERVAL);
-    return () => {
-      stopped = true;
-      if (timer !== undefined) window.clearTimeout(timer);
-      controller?.abort();
-    };
-  }, [state.listLoading, refreshNew]);
+    if (typeof EventSource === 'undefined') fallback = window.setInterval(() => { void fallbackPoll(); }, POLL_INTERVAL);
+    else {
+      source = new EventSource(`/_pp/api/logs/stream?since=${state.revision}`);
+      source.addEventListener('change', (event) => { failures = 0; applyChange(JSON.parse((event as MessageEvent).data) as CaptureChange); });
+      source.addEventListener('reset', () => { void loadInitial(); });
+      source.onerror = () => { if (++failures >= 3 && fallback === undefined) fallback = window.setInterval(() => { void fallbackPoll(); }, POLL_INTERVAL); };
+    }
+    return () => { source?.close(); if (fallback !== undefined) window.clearInterval(fallback); };
+  }, [applyChange, loadInitial, state.listLoading, state.revision]);
 
   useEffect(() => {
     if (state.isAtTop && state.pendingCaptures.length > 0) dispatch({ type: 'showPending' });
   }, [state.isAtTop, state.pendingCaptures.length]);
 
-  return { state, loadOlder, refreshNew, retryInitial, clear, showNewCaptures, setAtTop };
+  return { state, loadOlder, retryInitial, clear, showNewCaptures, setAtTop };
 }

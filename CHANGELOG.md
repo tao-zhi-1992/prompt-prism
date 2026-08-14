@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.4.0](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.3.2...v0.4.0) (2026-08-14)
+
+### Features
+
+* **cli:** add registry fallback update checks ([9cc4a78](https://github.com/tao-zhi-1992/prompt-prism/commit/9cc4a784f66c13d13146eb90b3978cca2c6950ea))
+* **dashboard:** add trace request indexes and navigation ([9690a65](https://github.com/tao-zhi-1992/prompt-prism/commit/9690a65e9f788bcdc8ae9636daeb07c9b8fb00fc))
+* **dashboard:** link logo to landing page ([8176159](https://github.com/tao-zhi-1992/prompt-prism/commit/8176159867b1ca0b7ada92f103318c72f885115f))
+* **protocol:** add official adapter fixtures ([3012144](https://github.com/tao-zhi-1992/prompt-prism/commit/301214401fc82eff7f2bda84aeef27cb57098a7e))
+* **trace:** add memorable display aliases ([004519c](https://github.com/tao-zhi-1992/prompt-prism/commit/004519c1c4112a05367546f127e68ceec140dcc5))
+
+### Bug Fixes
+
+* **release:** use public entrypoint for dashboard screenshot ([bc10262](https://github.com/tao-zhi-1992/prompt-prism/commit/bc10262b93dbd4b31ae7c994bbff68a79dd4e015))
+
+### Refactoring
+
+* **core:** move unit tests into core package ([e8ce976](https://github.com/tao-zhi-1992/prompt-prism/commit/e8ce976cda4a2b75724303f66e23926ca18c376d))
+* **packages:** split core modules into workspace packages ([8f647d8](https://github.com/tao-zhi-1992/prompt-prism/commit/8f647d8e38a5a4fbf2b45b4ccb5ed3f7dbcae5f6))
+* **trace:** decouple trace lifecycle from input diff ([dc3ca00](https://github.com/tao-zhi-1992/prompt-prism/commit/dc3ca006a1e33fa65260d0c952eae919f8e04cc3))
+
+### Documentation
+
+* clarify local capture storage ([adb1add](https://github.com/tao-zhi-1992/prompt-prism/commit/adb1add0584a140c63d3c6a672825920094e9cfb))
+
+### Tests
+
+* **core:** enforce coverage gates ([09a33cd](https://github.com/tao-zhi-1992/prompt-prism/commit/09a33cd749681bbff9b17fdc30519c18c752806d))
+* align package test ownership ([c849d34](https://github.com/tao-zhi-1992/prompt-prism/commit/c849d340e2753ff558ad4b748156d43e85afc24a))
+
+### Styles
+
+* **dashboard:** refine selected request state ([8d581fc](https://github.com/tao-zhi-1992/prompt-prism/commit/8d581fc06c9723157a612dc89759efa5732eef22))
+* **dashboard:** simplify trace styling ([042e4ec](https://github.com/tao-zhi-1992/prompt-prism/commit/042e4ec0e0896ad48976115bf4f32b78057bbc2d))
+* **dashboard:** unify system prompt labels ([32061b7](https://github.com/tao-zhi-1992/prompt-prism/commit/32061b76fd604d095388c885bd3eb9a265fdd681))
+* standardize test layout ([c35fb2a](https://github.com/tao-zhi-1992/prompt-prism/commit/c35fb2a462f2f59cad86c690cb055b82400f891c))
+
 ## [0.3.2](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.3.1...v0.3.2) (2026-08-13)
 
 

@@ -28,3 +28,5 @@ gh release create "v<version>" --title "v<version>" --generate-notes
 执行前需要分别登录 npm 和 GitHub。tag 已由合并后的 workflow 自动创建，不要在本地重复创建。GitHub Release 和 npm 发布仍然手动执行。
 
 Skill 使用 Conventional Commits 计算下一个版本，但普通提交不会自动触发发布。
+
+CLI 更新检查只读取公开的 npm 版本元数据。它先访问官方 npm registry，在无法直连时回退到 `registry.npmmirror.com`，不会发布、安装或修改 npm registry 配置。

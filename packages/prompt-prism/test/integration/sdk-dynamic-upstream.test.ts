@@ -6,8 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { createPromptPrism } from '../../src/proxy.js';
-import { buildDynamicProxyBaseUrl } from '../../src/upstream.js';
+import { buildDynamicProxyBaseUrl, createPromptPrism } from '../../src/index.js';
 import { close, listen } from './helpers/http.js';
 
 test('official OpenAI and Anthropic JavaScript SDKs preserve dynamic upstream path prefixes', async (t) => {

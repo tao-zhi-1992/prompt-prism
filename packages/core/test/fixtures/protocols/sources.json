@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "fixtures": {
+    "anthropic-messages": {
+      "endpoint": "/v1/messages",
+      "sources": [
+        { "url": "https://platform.claude.com/docs/en/api/messages", "accessed_at": "2026-08-14" },
+        { "url": "https://platform.claude.com/docs/en/build-with-claude/streaming", "accessed_at": "2026-08-14" },
+        { "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools", "accessed_at": "2026-08-14" }
+      ],
+      "covers": ["request", "json_response", "sse", "error", "thinking", "tool_use", "tool_result", "server_tool_use", "mcp_tool_use", "web_search_tool_result"]
+    },
+    "openai-chat-completions": {
+      "endpoint": "/v1/chat/completions",
+      "sources": [{ "url": "https://raw.githubusercontent.com/openai/openai-openapi/c6d56281af688d522bb6baf6fc8fb3daae273820/openapi.json", "revision": "c6d56281af688d522bb6baf6fc8fb3daae273820", "accessed_at": "2026-08-14" }],
+      "covers": ["request", "json_response", "sse", "error", "reasoning", "tool_calls", "tool_results"]
+    },
+    "openai-responses": {
+      "endpoint": "/v1/responses",
+      "sources": [
+        { "url": "https://raw.githubusercontent.com/openai/openai-openapi/c6d56281af688d522bb6baf6fc8fb3daae273820/openapi.json", "revision": "c6d56281af688d522bb6baf6fc8fb3daae273820", "accessed_at": "2026-08-14" },
+        { "url": "https://platform.openai.com/docs/api-reference/responses-streaming/response/refusal/delta?lang=curl", "accessed_at": "2026-08-14" }
+      ],
+      "covers": ["request", "json_response", "sse", "error", "reasoning", "function_call", "function_call_output", "built_in_tools"]
+    }
+  }
+}

@@ -5,7 +5,7 @@
 .system-prompt-content { display: grid; gap: 12px; min-width: 100%; padding: 14px; }
 .system-prompt-blocks { display: grid; gap: 12px; min-width: 0; }
 .system-prompt-message { display: grid; gap: 8px; min-width: 0; }
-.system-prompt-message-role { justify-self: start; padding: 2px 9px; color: var(--accent); border: 1px solid var(--line); border-radius: 99px; background: var(--surface-2); font: 9px/1.5 "DM Mono", monospace; text-transform: uppercase; letter-spacing: 0.06em; }
+.system-prompt-message-role { justify-self: start; padding: 3px 5px; color: var(--accent-strong); border: 1px solid var(--line-strong); background: var(--green-bg); font: 9px/1 "DM Mono", monospace; text-transform: uppercase; letter-spacing: 0.06em; }
 .system-prompt-notice { padding: 13px 14px; color: var(--faint); border: 1px dashed var(--line); font: 10px "DM Mono", monospace; }
 
 @media (max-width: 680px) {

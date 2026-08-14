@@ -1,4 +1,4 @@
-import { defineDetailTab } from '../../registry/dashboard.js';
+import { defineDetailTab } from '@prompt-prism/dashboard-kit';
 import { rawPluginMeta } from '../index.js';
 import { RawPanel, type RawCapture } from './RawPanel.js';
 import './styles.css';

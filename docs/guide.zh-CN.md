@@ -35,6 +35,8 @@ http://127.0.0.1:1028/_proxy/<encoded-upstream>
 p2 url https://api.deepseek.com/v1
 ```
 
+`p2 start` 在交互式终端中会低频后台检查更新：先访问官方 npm registry，官方源无法访问时再回退到 `registry.npmmirror.com`。每 24 小时最多检查一次，不会自动安装任何内容，只读取公开的包版本元数据。需要立即检查时运行 `p2 update-check`。可用 `p2 start --no-update-check` 或 `P2_NO_UPDATE_CHECK=1` 禁用自动检查。
+
 这是仪表盘按钮的替代方式，不是第二个启动命令。一个 Prism 实例无需重启就能把不同请求转发到不同提供商。
 
 动态路由只作用于带该前缀的请求，不修改固定上游。动态请求没有后缀时直接使用解码后的 URL；明确提供请求后缀和 query 时才会追加。无效的 encoded upstream 值返回 400，不会回退到其他提供商。
@@ -92,9 +94,10 @@ OpenAI Chat Completions 的 JSON 和 SSE 响应、函数工具调用/结果、sy
 ```text
 p2 --version
 p2 -v
+p2 update-check
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
-         [--open | --no-open]
+         [--open | --no-open] [--no-update-check]
 p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 ```
 
@@ -103,7 +106,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 | 选项 | 默认值 | 用途 |
 | --- | --- | --- |
 | `--upstream-base-url` | 无（仅动态模式） | 提供商模型 API Base URL |
-| `--api-format` | `auto` | 检测 Anthropic Messages 或 OpenAI Chat Completions |
+| `--api-format` | `auto` | 检测 Anthropic Messages、OpenAI Chat Completions 或 OpenAI Responses |
 | `--port` | `1028` | 本地代理和仪表盘端口 |
 | `--data-dir` | `./data` | 本地捕获目录 |
 | `--max-storage` | `1GB` | 捕获存储上限 |
@@ -127,7 +130,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 ## 自动协议检测
 
-`--api-format` 接受 `auto`、`anthropic-messages` 或 `openai-chat-completions`。更短的 `anthropic` 和 `openai` 别名仍然支持。
+`--api-format` 接受 `auto`、`anthropic-messages`、`openai-chat-completions` 或 `openai-responses`。更短的 `anthropic` 和 `openai` 别名仍然支持（`openai` 指 Chat Completions）。
 
 在 auto 模式下，Prism 独立检测每条捕获记录：依次考虑请求路径、头部、协议专属请求体、提供商响应，最后是显式提供的上游 URL 或已知提供商 Base URL。每条捕获记录以第一个可信信号为准，因此一种协议不会锁定或影响后续捕获。路由只使用转发前可用的信号：请求路径、头部和上游 URL 提示。没有固定上游时，动态请求使用其解码出的 Base URL 作为当前请求的提示。
 

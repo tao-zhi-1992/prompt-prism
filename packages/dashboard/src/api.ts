@@ -7,7 +7,12 @@ export interface CapturePage {
   newest_cursor: string | null;
   has_older: boolean;
   has_newer: boolean;
+  revision?: number;
 }
+
+export interface CaptureChange { revision: number; added: CaptureSummary[]; updated: CaptureSummary[]; removed_ids: string[]; total: number; }
+
+export interface CaptureChanges { revision: number; changes?: CaptureChange[]; reset_required?: boolean; }
 
 export interface NewCaptureBatch {
   items: CaptureSummary[];
@@ -30,6 +35,16 @@ export async function getCapturePage({ before, after, limit = 100, signal }: { b
 
 export async function getCaptureSummary(id: string, signal?: AbortSignal): Promise<CaptureSummary> {
   return readJson(await fetch(`/_pp/api/logs/${encodeURIComponent(id)}`, { signal, cache: 'no-store' }));
+}
+
+export async function getCaptureChanges(since: number, signal?: AbortSignal): Promise<CaptureChanges> {
+  return readJson(await fetch(`/_pp/api/logs/changes?since=${encodeURIComponent(String(since))}`, { signal, cache: 'no-store' }));
+}
+
+export async function getTraceFirstCaptureId(captureId: string, signal?: AbortSignal): Promise<string> {
+  const trace = await readJson<{ calls?: Array<{ capture_id?: unknown }> }>(await fetch(`/_pp/api/trace/${encodeURIComponent(captureId)}`, { signal, cache: 'no-store' }));
+  const firstCaptureId = trace.calls?.[0]?.capture_id;
+  return typeof firstCaptureId === 'string' && firstCaptureId ? firstCaptureId : captureId;
 }
 
 export async function getNewCaptureBatch(after: string, signal?: AbortSignal): Promise<NewCaptureBatch> {

@@ -1,4 +1,4 @@
-import type { Capture, JsonValue, PromptPrismServerPlugin } from '../../contracts/server.js';
+import type { Capture, JsonValue, PromptPrismServerPlugin } from '@prompt-prism/contracts/server';
 import { systemPromptPluginMeta } from '../index.js';
 
 function extractSystem(capture: Capture): JsonValue | null {

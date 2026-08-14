@@ -1,5 +1,6 @@
 import { buildDynamicProxyBaseUrl, createPromptPrism, decodeUpstreamUrl, encodeUpstreamUrl, parseUpstreamBaseUrl, type Analysis, type ApiFormatResolution, type Capture, type CaptureTiming, type ConversationMessage, type ConversationToolCallBlock, type InsightComparison, type InsightEvidence, type InsightFinding, type InsightReport, type InsightRunSummary, type ModelOutputSnapshot, type PromptPrismOptions, type ProviderProtocol, type Usage } from 'prompt-prism';
-import type { Capture as PluginCapture, ConversationMessage as PluginConversationMessage, ModelOutputSnapshot as PluginModelOutputSnapshot, Usage as PluginUsage } from '../../plugins/src/contracts/server.js';
+import type { Capture as PluginCapture } from '@prompt-prism/contracts/server';
+import type { ConversationMessage as PluginConversationMessage, ModelOutputSnapshot as PluginModelOutputSnapshot, Usage as PluginUsage } from '@prompt-prism/contracts/model';
 
 type Assert<T extends true> = T;
 type Assignable<From, To> = From extends To ? true : false;

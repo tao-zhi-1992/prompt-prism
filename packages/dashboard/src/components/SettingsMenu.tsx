@@ -1,5 +1,5 @@
 import { Menu } from '@base-ui/react/menu';
-import { useI18n, type Locale, type TranslationKey } from '@prompt-prism/plugins/dashboard';
+import { useI18n, type Locale, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import type { ThemePreference } from '../theme';
 
 const themes: Array<{ value: ThemePreference; label: TranslationKey; icon: 'system' | 'light' | 'dark' }> = [

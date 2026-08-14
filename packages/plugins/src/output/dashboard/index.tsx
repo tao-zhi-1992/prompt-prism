@@ -1,4 +1,4 @@
-import { defineDetailTab } from '../../registry/dashboard.js';
+import { defineDetailTab } from '@prompt-prism/dashboard-kit';
 import { outputPluginMeta } from '../index.js';
 import { OutputPanel, type OutputCapture } from './OutputPanel.js';
 import './styles.css';

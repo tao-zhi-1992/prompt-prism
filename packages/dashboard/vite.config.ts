@@ -23,12 +23,12 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./test/setup.ts'],
     include: ['./src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/test/**', 'src/**/*.d.ts'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/test/**', 'src/**/*.d.ts', '**/packages/dashboard-kit/**'],
       reporter: ['text', 'json', 'json-summary', 'html'],
       reportsDirectory: './coverage',
       thresholds: { statements: 91, branches: 81, functions: 91, lines: 94 },

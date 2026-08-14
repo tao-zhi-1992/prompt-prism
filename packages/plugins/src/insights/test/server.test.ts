@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Capture, CaptureIndexEntry, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '../../contracts/server.js';
+import type { Capture, CaptureIndexEntry, JsonValue, ModelInputSnapshot, ModelOutputSnapshot, ServerPluginContext } from '@prompt-prism/contracts/server';
 import {
   buildInsightEvidence,
   buildInsightReport,
@@ -49,6 +49,12 @@ function context(entries: CaptureIndexEntry[], captures: Capture[]): ServerPlugi
   return {
     analysisPath: '/tmp/analysis.jsonl', captures: entries,
     readCapture: vi.fn(async (id) => byId.get(id) ?? null),
+    getTraceResult: vi.fn(async (id) => {
+      const selected = entries.find((entry) => entry.id === id);
+      if (!selected) return null;
+      const calls = entries.filter((entry) => entry.trace_id === selected.trace_id).sort((left, right) => left.timestamp.localeCompare(right.timestamp)).map((entry, index) => ({ capture_id: entry.id, timestamp: entry.timestamp, model: entry.model, response_status: entry.response_status, upstream_host: entry.upstream_host, input_relation: index === 0 ? 'root' as const : 'append' as const, input_delta: byId.get(entry.id)?.prompt_input?.conversation ?? [], output: byId.get(entry.id)?.model_output ?? null }));
+      return { id: selected.trace_id ?? selected.id, source: selected.trace_id ? 'explicit' as const : 'inferred' as const, selected_capture_id: id, truncated: false, calls };
+    }),
     parseProviderRequest: vi.fn(), parseProviderResponse: vi.fn(), json: vi.fn(), reportError: vi.fn(),
   };
 }
@@ -76,7 +82,7 @@ describe('Insights server plugin', () => {
     expect(runs[0]).toMatchObject({ run_id: second.id, trace_id: 'trace-one', calls: 2, status: 'ok' });
     expect(runs[0]?.timing).toMatchObject({ trace_span_ms: 2200, model_duration_ms: 300, inter_call_gap_ms: 1900 });
 
-    const report = await buildInsightReport(second.id, pluginContext, () => null);
+    const report = await buildInsightReport(second.id, pluginContext);
     expect(report?.run).toEqual(runs[0]);
     expect(report?.tools).toMatchObject({ calls: 3, errors: 1, invalid_arguments: 1, repeated_calls: 1 });
     expect(report?.sections.find((section) => section.id === 'system')?.changes).toBe(1);
@@ -101,7 +107,7 @@ describe('Insights server plugin', () => {
 
   it('compares metrics and classifies added, resolved, and persisting findings', async () => {
     const { second, pluginContext } = fixture();
-    const baseline = await buildInsightReport(second.id, pluginContext, () => null);
+    const baseline = await buildInsightReport(second.id, pluginContext);
     expect(baseline).not.toBeNull();
     const candidate = structuredClone(baseline!);
     candidate.run.run_id = 'candidate';
@@ -128,7 +134,7 @@ describe('Insights server plugin', () => {
 
   it('validates API routes and returns reports', async () => {
     const { second, pluginContext } = fixture();
-    const plugin = createInsightsServerPlugin({ getParentId: () => null });
+    const plugin = createInsightsServerPlugin();
     const response = {} as never;
     await plugin.handleApi!({ method: 'GET', url: '/_pp/api/insights/runs?limit=1' } as never, response, 'runs', pluginContext);
     await plugin.handleApi!({ method: 'GET', url: `/_pp/api/insights/report/${second.id}` } as never, response, `report/${second.id}`, pluginContext);

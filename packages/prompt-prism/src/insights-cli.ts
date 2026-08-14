@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import type { InsightComparison, InsightEvidence, InsightReport, InsightRunSummary } from './types.js';
+import type { InsightComparison, InsightEvidence, InsightReport, InsightRunSummary } from '@prompt-prism/core';
 
 const DEFAULT_PRISM_URL = 'http://127.0.0.1:1028';
 

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { InputDiffAnalyzer } from '../server/analyzer.js';
 import { createInputDiffServerPlugin } from '../server/index.js';
 import { diffCharacters, divergencePoint, type DiffPart } from '../server/diff.js';
-import type { JsonValue, Message, ModelInputSnapshot, ServerPluginContext } from '../../contracts/server.js';
+import type { JsonValue, Message, ModelInputSnapshot, ServerPluginContext } from '@prompt-prism/contracts/server';
 
 function apply(parts: DiffPart[]) {
   return {
@@ -31,28 +31,25 @@ describe('Input Diff server plugin', () => {
     ],
   });
 
-  it('matches a related parent and records sectioned, reconstructable analysis', async () => {
+  it('uses the supplied Trace parent and records sectioned, reconstructable analysis', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-analyzer-'));
     const analyzer = new InputDiffAnalyzer({ analysisPath: path.join(dir, 'analysis.jsonl') });
     await analyzer.init();
-    await analyzer.analyze(capture('one', '2026-01-01T00:00:00.000Z', [{ role: 'user', content: 'same' }, { role: 'assistant', content: 'old' }]));
-    const result = await analyzer.analyze(capture('two', '2026-01-02T00:00:00.000Z', [{ role: 'user', content: 'same' }, { role: 'assistant', content: 'new' }]));
+    const parent = capture('one', '2026-01-01T00:00:00.000Z', [{ role: 'user', content: 'same' }, { role: 'assistant', content: 'old' }]);
+    const result = await analyzer.analyze(capture('two', '2026-01-02T00:00:00.000Z', [{ role: 'user', content: 'same' }, { role: 'assistant', content: 'new' }]), undefined, { ...parent, file_ref: 'one.json' });
     expect(result.matched_parent_id).toBe('one');
     expect(result.diff.some((part) => part.type === 'delete')).toBe(true);
     expect(result.sections?.map(({ id }) => id)).toEqual(['messages']);
-    expect(analyzer.findParent(capture('unrelated', '2026-01-03T00:00:00.000Z', [{ role: 'user', content: 'different' }]))).toBeNull();
-    expect(analyzer.findParent(capture('other-host', '2026-01-03T00:00:00.000Z', [{ role: 'user', content: 'same' }], { upstream_host: 'other.example.com' }))).toBeNull();
   });
 
-  it('diffs all normalized input sections and chooses the newest tied parent', async () => {
+  it('diffs all normalized input sections against the supplied Trace parent', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-'));
     const analyzer = new InputDiffAnalyzer({ analysisPath: path.join(dir, 'analysis.jsonl') });
     await analyzer.init();
     const messages = [{ role: 'user', content: 'same' }];
     const tools = [{ name: 'search' }];
-    await analyzer.analyze(capture('oldest', '2026-01-01T00:00:00.000Z', messages, { prompt_input: input(messages, 'old system', tools, 100), adapter_id: 'anthropic' }));
-    await analyzer.analyze(capture('newest', '2026-01-02T00:00:00.000Z', messages, { prompt_input: input(messages, 'old system', tools, 100), adapter_id: 'anthropic' }));
-    const result = await analyzer.analyze(capture('current', '2026-01-03T00:00:00.000Z', messages, { prompt_input: input(messages, 'new system', tools, 200), adapter_id: 'anthropic' }));
+    const parent = capture('newest', '2026-01-02T00:00:00.000Z', messages, { prompt_input: input(messages, 'old system', tools, 100), adapter_id: 'anthropic' });
+    const result = await analyzer.analyze(capture('current', '2026-01-03T00:00:00.000Z', messages, { prompt_input: input(messages, 'new system', tools, 200), adapter_id: 'anthropic' }), undefined, { ...parent, file_ref: 'newest.json' });
 
     expect(result.matched_parent_id).toBe('newest');
     expect(result.sections?.map(({ id, state }) => ({ id, state }))).toEqual([
@@ -75,7 +72,7 @@ describe('Input Diff server plugin', () => {
     expect(result.sections?.every(({ state }) => state === 'baseline' || state === 'empty')).toBe(true);
   });
 
-  it('clears analyses and parent indexes before processing a new capture generation', async () => {
+  it('clears analyses before processing a new capture generation', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-input-diff-clear-'));
     const analyzer = new InputDiffAnalyzer({ analysisPath: path.join(dir, 'analysis.jsonl') });
     await analyzer.init();
@@ -85,7 +82,6 @@ describe('Input Diff server plugin', () => {
     analyzer.clear();
 
     expect(analyzer.analyses.size).toBe(0);
-    expect(analyzer.index.size).toBe(0);
     const result = await analyzer.analyze(capture('after-clear', '2026-01-02T00:00:00.000Z', messages));
     expect(result.matched_parent_id).toBeNull();
   });
@@ -103,7 +99,6 @@ describe('Input Diff server plugin', () => {
     await plugin.onClear!(context);
 
     expect(plugin.getAnalyzer().analyses.size).toBe(0);
-    expect(plugin.getAnalyzer().index.size).toBe(0);
   });
 
   it('repairs an incomplete analysis tail and removes analyses for missing captures', async () => {
@@ -166,12 +161,12 @@ describe('Input Diff server plugin', () => {
     const oldMessages: Message[] = [{ role: 'user', content: [{ type: 'text', text: 'same', cache_control: { type: 'ephemeral' } }] }];
     const newMessages: Message[] = [{ role: 'user', content: [{ type: 'text', text: 'same' }] }];
     const identity = [{ role: 'user', content: [{ type: 'text', text: 'same' }] }];
-    await analyzer.analyze(capture('old', '2026-01-01T00:00:00.000Z', oldMessages, {
+    const parent = capture('old', '2026-01-01T00:00:00.000Z', oldMessages, {
       adapter_id: 'anthropic', prompt_input: input(oldMessages, 'system', [], 100, identity),
-    }));
+    });
     const result = await analyzer.analyze(capture('current', '2026-01-02T00:00:00.000Z', newMessages, {
       adapter_id: 'anthropic', prompt_input: input(newMessages, 'system', [], 100, identity),
-    }));
+    }), undefined, { ...parent, file_ref: 'old.json' });
     expect(result.matched_parent_id).toBe('old');
     expect(result.sections?.find(({ id }) => id === 'messages')?.state).toBe('changed');
     expect(result.diff.some(({ type, value }) => type === 'delete' && value.includes('cache_control'))).toBe(true);

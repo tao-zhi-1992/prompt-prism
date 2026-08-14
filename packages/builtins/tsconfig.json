@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "lib": ["ES2022", "DOM"], "strict": true, "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true, "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx", "verbatimModuleSyntax": true, "types": ["node"]
+  }, "include": ["src", "../plugins/src/vite-env.d.ts", "../ui/src/vite-env.d.ts"]
+}

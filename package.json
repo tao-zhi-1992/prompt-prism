@@ -11,12 +11,14 @@
     "build": "pnpm --filter @prompt-prism/plugins typecheck && pnpm --filter prompt-prism build && pnpm --filter @prompt-prism/dashboard build && pnpm --filter @prompt-prism/example build",
     "start": "pnpm --filter prompt-prism start",
     "demo": "pnpm --filter @prompt-prism/example start",
-    "test": "pnpm --filter @prompt-prism/plugins test && pnpm --filter prompt-prism test && pnpm --filter @prompt-prism/dashboard test && pnpm --filter @prompt-prism/ui test && pnpm --filter @prompt-prism/example typecheck && pnpm --filter @prompt-prism/example test",
-    "test:unit": "pnpm --filter @prompt-prism/plugins test && pnpm --filter prompt-prism test:unit && pnpm --filter @prompt-prism/dashboard test && pnpm --filter @prompt-prism/ui test",
+    "test": "pnpm --filter @prompt-prism/dashboard-kit test && pnpm --filter @prompt-prism/builtins test && pnpm --filter @prompt-prism/plugins test && pnpm --filter @prompt-prism/core test && pnpm --filter prompt-prism test && pnpm --filter @prompt-prism/dashboard test && pnpm --filter @prompt-prism/ui test && pnpm --filter @prompt-prism/example typecheck && pnpm --filter @prompt-prism/example test",
+    "test:unit": "pnpm --filter @prompt-prism/dashboard-kit test && pnpm --filter @prompt-prism/builtins test && pnpm --filter @prompt-prism/plugins test && pnpm --filter @prompt-prism/core test && pnpm --filter prompt-prism test:unit && pnpm --filter @prompt-prism/dashboard test && pnpm --filter @prompt-prism/ui test",
     "test:integration": "pnpm --filter prompt-prism test:integration && pnpm --filter @prompt-prism/example test",
-    "test:coverage": "pnpm --filter @prompt-prism/plugins test:coverage && pnpm --filter prompt-prism test:coverage && pnpm --filter @prompt-prism/dashboard test:coverage && pnpm --filter @prompt-prism/ui test:coverage && node scripts/check-diff-coverage.mjs",
+    "test:coverage": "pnpm --filter @prompt-prism/dashboard-kit test:coverage && pnpm --filter @prompt-prism/builtins test:coverage && pnpm --filter @prompt-prism/plugins test:coverage && pnpm --filter prompt-prism test:coverage && pnpm --filter @prompt-prism/core test:coverage && pnpm --filter @prompt-prism/dashboard test:coverage && pnpm --filter @prompt-prism/ui test:coverage && node scripts/check-diff-coverage.mjs",
     "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
     "test:e2e": "pnpm --filter prompt-prism build:all && playwright test --config=e2e/playwright.config.ts",
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "check:openai-openapi": "node scripts/check-openai-openapi.mjs",
     "dashboard:dev": "pnpm --filter @prompt-prism/dashboard dev"
   },
   "devDependencies": {

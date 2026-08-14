@@ -1,4 +1,4 @@
-import { defineDetailTab } from '../../registry/dashboard.js';
+import { defineDetailTab } from '@prompt-prism/dashboard-kit';
 import { tracePluginMeta } from '../index.js';
 import { TracePanel, type TraceResult } from './TracePanel.js';
 import './styles.css';

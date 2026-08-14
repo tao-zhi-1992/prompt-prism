@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    "./server": "./src/server.ts",
     "./dashboard": "./src/dashboard.ts"
   },
   "scripts": {
@@ -14,6 +15,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@prompt-prism/contracts": "workspace:*",
+    "@prompt-prism/dashboard-kit": "workspace:*",
     "@prompt-prism/ui": "workspace:*",
     "diff": "8.0.4",
     "react-json-view-lite": "2.5.0",

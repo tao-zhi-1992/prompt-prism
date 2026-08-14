@@ -35,6 +35,8 @@ For scripts and automation, `p2 url UPSTREAM_URL_OR_BASE_URL` prints the same UR
 p2 url https://api.deepseek.com/v1
 ```
 
+`p2 start` performs a low-frequency background update check in an interactive terminal. It checks the official npm registry first and falls back to `registry.npmmirror.com` when the official registry is unreachable. The check runs at most once per 24 hours, never installs anything, and only reads public package version metadata. To check immediately, run `p2 update-check`. Disable automatic checks with `p2 start --no-update-check` or `P2_NO_UPDATE_CHECK=1`.
+
 This is an alternative to using the Dashboard button, not a second startup command. One Prism process can route different requests to different providers without restarting.
 
 Dynamic routing applies only to requests containing that prefix and does not change a fixed upstream. The decoded URL is used directly when the dynamic request has no suffix; an explicit request suffix and query are appended when present. Invalid encoded upstream values fail with 400 instead of falling back to another provider.
@@ -92,9 +94,10 @@ OpenAI Chat Completions JSON and SSE responses, function tool calls/results, sys
 ```text
 p2 --version
 p2 -v
+p2 update-check
 p2 start [--upstream-base-url URL | --upstream-url URL] [--api-format FORMAT]
          [--port NUMBER] [--data-dir PATH] [--max-storage SIZE]
-         [--open | --no-open]
+         [--open | --no-open] [--no-update-check]
 p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 ```
 
@@ -103,7 +106,7 @@ Defaults:
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `--upstream-base-url` | none (dynamic-only mode) | Provider model API Base URL |
-| `--api-format` | `auto` | Detect Anthropic Messages or OpenAI Chat Completions |
+| `--api-format` | `auto` | Detect Anthropic Messages, OpenAI Chat Completions, or OpenAI Responses |
 | `--port` | `1028` | Local proxy and dashboard port |
 | `--data-dir` | `./data` | Local capture directory |
 | `--max-storage` | `1GB` | Capture storage cap |
@@ -127,7 +130,7 @@ Use `--upstream-url` for a complete endpoint, including its final path and optio
 
 ## Automatic protocol detection
 
-`--api-format` accepts `auto`, `anthropic-messages`, or `openai-chat-completions`. The shorter `anthropic` and `openai` aliases remain supported.
+`--api-format` accepts `auto`, `anthropic-messages`, `openai-chat-completions`, or `openai-responses`. The shorter `anthropic` and `openai` aliases remain supported (`openai` means Chat Completions).
 
 In auto mode, Prism detects every capture independently. It considers the request path, headers, protocol-specific request body, provider response, and finally an explicitly provided upstream URL or known provider Base URL. The first confident signal for that capture wins, so one protocol never locks or influences later captures. Routing uses only signals available before forwarding: the request path, headers, and upstream URL hint. With no fixed upstream, dynamic requests use their decoded Base URL as the per-request hint.
 

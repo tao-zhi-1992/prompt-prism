@@ -1,0 +1,12 @@
+{
+  "name": "@prompt-prism/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./model": "./src/model.ts",
+    "./server": "./src/server.ts"
+  },
+  "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit" },
+  "devDependencies": { "typescript": "^7.0.2" }
+}

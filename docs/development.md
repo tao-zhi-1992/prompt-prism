@@ -21,12 +21,12 @@ pnpm build         # type-check and build all production artifacts
 pnpm test          # run all unit and integration tests
 pnpm test:unit     # run unit/component tests
 pnpm test:integration # run proxy, CLI, SDK, and example integration tests
-pnpm test:coverage # run Vitest tests with global and changed-line coverage gates
+pnpm test:coverage # run package gates, Core proxy coverage, and changed-line coverage gates
 pnpm typecheck:e2e # type-check Playwright tests
 pnpm test:e2e      # build Prism and run Chromium Dashboard tests
 ```
 
-The test suite has three layers: Node unit/integration tests exercise adapters, storage, proxy forwarding, CLI behavior, and SDK compatibility; Vitest/jsdom tests exercise Dashboard, plugin, and shared UI components; Playwright tests exercise the compiled Dashboard against a real local Prompt Prism server. Coverage has package-level regression floors and a 90% minimum for changed executable lines, including core proxy and storage code.
+The test suite has three layers: Node unit/integration tests exercise adapters, storage, proxy forwarding, CLI behavior, and SDK compatibility; Vitest/jsdom tests exercise Dashboard, plugin, and shared UI components; Playwright tests exercise the compiled Dashboard against a real local Prompt Prism server. Coverage runs Core with the proxy integration suite (90% statements, functions, and lines; 75% branches), then applies package regression floors and a 90% minimum to changed executable lines. Type-only contract files are excluded from executable coverage.
 
 CI runs the unit/integration suite on Node.js 20, 22, and 24. Coverage and Chromium E2E run once on Node.js 24, with their reports uploaded as workflow artifacts.
 
@@ -69,7 +69,13 @@ Required variables:
 Optional variables:
 
 - `DEMO_BASE_URL`: defaults to `http://127.0.0.1:1028`; do not include `/v1`.
-- `DEMO_API_FORMAT`: defaults to `auto`, which uses the Demo's Anthropic client with per-capture proxy detection; use `anthropic-messages` or `openai-chat-completions` to override the client protocol.
+- `DEMO_API_FORMAT`: defaults to `auto`, which uses the Demo's Anthropic client with per-capture proxy detection; use `anthropic-messages`, `openai-chat-completions`, or `openai-responses` to override the client protocol.
+
+## Protocol fixtures
+
+Adapter compatibility fixtures live in `packages/core/test/fixtures/protocols`. They are small, offline copies of public API shapes with source URLs and revision metadata in `sources.json`; they intentionally do not vendor the full provider specifications. Update fixtures manually when a supported protocol changes, then run the adapter and integration suites.
+
+To compare the tracked OpenAI fixture revision with an official OpenAPI commit, run `pnpm check:openai-openapi -- <commit>`. This is a manual, networked maintenance command and is never run by CI. Realtime, Batch, Assistants, and managed-agent-specific protocols remain Raw captures.
 - `DEMO_PORT`: defaults to `3000`.
 
 Sessions are in memory. Generated workspaces are retained under `example/.workspaces/` and recreated by **Reset workspace**.

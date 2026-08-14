@@ -163,7 +163,10 @@ async function main() {
   let browser;
   try {
     const upstreamPort = await listen(upstream);
-    const { createPromptPrism } = await import(path.join(root, 'packages/prompt-prism/dist/proxy.js'));
+    // The public package entry point assembles Core with the built-in server
+    // plugins. Keep the screenshot workflow on the same runtime surface users
+    // get from `prompt-prism`, rather than reaching into an internal module.
+    const { createPromptPrism } = await import(path.join(root, 'packages/prompt-prism/dist/index.js'));
     prism = await createPromptPrism({ upstreamUrl: `http://127.0.0.1:${upstreamPort}/v1/messages`, dataDir });
     const proxyPort = await listen(prism.server);
     for (const turn of [1, 2, 3]) {

@@ -1,5 +1,13 @@
-export { createPromptPrism, startPromptPrism } from './proxy.js';
-export { buildDynamicProxyBaseUrl, encodeUpstreamUrl, decodeUpstreamUrl, parseUpstreamBaseUrl, parseUpstreamUrl } from './upstream.js';
+import { createPromptPrismCore, startPromptPrismCore } from '@prompt-prism/core';
+import { createBuiltinServerPluginRuntime } from '@prompt-prism/builtins/server';
+
+export function createPromptPrism(options: import('@prompt-prism/core').PromptPrismOptions = {}) {
+  return createPromptPrismCore(options, createBuiltinServerPluginRuntime());
+}
+export function startPromptPrism(options: import('@prompt-prism/core').PromptPrismOptions = {}) {
+  return startPromptPrismCore(options, createBuiltinServerPluginRuntime());
+}
+export { buildDynamicProxyBaseUrl, encodeUpstreamUrl, decodeUpstreamUrl, parseUpstreamBaseUrl, parseUpstreamUrl } from '@prompt-prism/core';
 export type {
   Analysis,
   ApiFormatOption,
@@ -52,4 +60,4 @@ export type {
   ToolCallOutputBlock,
   UnknownOutputBlock,
   Usage
-} from './types.js';
+} from '@prompt-prism/core';

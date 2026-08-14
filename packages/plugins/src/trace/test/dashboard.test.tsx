@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { TracePanel, type TraceResult } from '../dashboard/TracePanel.js';
+import { traceDisplayName } from '@prompt-prism/dashboard-kit';
 
 const trace: TraceResult = {
   id: 'session-123', source: 'explicit', selected_capture_id: 'capture-two', truncated: false,
@@ -15,7 +16,7 @@ const trace: TraceResult = {
     output: {
       adapter_id: 'anthropic', id: 'msg', model: 'demo-model', role: 'assistant', stop_reason: 'end_turn',
       usage: { input_tokens: 10, output_tokens: 2, cache_read_input_tokens: 20, cache_creation_input_tokens: 5 },
-      content: [{ type: 'reasoning', text: 'check tests' }, { type: 'text', text: 'Done' }, { type: 'tool_call', id: 'tool-2', name: 'bash', input: { command: 'pnpm test' } }, { type: 'unknown', provider_type: 'openai_delta_fields', value: [{ vendor_field: true }] }],
+      content: [{ type: 'reasoning', text: 'check tests' }, { type: 'text', text: 'Done' }, { type: 'tool_call', id: 'tool-2', name: 'bash', input: { command: 'pnpm test' } }, { type: 'unknown', provider_type: 'adapter_metadata', value: [{ vendor_field: true }], visibility: 'internal' }],
     },
   }],
 };
@@ -28,9 +29,12 @@ describe('TracePanel', () => {
     expect(container.querySelector('.trace-event-toggle-row')).not.toHaveClass('detail-sticky-header');
     expect(screen.getByText('Explicit')).toBeVisible();
     expect(screen.getByText('HTTP 200')).toHaveClass('trace-http--good');
-    expect(container.querySelector('.trace-summary-id')).toHaveTextContent('trace:session');
+    expect(container.querySelector('.trace-summary-id')).toHaveTextContent(`trace:${traceDisplayName(trace.id)}`);
     expect(container.querySelector('.trace-summary-id')).toHaveAttribute('title', 'session-123');
     expect(container.querySelector('.trace-summary-id')).not.toHaveAttribute('style');
+    expect(container.querySelector('.trace-summary-id')?.className).toMatch(/trace-summary-id/);
+    expect(container.querySelector('.trace-summary-id svg')).toBeNull();
+    expect(container.querySelector('.trace-call-marker')).toBeNull();
     expect(screen.queryByText('Fix the endpoint')).not.toBeInTheDocument();
     expect(screen.queryByText('Done')).not.toBeInTheDocument();
     expect(screen.queryByText('Unknown output')).not.toBeInTheDocument();
@@ -134,7 +138,7 @@ describe('TracePanel', () => {
 
   it('places inferred trace guidance behind an accessible help tooltip', async () => {
     const { container } = render(<TracePanel trace={{ ...trace, source: 'inferred' }} loading={false} error={null} refreshError={null} onRetry={vi.fn()} selectCapture={vi.fn()} />);
-    expect(container.querySelector('.trace-summary-id')).toHaveTextContent('trace:session');
+    expect(container.querySelector('.trace-summary-id')).toHaveTextContent(`trace:${traceDisplayName(trace.id)}`);
     const help = screen.getByRole('button', { name: 'About inferred traces' });
     expect(help).toBeVisible();
     await userEvent.hover(help);

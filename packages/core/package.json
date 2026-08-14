@@ -1,0 +1,27 @@
+{
+  "name": "@prompt-prism/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./capture": "./src/capture.ts",
+    "./proxy-target": "./src/proxy-target.ts",
+    "./server": "./src/server.ts",
+    "./store": "./src/store.ts",
+    "./trace-service": "./src/trace-service.ts",
+    "./upstream": "./src/upstream.ts",
+    "./adapter/anthropic": "./src/adapter/anthropic.ts",
+    "./adapter/openai": "./src/adapter/openai.ts",
+    "./adapter/openai-responses": "./src/adapter/openai-responses.ts",
+    "./adapter/detection": "./src/adapter/detection.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm typecheck && tsx --test test/unit/*.test.ts",
+    "pretest:coverage": "pnpm --dir ../prompt-prism build:all",
+    "test:coverage": "c8 --clean --all --include='src/**/*.ts' --exclude='src/**/*.test.ts' --exclude='src/types.ts' --exclude='src/adapter/provider.ts' --reporter=text --reporter=json --reporter=html --report-dir=coverage --check-coverage --statements=90 --branches=75 --functions=90 --lines=90 tsx --test 'test/unit/*.test.ts' '../prompt-prism/test/integration/*.test.ts'"
+  },
+  "dependencies": { "@prompt-prism/contracts": "workspace:*" },
+  "devDependencies": { "@types/node": "^24.0.0", "c8": "^10.1.3", "tsx": "^4.20.0", "typescript": "^7.0.2" }
+}

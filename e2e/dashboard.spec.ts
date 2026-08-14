@@ -4,8 +4,9 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
+import { traceDisplayName } from '../packages/dashboard-kit/src/trace/displayName.js';
 
-type CreatePromptPrism = (typeof import('../packages/prompt-prism/dist/proxy.js'))['createPromptPrism'];
+type CreatePromptPrism = (typeof import('../packages/prompt-prism/dist/index.js'))['createPromptPrism'];
 
 const proxyPort = Number(process.env.PP_E2E_PORT ?? 4173);
 const proxyOrigin = `http://127.0.0.1:${proxyPort}`;
@@ -29,7 +30,7 @@ function close(server: http.Server): Promise<void> {
   return new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 }
 
-async function sendCapture(model: string): Promise<void> {
+async function sendCapture(model: string, traceId?: string): Promise<void> {
   const body = JSON.stringify({
     model,
     max_tokens: 32,
@@ -38,7 +39,7 @@ async function sendCapture(model: string): Promise<void> {
   });
   const response = await fetch(`${proxyOrigin}/v1/messages`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-api-key': 'e2e-test-key' },
+    headers: { 'content-type': 'application/json', 'x-api-key': 'e2e-test-key', ...(traceId ? { 'x-prompt-prism-trace-id': traceId } : {}) },
     body,
   });
   expect(response.ok).toBeTruthy();
@@ -46,7 +47,7 @@ async function sendCapture(model: string): Promise<void> {
 }
 
 test.beforeAll(async () => {
-  ({ createPromptPrism } = await import('../packages/prompt-prism/dist/proxy.js'));
+  ({ createPromptPrism } = await import('../packages/prompt-prism/dist/index.js'));
   upstream = http.createServer((request, response) => {
     const chunks: Buffer[] = [];
     request.on('data', (chunk) => chunks.push(chunk));
@@ -118,6 +119,99 @@ test('loads a capture and opens its normalized output', async ({ page }) => {
   await expect(page.getByText('hello from e2e-model')).toBeVisible();
 });
 
+test('uses coordinated green selection styling across themes', async ({ page }) => {
+  await sendCapture('e2e-selected-good', 'trace-selection');
+  await page.goto('./');
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
+
+  const request = page.locator('.request-item').filter({ hasText: 'e2e-selected-good' });
+  await request.click();
+  await expect(request).toHaveAttribute('data-selected', 'true');
+  const readSelectionStyles = () => request.evaluate((element) => {
+    const root = getComputedStyle(document.documentElement);
+    const item = getComputedStyle(element);
+    return {
+      selectedBg: root.getPropertyValue('--selected-bg').trim(),
+      background: item.backgroundColor,
+      border: item.borderTopColor,
+      indicator: getComputedStyle(element, '::before').backgroundColor,
+    };
+  });
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 189, 73');
+  const darkStyles = await readSelectionStyles();
+  expect(darkStyles.selectedBg).toMatch(/0, 189, 73|#00bd49/i);
+  expect(darkStyles.background).toContain('rgba(0, 189, 73');
+  expect(darkStyles.border).toMatch(/rgba?\(63, 107, 76/);
+  expect(darkStyles.indicator).toBe('rgb(0, 189, 73)');
+  await request.hover();
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 189, 73');
+  await expect(request.locator('.status-label')).toHaveClass(/status-label--good/);
+  const traceBadge = page.locator('.trace-badge[title="trace-selection"]');
+  await expect(traceBadge).toHaveText(`trace:${traceDisplayName('trace-selection')} #1`);
+  await expect(traceBadge.locator('svg')).toHaveCount(0);
+  expect(await traceBadge.evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe(darkStyles.background);
+
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 138, 53');
+  const lightStyles = await readSelectionStyles();
+  expect(lightStyles.selectedBg).toMatch(/0, 138, 53|#008a35/i);
+  expect(lightStyles.background).toContain('rgba(0, 138, 53');
+  expect(lightStyles.border).toMatch(/rgba?\((?:12[0-9]|13[0-9]|14[0-9]), (?:16[0-9]|17[0-9]|18[0-9]), (?:14[0-9]|15[0-9]|16[0-9])/);
+  expect(lightStyles.indicator).toBe('rgb(0, 138, 53)');
+  await request.hover();
+  await expect.poll(async () => (await readSelectionStyles()).background).toContain('rgba(0, 138, 53');
+  await expect(request.locator('.status-label')).toHaveClass(/status-label--good/);
+});
+
+test('opens a trace at its first capture with a unified trace style', async ({ page }) => {
+  await sendCapture('e2e-trace-first', 'trace-a');
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  await sendCapture('e2e-trace-second', 'trace-a');
+  await sendCapture('e2e-trace-other', 'trace-b');
+  await page.goto('./');
+
+  const traceABadges = page.locator('.trace-badge[title="trace-a"]');
+  const traceBBadge = page.locator('.trace-badge[title="trace-b"]');
+  await expect(traceABadges).toHaveCount(2);
+  await expect(traceBBadge).toHaveCount(1);
+  await expect(traceABadges.first()).toContainText('#2');
+  await expect(traceABadges.last()).toContainText('#1');
+  await expect(traceBBadge).toContainText('#1');
+  await expect(traceABadges.first()).toContainText(`trace:${traceDisplayName('trace-a')} #2`);
+  await expect(traceBBadge).toContainText(`trace:${traceDisplayName('trace-b')} #1`);
+  const traceAStyles = await traceABadges.first().evaluate((element) => {
+    return {
+      color: getComputedStyle(element).color,
+      border: getComputedStyle(element).borderTopColor,
+      background: getComputedStyle(element).backgroundColor,
+    };
+  });
+  const traceBStyles = await traceBBadge.evaluate((element) => {
+    return {
+      color: getComputedStyle(element).color,
+      border: getComputedStyle(element).borderTopColor,
+      background: getComputedStyle(element).backgroundColor,
+    };
+  });
+  expect(traceAStyles.color).toBe(traceBStyles.color);
+  expect(traceAStyles.border).toBe(traceBStyles.border);
+  expect(traceAStyles.background).toBe(traceBStyles.background);
+  await expect(traceABadges.first().locator('svg')).toHaveCount(0);
+
+  await traceABadges.last().click();
+  await expect(page.locator('.request-item[data-selected]')).toContainText('e2e-trace-first');
+  await expect(page.getByRole('tab', { name: 'Trace' })).toHaveAttribute('data-active');
+  await expect(page.locator('.trace-summary-id')).toContainText(`trace:${traceDisplayName('trace-a')}`);
+  await expect(page.locator('.trace-summary-id svg')).toHaveCount(0);
+  const callMarker = page.locator('.trace-call').first();
+  await expect(callMarker).not.toHaveClass(/trace-call-marker/);
+  const markerStyles = await callMarker.evaluate((element) => {
+    const style = getComputedStyle(element, '::after');
+    return { color: style.backgroundColor };
+  });
+  expect(markerStyles.color).not.toBe('rgba(0, 0, 0, 0)');
+});
+
 test('renders expanded structured trace content with a single outer border', async ({ page }) => {
   await sendCapture('e2e-tool-call');
   await page.goto('./');
@@ -182,6 +276,33 @@ test('keeps Output collapsible header height stable while toggling', async ({ pa
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await expect(toggle).toHaveCSS('border-bottom-width', '0px');
   await expect(toggle.locator('xpath=following-sibling::*[contains(concat(" ", normalize-space(@class), " "), " output-collapsible-panel ")]')).toHaveCSS('border-top-width', '1px');
+  const reexpanded = await toggle.boundingBox();
+  expect(expanded).not.toBeNull();
+  expect(collapsed).not.toBeNull();
+  expect(reexpanded).not.toBeNull();
+  expect(collapsed!.height).toBeCloseTo(expanded!.height, 4);
+  expect(reexpanded!.height).toBeCloseTo(expanded!.height, 4);
+});
+
+test('keeps Input Diff section header height stable while toggling', async ({ page }) => {
+  await sendCapture('e2e-model');
+  await page.goto('./');
+  await page.getByRole('button', { name: /e2e-model/ }).click();
+  await page.getByRole('tab', { name: 'Input Diff' }).click();
+
+  const toggle = page.getByRole('button', { name: 'Messages' });
+  const panel = toggle.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " input-diff-section ")]').locator('.input-diff-section-panel');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  const expanded = await toggle.boundingBox();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  await expect(panel).toHaveCount(0);
+  const collapsed = await toggle.boundingBox();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(toggle).toHaveCSS('border-bottom-width', '0px');
+  await expect(panel).toHaveCSS('border-top-width', '1px');
   const reexpanded = await toggle.boundingBox();
   expect(expanded).not.toBeNull();
   expect(collapsed).not.toBeNull();
