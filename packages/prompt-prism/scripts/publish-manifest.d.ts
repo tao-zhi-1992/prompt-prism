@@ -1,1 +1,1 @@
-export declare function createPublishManifest<T extends Record<string, unknown>>(packageJson: T): T;
+export declare function assertPublishManifest(packageJson: { dependencies?: Record<string, unknown>; [key: string]: unknown }): void;

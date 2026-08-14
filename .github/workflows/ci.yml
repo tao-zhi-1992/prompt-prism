@@ -38,7 +38,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run checks
-        run: pnpm test
+        run: |
+          pnpm test
+          pnpm test:package
 
   coverage:
     name: Coverage (Node 24)

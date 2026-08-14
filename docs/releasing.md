@@ -19,13 +19,14 @@ After the Release PR has been merged and the `v<version>` tag exists, publish fr
 ```bash
 test "$(node -p "require('./packages/prompt-prism/package.json').version")" = "<version>"
 pnpm test
+pnpm test:package
 cd packages/prompt-prism
 npm publish --access public
 cd ../..
 gh release create "v<version>" --title "v<version>" --generate-notes
 ```
 
-The `prepack` hook removes private workspace-only dependencies from the published manifest, and `postpack` restores the repository manifest. This keeps `npm publish` compatible with npm consumers; verify the tarball locally with `npm pack --dry-run` before publishing.
+`pnpm test:package` creates the npm tarball, verifies that its runtime manifest has no workspace dependencies, installs it in an isolated temporary directory, and runs `p2 --version`. The `prepublishOnly` guard also rejects any runtime workspace dependency before npm sends package metadata to the registry.
 
 Authenticate with npm and GitHub before running these commands. The tag already exists because it was created after the Release PR merge; create the GitHub Release after npm publishing succeeds if you want a failed publish to leave no GitHub Release behind.
 

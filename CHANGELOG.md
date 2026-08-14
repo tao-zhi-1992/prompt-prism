@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.2](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.4.1...v0.4.2) (2026-08-14)
+
+### Bug Fixes
+
+* **release:** prevent workspace dependencies from leaking into npm metadata
+
 ## [0.4.1](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.4.0...v0.4.1) (2026-08-14)
 
 ### Bug Fixes
