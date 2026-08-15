@@ -23,7 +23,7 @@ npm install -g prompt-prism
 p2 start
 ```
 
-打开仪表盘 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)，点击 **代理地址**，输入提供商 Base URL 或完整 endpoint。将生成的地址配置为 Agent 模型 API 客户端使用的请求目标；这个客户端可以来自 framework、SDK、环境变量、CLI 或自建 HTTP 代码：
+打开仪表盘 [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/)，点击 **代理地址**，输入 Agent 模型 API 配置使用的提供商地址。地址层级请与该配置保持一致：如果配置的是 Base URL 并由 Agent 自动追加 API 路径，请填写提供商 Base URL；如果配置的是完整 endpoint 并直接请求该路径，请填写完整 endpoint。将生成的地址填回对应的模型 API 配置项；这个配置可以来自 framework、SDK、环境变量、CLI 或自建 HTTP 代码：
 
 ```text
 http://127.0.0.1:1028/_proxy/<encoded-upstream>
@@ -41,11 +41,11 @@ p2 url https://api.deepseek.com/v1
 
 动态路由只作用于带该前缀的请求，不修改固定上游。动态请求没有后缀时直接使用解码后的 URL；明确提供请求后缀和 query 时才会追加。无效的 encoded upstream 值返回 400，不会回退到其他提供商。
 
-OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试，但它们只是示例，并非使用要求。Agent framework、CLI 和自建 HTTP 客户端只要允许配置请求目标，并在追加 endpoint 时保留 Base URL 路径前缀，就可以兼容；如果前缀消失，请使用下面的固定上游兼容模式。
+OpenAI 和 Anthropic 官方 JavaScript SDK 已纳入集成测试，但它们只是示例，并非使用要求。Agent framework、SDK、CLI、环境变量和自建 HTTP 代码只要允许配置模型 API 地址，并在追加 endpoint 时保留 Base URL 路径前缀，就可以兼容；如果前缀消失，请使用下面的固定上游兼容模式。
 
 ## 固定上游兼容模式
 
-如果 Agent 的模型 API 客户端会替换 Base URL 而不是保留路径前缀，或者所有请求都应该使用同一个提供商，请使用固定 upstream。下面的 SDK 片段只是客户端配置示例：
+如果 Agent 的模型 API 配置会替换 Base URL 而不是保留路径前缀，或者所有请求都应该使用同一个提供商，请使用固定 upstream。下面的 SDK 片段只是配置方式示例：
 
 ### Anthropic Messages
 
@@ -134,7 +134,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 在 auto 模式下，Prism 独立检测每条捕获记录：依次考虑请求路径、头部、协议专属请求体、提供商响应，最后是显式提供的上游 URL 或已知提供商 Base URL。每条捕获记录以第一个可信信号为准，因此一种协议不会锁定或影响后续捕获。路由只使用转发前可用的信号：请求路径、头部和上游 URL 提示。没有固定上游时，动态请求使用其解码出的 Base URL 作为当前请求的提示。
 
-未知的自定义 Base URL 不会被猜测。流量模糊的捕获记录照常转发，仅以 Raw 存储，不影响后续捕获。客户端需要固定协议时，请显式使用 `--api-format`。
+未知的自定义 Base URL 不会被猜测。流量模糊的捕获记录照常转发，仅以 Raw 存储，不影响后续捕获。Agent 的模型 API 配置需要固定协议时，请显式使用 `--api-format`。
 
 OpenAI 将缓存提示 token 报告为 `prompt_tokens` 的子集。Prism 将其规范化为互斥值：Input 为 `prompt_tokens - cached_tokens`，Cache read 为 `cached_tokens`。Raw 保留提供商原始的 usage 结构。
 

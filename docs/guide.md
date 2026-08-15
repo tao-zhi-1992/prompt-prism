@@ -23,7 +23,7 @@ Start Prism without an upstream. This dynamic-only mode is ready for generated P
 p2 start
 ```
 
-Open the Dashboard at [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/), click **Proxy URL**, and enter the provider's Base URL or complete endpoint. Configure the generated URL as the request target used by your Agent's model API client, whether that client is provided by a framework, SDK, environment variable, CLI, or custom HTTP code:
+Open the Dashboard at [http://127.0.0.1:1028/_pp/](http://127.0.0.1:1028/_pp/), click **Proxy URL**, and enter the provider address used by your Agent's model API configuration. Match the URL level to that configuration: use the provider Base URL when it appends the API path, or the complete endpoint when it requests that path directly. Put the generated URL back into the corresponding model API setting, whether it comes from a framework, SDK, environment variable, CLI, or custom HTTP code:
 
 ```text
 http://127.0.0.1:1028/_proxy/<encoded-upstream>
@@ -41,11 +41,11 @@ This is an alternative to using the Dashboard button, not a second startup comma
 
 Dynamic routing applies only to requests containing that prefix and does not change a fixed upstream. The decoded URL is used directly when the dynamic request has no suffix; an explicit request suffix and query are appended when present. Invalid encoded upstream values fail with 400 instead of falling back to another provider.
 
-Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests, but they are examples rather than requirements. Agent frameworks, CLIs, and custom HTTP clients are compatible when they let you configure the request target and preserve its Base URL path prefix while adding an endpoint. If the prefix disappears, use the fixed-upstream compatibility mode below.
+Official OpenAI and Anthropic JavaScript SDKs are covered by integration tests, but they are examples rather than requirements. Agent frameworks, SDKs, CLIs, environment variables, and custom HTTP code are compatible when they let you configure the model API address and preserve its Base URL path prefix while adding an endpoint. If the prefix disappears, use the fixed-upstream compatibility mode below.
 
 ## Fixed-upstream compatibility mode
 
-Use a fixed upstream when the Agent's model API client replaces the Base URL instead of preserving its path prefix, or when every request should use one provider. The SDK snippets below are example client configurations:
+Use a fixed upstream when the Agent's model API configuration replaces the Base URL instead of preserving its path prefix, or when every request should use one provider. The SDK snippets below are only example configuration styles:
 
 ### Anthropic Messages
 
@@ -134,7 +134,7 @@ Use `--upstream-url` for a complete endpoint, including its final path and optio
 
 In auto mode, Prism detects every capture independently. It considers the request path, headers, protocol-specific request body, provider response, and finally an explicitly provided upstream URL or known provider Base URL. The first confident signal for that capture wins, so one protocol never locks or influences later captures. Routing uses only signals available before forwarding: the request path, headers, and upstream URL hint. With no fixed upstream, dynamic requests use their decoded Base URL as the per-request hint.
 
-Unknown custom Base URLs are not guessed. A capture with ambiguous traffic is forwarded and stored as Raw-only without affecting later captures. Use an explicit `--api-format` when a client needs a fixed protocol.
+Unknown custom Base URLs are not guessed. A capture with ambiguous traffic is forwarded and stored as Raw-only without affecting later captures. Use an explicit `--api-format` when an Agent's model API configuration requires a fixed protocol.
 
 OpenAI reports cached prompt tokens as a subset of `prompt_tokens`. Prism normalizes these into mutually exclusive values: Input is `prompt_tokens - cached_tokens`, while Cache read is `cached_tokens`. Raw retains the provider's original usage envelope.
 
