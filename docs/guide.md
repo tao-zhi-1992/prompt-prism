@@ -118,14 +118,6 @@ Defaults:
 
 If neither `--upstream-base-url` nor `--upstream-url` is supplied, use a generated `/_proxy/<encoded-upstream>` URL for requests. Ordinary unencoded proxy requests return `503` until a generated Proxy URL or a fixed upstream is configured.
 
-| Provider model API Base URL | Appended endpoint |
-| --- | --- |
-| `https://api.deepseek.com` | `/chat/completions` |
-| `https://api.openai.com/v1` | `/chat/completions` |
-| `https://api.anthropic.com` | `/v1/messages` |
-| `https://api.stepfun.com/step_plan` | `/v1/messages` |
-| `https://generativelanguage.googleapis.com/v1beta/openai` | `/chat/completions` |
-
 Use `--upstream-url` for a complete endpoint, including its final path and optional query. This is an advanced escape hatch for gateways whose endpoint cannot be derived from Base URL semantics. The two upstream options are mutually exclusive.
 
 ## Automatic protocol detection

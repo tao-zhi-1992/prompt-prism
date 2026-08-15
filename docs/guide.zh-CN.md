@@ -118,14 +118,6 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 如果没有提供 `--upstream-base-url` 或 `--upstream-url`，请求需要使用生成的 `/_proxy/<encoded-upstream>` 地址。普通未编码的代理请求会返回 `503`，直到使用生成的代理地址或配置固定上游。
 
-| 提供商模型 API Base URL | 追加的端点 |
-| --- | --- |
-| `https://api.deepseek.com` | `/chat/completions` |
-| `https://api.openai.com/v1` | `/chat/completions` |
-| `https://api.anthropic.com` | `/v1/messages` |
-| `https://api.stepfun.com/step_plan` | `/v1/messages` |
-| `https://generativelanguage.googleapis.com/v1beta/openai` | `/chat/completions` |
-
 `--upstream-url` 用于完整的端点，包括最终路径和可选 query。这是高级兜底通道，适用于端点无法从 Base URL 语义推导出的网关。两个上游选项互斥。
 
 ## 自动协议检测
