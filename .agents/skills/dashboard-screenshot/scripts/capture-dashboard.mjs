@@ -11,6 +11,8 @@ const outputPath = path.join(root, 'docs/dashboard.png');
 const expectedWidth = 2400;
 const expectedHeight = 1260;
 const viewport = { width: 1200, height: 630 };
+const TOOL_CALL_ID = 'toolu_read_checkout';
+const TOOL_NAME = 'read_file';
 
 function listen(server, host = '127.0.0.1') {
   return new Promise((resolve, reject) => {
@@ -63,7 +65,7 @@ function createMockUpstream() {
       const payload = turn === 1
         ? {
             id: 'msg_checkout_1', type: 'message', role: 'assistant', model,
-            content: [{ type: 'text', text: 'I will inspect the checkout flow.' }, { type: 'tool_use', id: 'toolu_read_checkout', name: 'read_file', input: { path: 'src/checkout.ts' } }],
+            content: [{ type: 'text', text: 'I will inspect the checkout flow.' }, { type: 'tool_use', id: TOOL_CALL_ID, name: TOOL_NAME, input: { path: 'src/checkout.ts' } }],
             stop_reason: 'tool_use', usage: { input_tokens: 1520, output_tokens: 84, cache_read_input_tokens: 960, cache_creation_input_tokens: 320 },
           }
         : turn === 2
@@ -127,6 +129,39 @@ async function assertDashboard(page, proxyPort, version) {
   if (await page.getByRole('button', { name: /claude-sonnet-4-5/ }).count() === 0) throw new Error('Dashboard has no mock requests');
   if (await page.getByRole('button', { name: 'Proxy URL' }).count() === 0) throw new Error('Dashboard has no Proxy URL button');
   await page.getByRole('button', { name: /claude-sonnet-4-5/ }).first().click();
+  await page.locator('.trace-panel').waitFor({ state: 'visible' });
+
+  const toolCall = page.getByRole('button', { name: new RegExp(`Tool call.*${TOOL_NAME}`) }).first();
+  const toolResult = page.getByRole('button', { name: 'Tool result' }).first();
+  await toolCall.waitFor({ state: 'visible' });
+  await toolResult.waitFor({ state: 'visible' });
+  const resultLink = page.locator('.trace-tool-result-link').filter({ hasText: `${TOOL_NAME} →` }).first();
+  const callLink = page.locator('.trace-tool-result-link').filter({ hasText: 'result →' }).first();
+  await resultLink.waitFor({ state: 'visible' });
+  await callLink.waitFor({ state: 'visible' });
+
+  const callHref = await resultLink.getAttribute('href');
+  const resultHref = await callLink.getAttribute('href');
+  if (!callHref || !resultHref || callHref === resultHref) throw new Error('Tool call/result links do not point to distinct targets');
+  const callTargetLocator = page.locator(callHref);
+  const resultTargetLocator = page.locator(resultHref);
+  const callTargetCount = await callTargetLocator.count();
+  const resultTargetCount = await resultTargetLocator.count();
+  if (callTargetCount < 1 || resultTargetCount < 1) throw new Error(`Tool call/result link target is missing (call=${callHref}, ${callTargetCount}; result=${resultHref}, ${resultTargetCount}; events=${await page.locator('.trace-event').count()})`);
+  const callTarget = callTargetLocator.first();
+  const resultTarget = resultTargetLocator.first();
+
+  await resultLink.click();
+  await page.waitForFunction((selector) => document.querySelector(selector)?.hasAttribute('data-tool-highlight') ?? false, callHref);
+  if (await callTarget.locator('.trace-event-toggle').getAttribute('aria-expanded') !== 'true') throw new Error('Tool result link did not open the matching tool call');
+
+  await callLink.click();
+  await page.waitForFunction((selector) => document.querySelector(selector)?.hasAttribute('data-tool-highlight') ?? false, resultHref);
+  if (await resultTarget.locator('.trace-event-toggle').getAttribute('aria-expanded') !== 'true') throw new Error('Tool call link did not open the matching tool result');
+
+  const collapseButtons = page.getByRole('button', { name: 'Collapse all' });
+  for (let index = 0; index < await collapseButtons.count(); index += 1) await collapseButtons.nth(index).click();
+  if (await callTarget.locator('.trace-event-toggle').getAttribute('aria-expanded') !== 'false' || await resultTarget.locator('.trace-event-toggle').getAttribute('aria-expanded') !== 'false') throw new Error('Tool events were not collapsed for the final screenshot');
 }
 
 async function assertLanding(browser, candidatePath) {
@@ -173,7 +208,7 @@ async function main() {
       const messages = turn === 1
         ? [{ role: 'user', content: 'Inspect the checkout flow and verify the pagination fix.' }]
         : turn === 2
-          ? [{ role: 'user', content: 'Inspect the checkout flow and verify the pagination fix.' }, { role: 'assistant', content: [{ type: 'tool_use', id: 'toolu_read_checkout', name: 'read_file', input: { path: 'src/checkout.ts' } }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_read_checkout', content: 'export function checkout() {}' }] }]
+          ? [{ role: 'user', content: 'Inspect the checkout flow and verify the pagination fix.' }, { role: 'assistant', content: [{ type: 'tool_use', id: TOOL_CALL_ID, name: TOOL_NAME, input: { path: 'src/checkout.ts' } }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: TOOL_CALL_ID, content: 'export function checkout() {}' }] }]
           : [{ role: 'user', content: 'Confirm the final behavior and report any remaining risks.' }];
       const body = JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 256, metadata: { turn }, messages, ...(turn === 1 ? { tools: [{ name: 'read_file', description: 'Read a repository file', input_schema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } }] } : {}) });
       const result = await request(proxyPort, '/v1/messages', body, { 'x-api-key': 'screenshot-demo-key', 'x-prompt-prism-trace-id': 'agent.checkout' });

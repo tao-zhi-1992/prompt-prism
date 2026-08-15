@@ -18,9 +18,9 @@ pnpm exec node .agents/skills/dashboard-screenshot/scripts/capture-dashboard.mjs
 The script performs these steps in order:
 
 1. Build the current Prompt Prism and Dashboard artifacts with `pnpm --filter prompt-prism build:all`.
-2. Create an isolated temporary mock Anthropic upstream and temporary capture directory. It sends three real `POST /v1/messages` requests through Prompt Prism, including the `agent.checkout` trace, tool use/result data, messages, and token usage.
+2. Create an isolated temporary mock Anthropic upstream and temporary capture directory. It sends three real `POST /v1/messages` requests through Prompt Prism, including the `agent.checkout` trace, a `read_file` tool call, a matching tool result with the same tool ID, messages, and token usage.
 3. Start the compiled Prompt Prism server on loopback and load the compiled Dashboard with Chromium in dark mode.
-4. Assert that the current version, Requests list, Trace content, and closed `Proxy URL` button are visible. The candidate screenshot is written to a temporary directory first.
+4. Assert that the current version, Requests list, Trace content, closed `Proxy URL` button, Tool call, Tool result, and both directions of their navigation links are visible. The script clicks each link, verifies the target is highlighted and expanded, then collapses the events before writing the candidate screenshot to a temporary directory.
 5. Serve the landing pages with the candidate image and check both English and Chinese pages for HTTP 200, image dimensions, required alt text, and no horizontal overflow.
 6. Atomically replace `docs/dashboard.png` only after every check succeeds. A failed run leaves the existing product image untouched.
 
@@ -29,6 +29,7 @@ The script performs these steps in order:
 - The output is a PNG of exactly 2400×1260; do not change the landing page's 1200×630 display dimensions for this workflow.
 - Keep the dark theme, the full Dashboard shell, Requests, Trace/Tools content, and the top-right `Proxy URL` button visible. Do not open its dialog.
 - Use only temporary mock data. Never use the repository's `data/` directory, real provider endpoints, API keys, credentials, or user captures.
+- The screenshot fixture must contain a real cross-capture Tool call/Tool result pair with matching protocol IDs. The browser check must verify both Tool result → Tool call and Tool call → Tool result navigation; static labels without working targets are insufficient.
 - Inspect the resulting image visually after the script completes. Look for readable primary regions, no modal overlay, no secrets, and no temporary URLs.
 - This skill updates only `docs/dashboard.png`; landing page HTML is validated but not rewritten.
 
