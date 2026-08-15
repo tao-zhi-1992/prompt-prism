@@ -142,7 +142,7 @@ export async function createPromptPrismCore(options: PromptPrismOptions = {}, pl
     if (!dynamicRoute && upstreamMode === 'none') {
       return json(response, 503, {
         error: 'No upstream configured',
-        detail: 'Use a dynamic upstream URL under /_proxy/<encoded-upstream> or configure --upstream-base-url/--upstream-url',
+        detail: 'Use a generated Proxy URL under /_proxy/<encoded-upstream> or configure --upstream-base-url/--upstream-url',
       });
     }
     const { pathProtocol, headerProtocol, upstreamHint: requestUpstreamHint, targetUrl } = resolveProxyTarget({
@@ -231,7 +231,7 @@ export async function startPromptPrismCore(options: PromptPrismOptions = {}, plu
   const dashboard = `http://127.0.0.1:${port}/_pp/`;
   const format = instance.apiFormat.mode === 'auto' ? 'Auto · per capture' : instance.apiFormat.resolved;
   const upstream = instance.upstreamMode === 'none'
-    ? 'Dynamic only'
+    ? 'use a generated Proxy URL or configure --upstream-base-url/--upstream-url'
     : `${instance.upstreamMode === 'base' ? 'Base' : 'URL '} ${instance.upstreamUrl!.href}`;
   console.log(`\n  Prompt Prism is running\n\n  Proxy          http://127.0.0.1:${port}\n  Dashboard      ${dashboard}\n  Upstream       ${upstream}\n  API format     ${format}\n\n  Point your model client base URL at the Proxy address.\n  Press Ctrl+C to stop.\n`);
   if (options.open !== false) openBrowser(dashboard);

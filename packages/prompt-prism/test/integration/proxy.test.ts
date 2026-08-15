@@ -699,7 +699,7 @@ test('base URL mode derives provider endpoints without locking the Auto configur
   assert.deepEqual(after.api_format, { mode: 'auto', configured: 'auto', resolved: null, source: null });
 });
 
-test('starts in dynamic-only mode without contacting an implicit Anthropic upstream', async (t) => {
+test('starts without a fixed upstream and does not contact an implicit Anthropic upstream', async (t) => {
   let seen = false;
   const upstream = http.createServer((req, res) => {
     seen = true;
@@ -726,7 +726,7 @@ test('starts in dynamic-only mode without contacting an implicit Anthropic upstr
   assert.equal(ordinary.status, 503);
   assert.deepEqual(JSON.parse(ordinary.body), {
     error: 'No upstream configured',
-    detail: 'Use a dynamic upstream URL under /_proxy/<encoded-upstream> or configure --upstream-base-url/--upstream-url',
+    detail: 'Use a generated Proxy URL under /_proxy/<encoded-upstream> or configure --upstream-base-url/--upstream-url',
   });
   assert.equal(seen, false);
   assert.equal(prism.store.captures.length, 0);
@@ -748,7 +748,7 @@ test('starts in dynamic-only mode without contacting an implicit Anthropic upstr
   assert.equal(capture?.request?.target_url, `http://127.0.0.1:${upstreamPort}/gateway/v1/messages?dynamic=1`);
 });
 
-test('reports dynamic-only mode at startup when no upstream is configured', async (t) => {
+test('reports generated Proxy URL guidance when no upstream is configured', async (t) => {
   const dir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-start-dynamic-only-'));
   const output: string[] = [];
   const originalLog = console.log;
@@ -762,7 +762,7 @@ test('reports dynamic-only mode at startup when no upstream is configured', asyn
   assert.ok(prism);
   t.after(() => close(prism!.server));
   assert.equal(prism.upstreamUrl, null);
-  assert.match(output.join('\n'), /Upstream\s+Dynamic only/);
+  assert.match(output.join('\n'), /Upstream\s+use a generated Proxy URL or configure --upstream-base-url\/--upstream-url/);
 });
 
 test('unrecognized base routes remain transparent and create Raw-only captures', async (t) => {
