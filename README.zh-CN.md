@@ -88,9 +88,10 @@ const client = new OpenAI({
 | --- | --- | --- | --- | --- |
 | Anthropic Messages | 是 | 是 | 是 | 是 |
 | OpenAI Chat Completions | 是 | 是 | 是 | 是 |
+| OpenAI Responses | 是 | 是 | 是 | 是 |
 | 其他 HTTP 流量 | 转发 | 转发 | 仅 Raw | 仅 Raw |
 
-OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本中不做规范化。它们仍会被转发并在 Raw 中捕获。
+Realtime、Embeddings、Images 和 Audio 端点在本版本中不做规范化。它们仍会被转发并在 Raw 中捕获。
 
 动态代理地址已通过 OpenAI 和 Anthropic 官方 JavaScript SDK 的集成测试。Agent framework、CLI 和自建 HTTP 客户端只要支持配置请求目标并保留路径前缀，也可以使用相同路由；否则请使用 `--upstream-base-url`。普通非 Agent 模型流量同样会被转发，并保留在 Raw 中。
 
@@ -98,7 +99,7 @@ OpenAI Responses、Realtime、Embeddings、Images 和 Audio 端点在本版本�
 
 - [使用指南](docs/guide.zh-CN.md) — 提供商配置、CLI 选项、协议检测、嵌入式使用和本地数据。
 - [Agent Insights](docs/insights.zh-CN.md) — 在 shell 中检查并比较 Agent 运行。
-- [开发指南](docs/development.zh-CN.md) — 运行演示、在 monorepo 中开发、理解 Input Diff 匹配。
+- [开发指南](docs/development.zh-CN.md) — 运行演示、在 monorepo 中开发、理解 Trace 关系与 Input Diff。
 - [发布](docs/releasing.zh-CN.md) — 手动准备、验证并发布新版本。
 
 ## 数据与隐私

@@ -87,7 +87,7 @@ const client = new OpenAI({
 });
 ```
 
-OpenAI Chat Completions 的 JSON 和 SSE 响应、函数工具调用/结果、system 和 developer 消息，以及常见的 `reasoning_content` 和缓存 token 扩展都会被规范化。Responses、Realtime、Embeddings、Images 和 Audio 端点会照常转发，并以 Raw-only 方式捕获。
+OpenAI Chat Completions 和 Responses 的 JSON/SSE 响应、函数工具调用/结果、推理和用量都会被规范化。Realtime、Embeddings、Images 和 Audio 端点会照常转发，并以 Raw-only 方式捕获。
 
 ## CLI 参考
 

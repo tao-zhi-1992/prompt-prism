@@ -87,7 +87,7 @@ const client = new OpenAI({
 });
 ```
 
-OpenAI Chat Completions JSON and SSE responses, function tool calls/results, system and developer messages, and common `reasoning_content` and cached-token extensions are normalized. Responses, Realtime, Embeddings, Images, and Audio endpoints are forwarded and captured as Raw-only traffic.
+OpenAI Chat Completions and Responses JSON/SSE responses, function tool calls/results, reasoning, and usage are normalized. Realtime, Embeddings, Images, and Audio endpoints are forwarded and captured as Raw-only traffic.
 
 ## CLI reference
 

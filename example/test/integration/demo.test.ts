@@ -4,7 +4,7 @@ import http from 'node:http';
 import { access, mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createPromptPrism } from 'prompt-prism';
+import { buildDynamicProxyBaseUrl, createPromptPrism } from 'prompt-prism';
 import { DEFAULT_DEMO_API_FORMAT, DEFAULT_DEMO_BASE_URL, messagesUrl, openAIBaseUrl, parseApiFormat, parseBaseUrl, startDemo } from '../../server.js';
 
 const listen = (server: http.Server) => new Promise<number>((resolve) => server.listen(0, '127.0.0.1', () => resolve((server.address() as import('node:net').AddressInfo).port)));
@@ -73,9 +73,10 @@ test('Pi Coding Agent streams through Prism, pauses for approval, and captures t
   const modelPort = await listen(modelService);
   const dataDir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-pi-'));
   const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'prompt-prism-workspaces-'));
-  const prism = await createPromptPrism({ upstreamUrl: `http://127.0.0.1:${modelPort}/tenant/demo/v1/messages`, dataDir });
+  const prism = await createPromptPrism({ dataDir });
   const prismPort = await listen(prism.server);
-  const demo = await startDemo({ baseUrl: `http://127.0.0.1:${prismPort}`, providerToken: 'demo-secret', model: 'demo-test-model', demoPort: 0, workspaceRoot });
+  const dynamicBaseUrl = buildDynamicProxyBaseUrl(`http://127.0.0.1:${modelPort}/tenant/demo`, `http://127.0.0.1:${prismPort}`);
+  const demo = await startDemo({ baseUrl: dynamicBaseUrl, providerToken: 'demo-secret', model: 'demo-test-model', demoPort: 0, workspaceRoot });
   t.after(async () => { await demo.close(); await close(prism.server); await close(modelService); });
 
   const created = JSON.parse((await request({ port: demo.demoPort, pathname: '/api/sessions', method: 'POST' })).body) as { id: string; workspace: string };
@@ -168,14 +169,11 @@ test('Pi Coding Agent uses OpenAI Chat Completions through the OpenAI Prism adap
   const modelPort = await listen(modelService);
   const dataDir = await mkdtemp(path.join(tmpdir(), 'prompt-prism-pi-openai-'));
   const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'prompt-prism-openai-workspaces-'));
-  const prism = await createPromptPrism({
-    upstreamUrl: `http://127.0.0.1:${modelPort}/tenant/demo/v1/chat/completions`,
-    apiFormat: 'openai',
-    dataDir,
-  });
+  const prism = await createPromptPrism({ apiFormat: 'auto', dataDir });
   const prismPort = await listen(prism.server);
+  const dynamicBaseUrl = buildDynamicProxyBaseUrl(`http://127.0.0.1:${modelPort}/tenant/demo/v1`, `http://127.0.0.1:${prismPort}`);
   const demo = await startDemo({
-    baseUrl: `http://127.0.0.1:${prismPort}`, apiFormat: 'openai', providerToken: 'openai-demo-secret',
+    baseUrl: dynamicBaseUrl, apiFormat: 'openai', providerToken: 'openai-demo-secret',
     model: 'openai-demo-model', demoPort: 0, workspaceRoot,
   });
   t.after(async () => { await demo.close(); await close(prism.server); await close(modelService); });
@@ -235,6 +233,8 @@ test('Demo defaults to local Prompt Prism and validates its base URL and require
   assert.equal(DEFAULT_DEMO_API_FORMAT, 'auto');
   assert.equal(messagesUrl(parseBaseUrl('https://example.com/prism/')).href, 'https://example.com/prism/v1/messages');
   assert.equal(openAIBaseUrl(parseBaseUrl('https://example.com/prism/')).href, 'https://example.com/prism/v1');
+  assert.equal(openAIBaseUrl(parseBaseUrl(buildDynamicProxyBaseUrl('https://example.com/v1'))).href, buildDynamicProxyBaseUrl('https://example.com/v1'));
+  assert.equal(openAIBaseUrl(parseBaseUrl(buildDynamicProxyBaseUrl('https://example.com'))).href, `${buildDynamicProxyBaseUrl('https://example.com')}/v1`);
   assert.equal(parseApiFormat('openai'), 'openai');
   assert.throws(() => parseApiFormat('responses'), /auto, anthropic-messages, or openai-chat-completions/);
   await assert.rejects(startDemo({ baseUrl: 'ftp://example.com', providerToken: 'token', model: 'model', demoPort: 0 }), /http or https/);
