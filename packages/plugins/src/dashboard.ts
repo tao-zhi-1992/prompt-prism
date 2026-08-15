@@ -4,8 +4,8 @@ export type { CaptureSummary, DetailTabPanelProps, DetailTabPlugin, DetailTabPlu
 export type { CaptureTiming, ConversationContentBlock, ConversationMessage, JsonPrimitive, JsonValue, ModelOutputBlock, ModelOutputSnapshot, ProviderError, ReasoningOutputBlock, TextOutputBlock, ToolCallOutputBlock, UnknownOutputBlock, Usage } from '@prompt-prism/contracts/model';
 export { defineDetailTab, DetailTabRegistry, I18nProvider, LOCALE_STORAGE_KEY, resolveLocale, useI18n, traceDisplayName, TRACE_DISPLAY_NAMES } from '@prompt-prism/dashboard-kit';
 export type { Locale, TranslationKey } from '@prompt-prism/dashboard-kit';
-export { ContentCopyButton, detectStructuredContent, StructuredContent } from './content/StructuredContent.js';
-export type { StructuredContentHints, StructuredContentKind, StructuredContentMode, StructuredContentProps } from './content/StructuredContent.js';
+export { ContentCopyButton, detectStructuredContent, StructuredContent } from '@prompt-prism/dashboard-kit';
+export type { StructuredContentHints, StructuredContentKind, StructuredContentMode, StructuredContentProps } from '@prompt-prism/dashboard-kit';
 export type { InputDiffAnalysis, InputDiffSection, InputDiffSectionState } from './input-diff/dashboard/InputDiffPanel.js';
 export type { SystemPromptData } from './system-prompt/dashboard/SystemPromptPanel.js';
 export type { RawCapture, RawHeaders } from './raw/dashboard/RawPanel.js';

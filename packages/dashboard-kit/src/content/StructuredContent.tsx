@@ -3,9 +3,10 @@ import Markdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import { JsonView } from 'react-json-view-lite';
-import type { JsonValue } from '@prompt-prism/dashboard-kit';
-import { useI18n } from '@prompt-prism/dashboard-kit';
+import type { JsonValue } from '@prompt-prism/contracts/model';
+import { useI18n } from '../i18n/index.js';
 import { Button } from '@prompt-prism/ui';
+import './styles.css';
 
 export type StructuredContentMode = 'auto' | 'json' | 'markdown' | 'code' | 'text';
 export type StructuredContentKind = Exclude<StructuredContentMode, 'auto'>;
