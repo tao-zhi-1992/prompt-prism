@@ -16,7 +16,7 @@ Both `p2` and `prompt-prism` invoke the same CLI.
 
 ## Dynamic upstream URLs
 
-Start Prism without an upstream. This dynamic-only mode is ready for generated Proxy URLs:
+Start Prism without configuring a fixed upstream, then use a generated Proxy URL for the provider address your Agent will reach:
 
 ```bash
 # Terminal 1
@@ -87,7 +87,7 @@ const client = new OpenAI({
 });
 ```
 
-OpenAI Chat Completions JSON and SSE responses, function tool calls/results, system and developer messages, and common `reasoning_content` and cached-token extensions are normalized. Responses, Realtime, Embeddings, Images, and Audio endpoints are forwarded and captured as Raw-only traffic.
+OpenAI Chat Completions and Responses JSON/SSE responses, function tool calls/results, reasoning, and usage are normalized. Realtime, Embeddings, Images, and Audio endpoints are forwarded and captured as Raw-only traffic.
 
 ## CLI reference
 
@@ -105,7 +105,7 @@ Defaults:
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `--upstream-base-url` | none (dynamic-only mode) | Provider model API Base URL |
+| `--upstream-base-url` | none (use a generated Proxy URL) | Provider model API Base URL |
 | `--api-format` | `auto` | Detect Anthropic Messages, OpenAI Chat Completions, or OpenAI Responses |
 | `--port` | `1028` | Local proxy and dashboard port |
 | `--data-dir` | `./data` | Local capture directory |
@@ -114,17 +114,9 @@ Defaults:
 
 `--upstream-base-url` enables fixed-upstream compatibility mode. Prism appends the endpoint selected by the incoming protocol:
 
-`p2 url` and the Dashboard Proxy URL generator accept either a provider Base URL or a complete endpoint. A complete endpoint is encoded unchanged; a dynamic request with no suffix is forwarded directly to it. A request suffix is appended to either kind of decoded URL.
+`p2 url` and the Dashboard Proxy URL generator accept either a provider Base URL or a complete endpoint. A complete endpoint is encoded unchanged; a request using the generated URL with no suffix is forwarded directly to it. A request suffix is appended to either kind of decoded URL.
 
-If neither `--upstream-base-url` nor `--upstream-url` is supplied, Prism starts in dynamic-only mode. Ordinary unencoded proxy requests return `503` until they use a `/_proxy/<encoded-upstream>` URL or a fixed upstream is configured.
-
-| Provider model API Base URL | Appended endpoint |
-| --- | --- |
-| `https://api.deepseek.com` | `/chat/completions` |
-| `https://api.openai.com/v1` | `/chat/completions` |
-| `https://api.anthropic.com` | `/v1/messages` |
-| `https://api.stepfun.com/step_plan` | `/v1/messages` |
-| `https://generativelanguage.googleapis.com/v1beta/openai` | `/chat/completions` |
+If neither `--upstream-base-url` nor `--upstream-url` is supplied, use a generated `/_proxy/<encoded-upstream>` URL for requests. Ordinary unencoded proxy requests return `503` until a generated Proxy URL or a fixed upstream is configured.
 
 Use `--upstream-url` for a complete endpoint, including its final path and optional query. This is an advanced escape hatch for gateways whose endpoint cannot be derived from Base URL semantics. The two upstream options are mutually exclusive.
 

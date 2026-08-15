@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRequest, parseResponse } from '../../src/adapter/openai-responses.js';
-import { protocolFixture, sse } from '../fixtures/protocols.js';
+import { parseRequest, parseResponse } from './openai-responses.js';
+import { protocolFixture, sse } from '../../test/fixtures/protocols.js';
 
 test('normalizes Responses input, instructions, custom tools, and function output', async () => {
   const fixture = await protocolFixture('openai-responses');

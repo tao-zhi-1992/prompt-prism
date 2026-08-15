@@ -88,9 +88,10 @@ If the Agent's model API client replaces the Base URL instead of preserving its 
 | --- | --- | --- | --- | --- |
 | Anthropic Messages | Yes | Yes | Yes | Yes |
 | OpenAI Chat Completions | Yes | Yes | Yes | Yes |
+| OpenAI Responses | Yes | Yes | Yes | Yes |
 | Other HTTP traffic | Forwarded | Forwarded | Raw only | Raw only |
 
-OpenAI Responses, Realtime, Embeddings, Images, and Audio endpoints are not normalized in this release. They are still forwarded and captured in Raw.
+Realtime, Embeddings, Images, and Audio endpoints are not normalized in this release. They are still forwarded and captured in Raw.
 
 Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic JavaScript SDKs. Agent frameworks, CLIs, and custom HTTP clients can use the same route when they support a configurable request target and preserve its path prefix; otherwise, use `--upstream-base-url`. Non-Agent model traffic is also forwarded and remains available in Raw.
 
@@ -98,7 +99,7 @@ Dynamic Proxy URLs are integration-tested with the official OpenAI and Anthropic
 
 - [Guide](docs/guide.md) — provider setup, CLI options, protocol detection, embedding, and local data.
 - [Agent Insights](docs/insights.md) — inspect and compare agent runs from the shell.
-- [Development](docs/development.md) — run the demo, work on the monorepo, and understand Input Diff matching.
+- [Development](docs/development.md) — run the demo, work on the monorepo, and understand Trace relationships and Input Diff.
 - [Releasing](docs/releasing.md) — prepare, verify, and publish a release manually.
 
 ## Data and privacy

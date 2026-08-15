@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ApiFormatResolver, detectProtocolFromBaseUrl, detectProtocolFromBody, detectProtocolFromPath } from '../../src/adapter/detection.js';
+import { ApiFormatResolver, detectProtocolFromBaseUrl, detectProtocolFromBody, detectProtocolFromPath } from './detection.js';
 
 test('detects canonical protocols from standard endpoints and provider Base URLs', () => {
   assert.equal(detectProtocolFromPath('/v1/messages'), 'anthropic-messages');

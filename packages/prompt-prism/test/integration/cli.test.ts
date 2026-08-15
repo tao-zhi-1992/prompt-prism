@@ -43,7 +43,7 @@ test('CLI documents base and exact upstream modes with automatic API format', as
   assert.match(stdout, /--upstream-url URL/);
   assert.match(stdout, /--api-format FORMAT/);
   assert.match(stdout, /available: auto, anthropic-messages, openai-chat-completions/);
-  assert.match(stdout, /upstream\s+dynamic-only/);
+  assert.match(stdout, /upstream\s+use p2 url or configure --upstream-base-url\/--upstream-url/);
   assert.doesNotMatch(stdout, /upstream-base-url https:\/\/api\.anthropic\.com/);
   assert.match(stdout, /p2 insights/);
   assert.match(stdout, /p2 update-check/);

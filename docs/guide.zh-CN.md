@@ -16,7 +16,7 @@ npm install -g prompt-prism
 
 ## 动态上游地址
 
-不带 upstream 启动 Prism。此时是等待生成代理地址的仅动态模式：
+启动 Prism 时不配置固定 upstream，然后为 Agent 要访问的提供商地址生成代理地址：
 
 ```bash
 # 终端 1
@@ -87,7 +87,7 @@ const client = new OpenAI({
 });
 ```
 
-OpenAI Chat Completions 的 JSON 和 SSE 响应、函数工具调用/结果、system 和 developer 消息，以及常见的 `reasoning_content` 和缓存 token 扩展都会被规范化。Responses、Realtime、Embeddings、Images 和 Audio 端点会照常转发，并以 Raw-only 方式捕获。
+OpenAI Chat Completions 和 Responses 的 JSON/SSE 响应、函数工具调用/结果、推理和用量都会被规范化。Realtime、Embeddings、Images 和 Audio 端点会照常转发，并以 Raw-only 方式捕获。
 
 ## CLI 参考
 
@@ -105,7 +105,7 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 | 选项 | 默认值 | 用途 |
 | --- | --- | --- |
-| `--upstream-base-url` | 无（仅动态模式） | 提供商模型 API Base URL |
+| `--upstream-base-url` | 无（使用生成的代理地址） | 提供商模型 API Base URL |
 | `--api-format` | `auto` | 检测 Anthropic Messages、OpenAI Chat Completions 或 OpenAI Responses |
 | `--port` | `1028` | 本地代理和仪表盘端口 |
 | `--data-dir` | `./data` | 本地捕获目录 |
@@ -114,17 +114,9 @@ p2 url UPSTREAM_URL_OR_BASE_URL [--proxy-url URL]
 
 `--upstream-base-url` 启用固定上游兼容模式。Prism 会追加由传入协议选定的端点：
 
-`p2 url` 和仪表盘的代理地址生成器同时接受提供商 Base URL 或完整 endpoint。完整 endpoint 会原样编码；动态请求没有后缀时直接转发到该地址。无论输入哪种 URL，只有请求带后缀时才会追加该后缀。
+`p2 url` 和仪表盘的代理地址生成器同时接受提供商 Base URL 或完整 endpoint。完整 endpoint 会原样编码；使用生成地址的请求没有后缀时直接转发到该地址。无论输入哪种 URL，只有请求带后缀时才会追加该后缀。
 
-如果没有提供 `--upstream-base-url` 或 `--upstream-url`，Prism 会以仅动态模式启动。普通未编码的代理请求会返回 `503`，直到请求使用 `/_proxy/<encoded-upstream>` 地址，或启动时配置固定上游。
-
-| 提供商模型 API Base URL | 追加的端点 |
-| --- | --- |
-| `https://api.deepseek.com` | `/chat/completions` |
-| `https://api.openai.com/v1` | `/chat/completions` |
-| `https://api.anthropic.com` | `/v1/messages` |
-| `https://api.stepfun.com/step_plan` | `/v1/messages` |
-| `https://generativelanguage.googleapis.com/v1beta/openai` | `/chat/completions` |
+如果没有提供 `--upstream-base-url` 或 `--upstream-url`，请求需要使用生成的 `/_proxy/<encoded-upstream>` 地址。普通未编码的代理请求会返回 `503`，直到使用生成的代理地址或配置固定上游。
 
 `--upstream-url` 用于完整的端点，包括最终路径和可选 query。这是高级兜底通道，适用于端点无法从 Base URL 语义推导出的网关。两个上游选项互斥。
 

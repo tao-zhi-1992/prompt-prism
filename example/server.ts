@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager, type AgentSession, type ExtensionFactory } from '@earendil-works/pi-coding-agent';
 import { createProvider, envApiKeyAuth, type Model } from '@earendil-works/pi-ai';
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy';
+import { decodeUpstreamUrl } from 'prompt-prism';
 
 const runtimeDir = path.dirname(fileURLToPath(import.meta.url));
 const demoDir = path.basename(runtimeDir) === 'dist' ? path.dirname(runtimeDir) : runtimeDir;
@@ -75,7 +76,18 @@ export function messagesUrl(baseUrl: URL): URL {
   return url;
 }
 
+function dynamicProxyUpstream(baseUrl: URL): URL | null {
+  const prefix = '/_proxy/';
+  if (!baseUrl.pathname.startsWith(prefix)) return null;
+  const encoded = baseUrl.pathname.slice(prefix.length).split('/', 1)[0];
+  if (!encoded) return null;
+  try { return decodeUpstreamUrl(encoded); }
+  catch { return null; }
+}
+
 export function openAIBaseUrl(baseUrl: URL): URL {
+  const dynamicUpstream = dynamicProxyUpstream(baseUrl);
+  if (dynamicUpstream && /\/v1\/?$/.test(dynamicUpstream.pathname)) return new URL(baseUrl);
   const url = new URL(baseUrl);
   url.pathname = `${url.pathname.replace(/\/+$/, '')}/v1`;
   url.search = '';

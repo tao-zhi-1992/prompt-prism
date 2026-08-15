@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.4.3](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.4.2...v0.4.3) (2026-08-15)
+
+### Bug Fixes
+
+* **trace:** infer parents within explicit runs
+
+### Refactoring
+
+* **dashboard:** move structured content to dashboard kit
+* **plugins:** remove unused registry
+
+### Documentation
+
+* align development demo with dynamic proxy
+* remove internal dynamic mode wording
+* simplify upstream guide
+
+### Tests
+
+* colocate single-module tests
+* expand StructuredContent coverage
+
 ## [0.4.2](https://github.com/tao-zhi-1992/prompt-prism/compare/v0.4.1...v0.4.2) (2026-08-14)
 
 ### Bug Fixes

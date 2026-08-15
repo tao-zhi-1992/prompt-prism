@@ -74,6 +74,26 @@ test('an explicit parent joins a trace-id group even when the child has no trace
   assert.deepEqual(metadata.get('child'), { trace_group_id: 'run-1', trace_group_source: 'explicit', trace_group_index: 2 });
 });
 
+test('infers append relations within an explicit trace ID when the parent header is omitted', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
+  const traceId = 'run-without-parent-header';
+  const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'hello' }], { trace_id: traceId });
+  const child = capture('child', '2026-08-14T00:01:00.000Z', [
+    { role: 'user', content: 'hello' },
+    { role: 'assistant', content: 'done' },
+    { role: 'user', content: 'next' },
+  ], { trace_id: traceId });
+  const service = new TraceService(directory); await service.init([entry(root)]);
+  const stored = await service.prepare(child, entry(child), async (id) => id === root.id ? root : null, parse, output);
+  assert.equal(stored.parent_capture_id, 'root');
+  assert.equal(stored.trace_relation_source, 'inferred');
+  assert.equal(stored.trace_relation_reason, 'input_with_previous_output');
+  const result = await service.result('child', [entry(root), { ...entry(child), ...stored }], async (id) => id === root.id ? root : child, parse, output);
+  assert.equal(result?.calls[0]?.input_relation, 'root');
+  assert.equal(result?.calls[1]?.input_relation, 'append');
+  assert.equal(result?.calls[1]?.parent_capture_id, 'root');
+});
+
 test('does not require the same model for a unique heuristic continuation', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'prompt-prism-trace-'));
   const root = capture('root', '2026-08-14T00:00:00.000Z', [{ role: 'user', content: 'hello' }]);

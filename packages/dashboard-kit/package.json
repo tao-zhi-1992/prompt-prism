@@ -3,13 +3,21 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": { ".": "./src/index.ts", "./content.css": "./src/content/styles.css" },
   "scripts": { "typecheck": "tsc -p tsconfig.json --noEmit", "test": "vitest run --config vite.config.ts", "test:coverage": "vitest run --coverage --config vite.config.ts" },
-  "dependencies": { "@prompt-prism/contracts": "workspace:*" },
+  "dependencies": {
+    "@prompt-prism/contracts": "workspace:*",
+    "@prompt-prism/ui": "workspace:*",
+    "react-json-view-lite": "2.5.0",
+    "react-markdown": "10.1.0",
+    "rehype-highlight": "7.0.2",
+    "remark-gfm": "4.0.1"
+  },
   "peerDependencies": { "react": "^19.2.8" },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
     "@types/react": "^19.2.18",
     "@vitest/coverage-v8": "^4.1.10",
     "@vitejs/plugin-react": "^6.0.5",

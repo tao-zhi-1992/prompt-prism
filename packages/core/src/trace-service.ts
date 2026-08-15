@@ -125,6 +125,7 @@ export class TraceService {
         if (value.version !== undefined && value.version !== 1 && value.version !== 2) continue;
         this.relations.set(value.id, value);
         if (!value.source && value.parent_capture_id === null) this.unresolved.add(value.id);
+        if (value.source === 'explicit' && value.parent_capture_id === null && captures.find((capture) => capture.id === value.id)?.trace_id) this.unresolved.add(value.id);
       }
     } catch (error: unknown) {
       if (!(error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT')) throw error;
@@ -141,7 +142,7 @@ export class TraceService {
           version: capture.trace_relation_version,
         };
       this.relations.set(capture.id, relation);
-      if (!relation.source || (capture.trace_parent_capture_id && !relation.parent_capture_id)) this.unresolved.add(capture.id);
+      if (!relation.source || (capture.trace_parent_capture_id && !relation.parent_capture_id) || (capture.trace_id && !relation.parent_capture_id)) this.unresolved.add(capture.id);
     }
   }
 
@@ -209,7 +210,7 @@ export class TraceService {
 
   private apply(relation: Relation, capture?: Capture): void {
     this.relations.set(relation.id, relation);
-    if (relation.parent_capture_id || relation.source === 'explicit' && !capture?.trace_parent_capture_id) this.unresolved.delete(relation.id);
+    if (relation.parent_capture_id || relation.source === 'explicit' && !capture?.trace_parent_capture_id && !capture?.trace_id) this.unresolved.delete(relation.id);
     else this.unresolved.add(relation.id);
   }
 
@@ -230,24 +231,23 @@ export class TraceService {
   ): Promise<Relation> {
     const requestedParent = capture.trace_parent_capture_id ?? current.trace_parent_capture_id;
     const explicitParent = requestedParent ? candidates.find((item) => item.id === requestedParent) : undefined;
-    if (capture.trace_id) {
-      return explicitParent
-        ? { id: capture.id, parent_capture_id: explicitParent.id, source: 'explicit', reason: 'explicit_parent_capture', version: 2 }
-        : { id: capture.id, parent_capture_id: null, source: 'explicit', reason: 'explicit_trace_id', version: 2 };
-    }
+    const explicitTraceRelation = (): Relation => ({ id: capture.id, parent_capture_id: null, source: 'explicit', reason: 'explicit_trace_id', version: 2 });
+    if (capture.trace_id && explicitParent) return { id: capture.id, parent_capture_id: explicitParent.id, source: 'explicit', reason: 'explicit_parent_capture', version: 2 };
+    if (capture.trace_id && requestedParent) return explicitTraceRelation();
     if (requestedParent) {
       if (explicitParent) return { id: capture.id, parent_capture_id: explicitParent.id, source: 'reference', reason: 'explicit_parent_capture', version: 2 };
       return noRelation(capture.id);
     }
-    if (!capture.prompt_input) return noRelation(capture.id);
+    if (!capture.prompt_input) return capture.trace_id ? explicitTraceRelation() : noRelation(capture.id);
     const currentPrimary = primary(current);
     const currentTime = Date.parse(current.timestamp);
-    if (!Number.isFinite(currentTime) || !currentPrimary.length || current.token_hash === ANONYMOUS_TOKEN_HASH) return noRelation(capture.id);
+    if (!Number.isFinite(currentTime) || !currentPrimary.length || current.token_hash === ANONYMOUS_TOKEN_HASH) return capture.trace_id ? explicitTraceRelation() : noRelation(capture.id);
     const currentConversation = capture.prompt_input.conversation ?? [];
     const currentToolResults = toolResultIds(currentConversation);
     const matches: CandidateMatch[] = [];
     for (const candidate of candidates) {
-      if (candidate.trace_id || !candidate.prompt_input || !this.heuristicCompatible(current, candidate)) continue;
+      if (!candidate.prompt_input || !this.heuristicCompatible(current, candidate)) continue;
+      if (capture.trace_id ? candidate.trace_id !== capture.trace_id : Boolean(candidate.trace_id)) continue;
       const age = currentTime - Date.parse(candidate.timestamp);
       if (!Number.isFinite(age) || age < 0 || age > MAX_INFERENCE_AGE_MS) continue;
       const candidatePrimary = primary(candidate);
@@ -271,14 +271,14 @@ export class TraceService {
       }
       if (startsWith(currentPrimary, candidatePrimary)) matches.push({ candidate, reason: 'input_prefix', rank: 2, prefixLength: candidatePrimary.length, modelMatch: current.model === candidate.model });
     }
-    if (!matches.length) return noRelation(capture.id);
+    if (!matches.length) return capture.trace_id ? explicitTraceRelation() : noRelation(capture.id);
     const bestRank = Math.max(...matches.map((match) => match.rank));
     const best = matches.filter((match) => match.rank === bestRank);
     const longest = Math.max(...best.map((match) => match.prefixLength));
     const longestMatches = best.filter((match) => match.prefixLength === longest);
     const modelMatches = longestMatches.filter((match) => match.modelMatch);
     const selected = modelMatches.length ? modelMatches : longestMatches;
-    if (selected.length !== 1) return noRelation(capture.id);
+    if (selected.length !== 1) return capture.trace_id ? explicitTraceRelation() : noRelation(capture.id);
     const match = selected[0]!;
     return { id: capture.id, parent_capture_id: match.candidate.id, source: match.reason === 'tool_result_reference' ? 'reference' : 'inferred', reason: match.reason, version: 2 };
   }

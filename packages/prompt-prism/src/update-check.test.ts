@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { UPDATE_CHECK_INTERVAL_MS, checkForUpdate, compareVersions, formatUpdateNotice, shouldRunAutomaticUpdateCheck } from '../../src/update-check.js';
+import { UPDATE_CHECK_INTERVAL_MS, checkForUpdate, compareVersions, formatUpdateNotice, shouldRunAutomaticUpdateCheck } from './update-check.js';
 
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 const registries = [{ id: 'npm' as const, url: 'https://npm.test/latest' }, { id: 'npmmirror' as const, url: 'https://mirror.test/latest' }];

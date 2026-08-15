@@ -10,9 +10,8 @@ import type {
   ModelOutputSnapshot,
   Usage,
 } from '@prompt-prism/dashboard-kit';
-import { useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
+import { StructuredContent, useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
-import { StructuredContent } from '../../content/StructuredContent.js';
 import { traceDisplayName } from '@prompt-prism/dashboard-kit';
 
 export type TraceInputRelation = 'root' | 'append' | 'rewritten';

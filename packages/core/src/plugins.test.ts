@@ -1,7 +1,7 @@
 import http from 'node:http';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ServerPluginRegistry } from '../../src/plugins.js';
+import { ServerPluginRegistry } from './plugins.js';
 import type { Capture, CaptureIndexEntry, PromptPrismServerPlugin, ServerPluginContext } from '@prompt-prism/contracts/server';
 
 function context(): ServerPluginContext {

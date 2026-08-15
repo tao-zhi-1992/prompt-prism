@@ -8,9 +8,8 @@ import type {
   UnknownOutputBlock,
   Usage,
 } from '@prompt-prism/dashboard-kit';
-import { useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
+import { StructuredContent, useI18n, type TranslationKey } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
-import { StructuredContent } from '../../content/StructuredContent.js';
 
 export type OutputCapture = { output: ModelOutputSnapshot | null };
 

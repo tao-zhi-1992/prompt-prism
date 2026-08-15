@@ -1,8 +1,6 @@
 import { ScrollArea } from '@base-ui/react/scroll-area';
-import { useI18n } from '@prompt-prism/dashboard-kit';
-import type { JsonValue } from '@prompt-prism/dashboard-kit';
+import { StructuredContent, useI18n, type JsonValue } from '@prompt-prism/dashboard-kit';
 import { Button } from '@prompt-prism/ui';
-import { StructuredContent } from '../../content/StructuredContent.js';
 
 export interface SystemPromptData {
   id: string;
