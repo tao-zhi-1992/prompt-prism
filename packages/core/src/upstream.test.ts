@@ -6,7 +6,7 @@ import {
   encodeUpstreamUrl,
   parseDynamicUpstreamRoute,
   parseUpstreamBaseUrl,
-} from '../../src/upstream.js';
+} from './upstream.js';
 
 test('encodes upstream URLs as canonical unpadded Base64URL', () => {
   const encodedUpstream = encodeUpstreamUrl('https://例子.example/模型/v1///');

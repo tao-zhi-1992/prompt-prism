@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRequest, parseResponse } from '../../src/adapter/openai.js';
-import { protocolFixture, sse } from '../fixtures/protocols.js';
+import { parseRequest, parseResponse } from './openai.js';
+import { protocolFixture, sse } from '../../test/fixtures/protocols.js';
 
 test('normalizes OpenAI chat input into provider-neutral sections and conversation blocks', () => {
   const parsed = parseRequest(JSON.stringify({

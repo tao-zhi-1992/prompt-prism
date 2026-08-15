@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, access, appendFile, writeFile, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { CaptureStore } from '../../src/store.js';
-import type { Capture } from '../../src/types.js';
+import { CaptureStore } from './store.js';
+import type { Capture } from './types.js';
 
 function capture(id: string, timestamp: string, payload = ''): Capture {
   return { id, timestamp, token_hash: 'hash', model: 'test', messages: [], usage: {}, payload };

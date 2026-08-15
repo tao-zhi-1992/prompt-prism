@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRequest, parseResponse } from '../../src/adapter/anthropic.js';
-import { protocolFixture, sse } from '../fixtures/protocols.js';
+import { parseRequest, parseResponse } from './anthropic.js';
+import { protocolFixture, sse } from '../../test/fixtures/protocols.js';
 
 test('normalizes Anthropic model input into ordered provider-neutral sections', () => {
   const messages = [{ role: 'user', content: [{ type: 'text', text: 'hi', cache_control: { type: 'ephemeral' } }] }];
